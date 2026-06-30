@@ -1,112 +1,162 @@
-import {
-  S3Client,
-  PutObjectCommand,
-  DeleteObjectCommand,
-  GetObjectCommand,
-} from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { v2 as cloudinary } from "cloudinary";
 import { logger } from "@/lib/logger";
 
-let _client: S3Client | null = null;
+let _configured = false;
 
-function getClient(): S3Client {
-  if (_client) return _client;
+function getClient() {
+  if (_configured) return cloudinary;
 
-  const accountId = process.env.R2_ACCOUNT_ID;
-  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const apiKey = process.env.CLOUDINARY_API_KEY;
+  const apiSecret = process.env.CLOUDINARY_API_SECRET;
 
-  if (!accountId || !accessKeyId || !secretAccessKey) {
-    throw new Error("R2 credentials not configured. Set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY.");
+  if (!cloudName || !apiKey || !apiSecret) {
+    throw new Error(
+      "Cloudinary credentials not configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET."
+    );
   }
 
-  _client = new S3Client({
-    region: "auto",
-    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-    credentials: { accessKeyId, secretAccessKey },
+  cloudinary.config({
+    cloud_name: cloudName,
+    api_key: apiKey,
+    api_secret: apiSecret,
+    secure: true,
   });
 
-  return _client;
-}
-
-function getBucket(): string {
-  const bucket = process.env.R2_BUCKET_NAME;
-  if (!bucket) throw new Error("R2_BUCKET_NAME not set");
-  return bucket;
-}
-
-function getPublicBase(): string {
-  const base = process.env.R2_PUBLIC_URL;
-  if (!base) throw new Error("R2_PUBLIC_URL not set");
-  return base.replace(/\/$/, "");
+  _configured = true;
+  return cloudinary;
 }
 
 /**
- * Generate a presigned PUT URL so the client can upload directly to R2.
+ * Cloudinary treats audio/video files under resource_type "video".
+ * Images/PDFs etc use "image" or "raw". We pick based on contentType.
+ */
+function resourceTypeFor(contentType: string): "image" | "video" | "raw" {
+  if (contentType.startsWith("audio/") || contentType.startsWith("video/")) {
+    return "video";
+  }
+  if (contentType.startsWith("image/")) {
+    return "image";
+  }
+  return "raw";
+}
+
+/**
+ * Generate a signed upload payload so the client can upload directly to Cloudinary.
+ * (Equivalent to a presigned PUT URL for R2.) The client must POST to
+ * https://api.cloudinary.com/v1_1/<cloud_name>/<resource_type>/upload
+ * with these fields (multipart/form-data), plus the file itself.
  */
 export async function createPresignedUploadUrl(
   key: string,
   contentType: string,
-  maxSizeBytes: number,
+  _maxSizeBytes: number,
   expiresIn = 600
 ): Promise<{ uploadUrl: string; publicUrl: string; key: string }> {
-  const command = new PutObjectCommand({
-    Bucket: getBucket(),
-    Key: key,
-    ContentType: contentType,
-    ContentLength: maxSizeBytes,
+  const client = getClient();
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const resourceType = resourceTypeFor(contentType);
+  const timestamp = Math.floor(Date.now() / 1000);
+
+  const paramsToSign = {
+    public_id: key,
+    timestamp,
+  };
+
+  const signature = client.utils.api_sign_request(
+    paramsToSign,
+    process.env.CLOUDINARY_API_SECRET!
+  );
+
+  const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload?api_key=${process.env.CLOUDINARY_API_KEY}&timestamp=${timestamp}&signature=${signature}&public_id=${encodeURIComponent(
+    key
+  )}`;
+
+  const publicUrl = client.url(key, {
+    resource_type: resourceType,
+    secure: true,
   });
 
-  const uploadUrl = await getSignedUrl(getClient(), command, { expiresIn });
-  const publicUrl = `${getPublicBase()}/${key}`;
+  logger.info("Cloudinary presigned upload created", {
+    key,
+    contentType,
+    expiresIn,
+  });
 
-  logger.info("Presigned upload URL created", { key, contentType, expiresIn });
   return { uploadUrl, publicUrl, key };
 }
 
 /**
- * Server-side upload: push a buffer directly to R2.
+ * Server-side upload: push a buffer directly to Cloudinary.
  */
 export async function uploadToR2(
   buffer: Buffer,
   key: string,
   contentType: string
 ): Promise<string> {
-  logger.info("Uploading to R2", { key, contentType, size: buffer.length });
+  const client = getClient();
+  const resourceType = resourceTypeFor(contentType);
 
-  await getClient().send(
-    new PutObjectCommand({
-      Bucket: getBucket(),
-      Key: key,
-      Body: buffer,
-      ContentType: contentType,
-    })
-  );
+  logger.info("Uploading to Cloudinary", {
+    key,
+    contentType,
+    size: buffer.length,
+  });
 
-  return `${getPublicBase()}/${key}`;
+  const result = await new Promise<{ secure_url: string }>((resolve, reject) => {
+    const stream = client.uploader.upload_stream(
+      {
+        public_id: key,
+        resource_type: resourceType,
+        overwrite: true,
+      },
+      (error, uploadResult) => {
+        if (error || !uploadResult) {
+          return reject(error || new Error("Cloudinary upload failed"));
+        }
+        resolve(uploadResult as { secure_url: string });
+      }
+    );
+    stream.end(buffer);
+  });
+
+  return result.secure_url;
 }
 
-export async function deleteFromR2(key: string): Promise<void> {
-  logger.info("Deleting from R2", { key });
-  await getClient().send(
-    new DeleteObjectCommand({
-      Bucket: getBucket(),
-      Key: key,
-    })
-  );
+export async function deleteFromR2(key: string, contentType?: string): Promise<void> {
+  const client = getClient();
+  const resourceType = contentType ? resourceTypeFor(contentType) : "video";
+
+  logger.info("Deleting from Cloudinary", { key });
+
+  await client.uploader.destroy(key, { resource_type: resourceType });
 }
 
+/**
+ * Cloudinary doesn't use presigned GET URLs the same way S3/R2 does.
+ * For "private"/authenticated assets you'd upload with type: "authenticated"
+ * and sign a delivery URL. For now this returns a standard signed delivery URL.
+ */
 export async function getSignedDownloadUrl(
   key: string,
-  expiresIn = 3600
+  expiresIn = 3600,
+  contentType?: string
 ): Promise<string> {
-  const command = new GetObjectCommand({
-    Bucket: getBucket(),
-    Key: key,
+  const client = getClient();
+  const resourceType = contentType ? resourceTypeFor(contentType) : "video";
+  const timestamp = Math.floor(Date.now() / 1000) + expiresIn;
+
+  return client.utils.private_download_url(key, "", {
+    resource_type: resourceType,
+    expires_at: timestamp,
   });
-  return getSignedUrl(getClient(), command, { expiresIn });
 }
 
-export function getPublicUrl(key: string): string {
-  return `${getPublicBase()}/${key}`;
+export function getPublicUrl(key: string, contentType?: string): string {
+  const client = getClient();
+  const resourceType = contentType ? resourceTypeFor(contentType) : "video";
+  return client.url(key, {
+    resource_type: resourceType,
+    secure: true,
+  });
 }
