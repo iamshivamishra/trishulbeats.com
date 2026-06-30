@@ -1,8 +1,6 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
-import { MongoDBAdapter } from "@auth/mongodb-adapter";
-import mongoClient from "@/lib/mongodb";
 import { connectDB } from "@/lib/db";
 import User from "@/lib/models/User";
 import bcrypt from "bcryptjs";
@@ -33,7 +31,6 @@ declare module "@auth/core/jwt" {
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  adapter: MongoDBAdapter(mongoClient),
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,
