@@ -64,6 +64,7 @@ export async function POST(request: NextRequest) {
       return Response.json({ error: masterCheck.error }, { status: 400 });
     }
 
+    
     if (stemsFile && stemsFile.size > 0) {
       const stemsCheck = validateFile(stemsFile, "stems");
       if (!stemsCheck.valid) {
