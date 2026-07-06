@@ -11,11 +11,13 @@ import { beatRepository } from "@/lib/repositories/beat.repository";
 import { licenseRepository } from "@/lib/repositories/license.repository";
 import { purchaseRepository } from "@/lib/repositories/purchase.repository";
 import { toPublicBeatForUi } from "@/lib/serializers/beat";
+import { followRepository } from "@/lib/repositories/follow.repository"; // <-- create if it doesn't exist yet
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import BeatCard from "@/components/BeatCard";
+import FollowButton from "@/components/FollowButton";
 
 interface Props {
   params: Promise<{ username: string }>;
@@ -61,6 +63,12 @@ export default async function ProducerProfilePage({ params }: Props) {
 
   const session = await auth();
   const isOwner = session?.user?.id === producer._id.toString();
+  const isLoggedIn = !!session?.user;
+
+  const isFollowing =
+    session?.user && !isOwner
+      ? await followRepository.isFollowing(session.user.id, producer._id.toString())
+      : false;
 
   const beats = await beatRepository.findByProducerId(producer._id.toString());
   const totalPlays = beats.reduce((sum, b) => sum + b.plays, 0);
@@ -123,10 +131,16 @@ export default async function ProducerProfilePage({ params }: Props) {
             <p className="text-muted-foreground">@{producer.username}</p>
           </div>
 
-          {isOwner && (
+          {isOwner ? (
             <Button asChild variant="outline" size="sm" className="shrink-0">
               <Link href="/profile/edit">Edit Profile</Link>
             </Button>
+          ) : (
+            <FollowButton
+              producerId={producer._id.toString()}
+              initialIsFollowing={isFollowing}
+              isLoggedIn={isLoggedIn}
+            />
           )}
         </div>
 
@@ -144,12 +158,14 @@ export default async function ProducerProfilePage({ params }: Props) {
               <Play className="h-3 w-3" /> Plays
             </p>
           </div>
-          <div>
-            <p className="text-xl font-bold">{producer.salesCount ?? 0}</p>
-            <p className="flex items-center gap-1 text-xs text-muted-foreground">
-              <ShoppingBag className="h-3 w-3" /> Sales
-            </p>
-          </div>
+          {isOwner && (
+            <div>
+              <p className="text-xl font-bold">{producer.salesCount ?? 0}</p>
+              <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                <ShoppingBag className="h-3 w-3" /> Sales
+              </p>
+            </div>
+          )}
           <div>
             <p className="text-xl font-bold">{producer.followersCount ?? 0}</p>
             <p className="flex items-center gap-1 text-xs text-muted-foreground">
