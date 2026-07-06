@@ -52,6 +52,11 @@ export default function UploadForm() {
   const [mood, setMood] = useState("");
   const [tags, setTags] = useState("");
 
+  // Price fields (optional overrides for default license tiers)
+  const [priceBasic, setPriceBasic] = useState("");
+  const [pricePremium, setPricePremium] = useState("");
+  const [priceUnlimited, setPriceUnlimited] = useState("");
+
   const [preview, setPreview] = useState<FileSlot>({ file: null, progress: 0, status: "idle" });
   const [master, setMaster] = useState<FileSlot>({ file: null, progress: 0, status: "idle" });
   const [stems, setStems] = useState<FileSlot>({ file: null, progress: 0, status: "idle" });
@@ -89,6 +94,19 @@ export default function UploadForm() {
       if (mood) formData.append("mood", mood);
       if (tags) formData.append("tags", tags);
       formData.append("status", publishStatus);
+
+      // Optional license price overrides
+      if (priceBasic || pricePremium || priceUnlimited) {
+        formData.append(
+          "licenses",
+          JSON.stringify({
+            basic: priceBasic ? { price: Number(priceBasic) } : undefined,
+            premium: pricePremium ? { price: Number(pricePremium) } : undefined,
+            unlimited: priceUnlimited ? { price: Number(priceUnlimited) } : undefined,
+          })
+        );
+      }
+
       formData.append("audioTagged", preview.file);
       formData.append("audioFull", master.file);
       if (stems.file) formData.append("stems", stems.file);
@@ -231,7 +249,8 @@ export default function UploadForm() {
         </CardTitle>
         <CardDescription>
           Upload your beat files. Preview MP3 and Master WAV are required.
-          Stems and artwork are optional. Default license tiers will be created automatically.
+          Stems and artwork are optional. Set your own license prices below —
+          leave blank to use default pricing.
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
@@ -324,6 +343,57 @@ export default function UploadForm() {
                 value={tags}
                 onChange={(e) => setTags(e.target.value)}
                 placeholder="e.g. dark, melodic, piano"
+              />
+            </div>
+          </div>
+
+          {/* License Pricing */}
+          <div className="space-y-1">
+            <h3 className="flex items-center gap-2 text-sm font-semibold">
+              License Pricing
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Leave blank to use default platform pricing for each tier.
+            </p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="priceBasic">Basic License (₹)</Label>
+              <Input
+                id="priceBasic"
+                type="number"
+                min={0}
+                step="0.01"
+                value={priceBasic}
+                onChange={(e) => setPriceBasic(e.target.value)}
+                placeholder="e.g. 29.99"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="pricePremium">Premium License (₹)</Label>
+              <Input
+                id="pricePremium"
+                type="number"
+                min={0}
+                step="0.01"
+                value={pricePremium}
+                onChange={(e) => setPricePremium(e.target.value)}
+                placeholder="e.g. 59.99"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="priceUnlimited">Unlimited License (₹)</Label>
+              <Input
+                id="priceUnlimited"
+                type="number"
+                min={0}
+                step="0.01"
+                value={priceUnlimited}
+                onChange={(e) => setPriceUnlimited(e.target.value)}
+                placeholder="e.g. 199.99"
               />
             </div>
           </div>

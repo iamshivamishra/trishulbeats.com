@@ -128,13 +128,13 @@ export default async function BeatPage({ params }: BeatPageProps) {
   };
 
   return (
-    <div className="page-shell">
+    <div className="page-shell px-4 sm:px-6 lg:px-8">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(beatJsonLd) }}
       />
       {/* Back */}
-      <Button asChild variant="ghost" size="sm" className="mb-8">
+      <Button asChild variant="ghost" size="sm" className="mb-6 sm:mb-8">
         <Link href="/beats">
           <ArrowLeft className="mr-1 h-4 w-4" />
           Back to Beats
@@ -142,15 +142,15 @@ export default async function BeatPage({ params }: BeatPageProps) {
       </Button>
 
       {/* Hero: Artwork + Info + Player */}
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_420px]">
+      <div className="grid gap-6 sm:gap-8 lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_420px]">
         {/* ====================== LEFT COLUMN ====================== */}
-        <div className="space-y-5">
+        <div className="space-y-4 sm:space-y-5 min-w-0">
           {/* Top section: artwork + title/meta side by side on larger screens */}
           <Card className="border-border/50 bg-card/60">
-            <CardContent className="p-5 sm:p-6">
-              <div className="flex flex-col items-start gap-5 sm:flex-row sm:gap-6">
+            <CardContent className="p-4 sm:p-5 md:p-6">
+              <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:gap-6">
                 {/* Artwork */}
-                <div className="relative aspect-square w-full max-w-xs shrink-0 overflow-hidden rounded-xl sm:mx-0 sm:w-56 md:w-64">
+                <div className="relative aspect-square w-40 max-w-full shrink-0 overflow-hidden rounded-xl xs:w-48 sm:mx-0 sm:w-48 md:w-56 lg:w-64">
                   {beat.coverUrl ? (
                     <Image
                       src={beat.coverUrl}
@@ -158,28 +158,28 @@ export default async function BeatPage({ params }: BeatPageProps) {
                       fill
                       className="object-cover"
                       priority
-                      sizes="(max-width: 640px) 100vw, 256px"
+                      sizes="(max-width: 640px) 160px, (max-width: 768px) 192px, 256px"
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center bg-primary/10">
-                      <Music className="h-20 w-20 text-primary/30" />
+                      <Music className="h-16 w-16 text-primary/30 sm:h-20 sm:w-20" />
                     </div>
                   )}
                   {hasPurchased && (
-                    <Badge className="absolute right-3 top-3 bg-green-600 text-sm">
+                    <Badge className="absolute right-2 top-2 bg-green-600 text-xs sm:right-3 sm:top-3 sm:text-sm">
                       Purchased
                     </Badge>
                   )}
                 </div>
 
                 {/* Title + Meta */}
-                <div className="flex min-w-0 flex-1 flex-col justify-between space-y-4">
+                <div className="flex w-full min-w-0 flex-1 flex-col justify-between space-y-3 text-center sm:space-y-4 sm:text-left">
                   <div>
-                    <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+                    <h1 className="break-words text-xl font-bold tracking-tight sm:text-2xl md:text-3xl">
                       {beat.title}
                     </h1>
                     {producer && (
-                      <p className="mt-1 text-muted-foreground">
+                      <p className="mt-1 text-sm text-muted-foreground sm:text-base">
                         by{" "}
                         <Link
                           href={
@@ -196,23 +196,23 @@ export default async function BeatPage({ params }: BeatPageProps) {
                   </div>
 
                   {/* Stats row */}
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+                  <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground sm:justify-start sm:gap-x-4 sm:gap-y-2 sm:text-sm">
                     <span className="flex items-center gap-1">
-                      <BarChart3 className="h-3.5 w-3.5" />
+                      <BarChart3 className="h-3.5 w-3.5 shrink-0" />
                       {beat.plays.toLocaleString()} plays
                     </span>
                     <span className="flex items-center gap-1">
-                      <ShoppingBag className="h-3.5 w-3.5" />
+                      <ShoppingBag className="h-3.5 w-3.5 shrink-0" />
                       {beat.salesCount} sold
                     </span>
                     <span className="flex items-center gap-1">
-                      <Clock className="h-3.5 w-3.5" />
+                      <Clock className="h-3.5 w-3.5 shrink-0" />
                       {formatDuration(beat.duration)}
                     </span>
                   </div>
 
                   {/* Meta badges */}
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap justify-center gap-2 sm:justify-start">
                     <Badge variant="secondary">{beat.genre}</Badge>
                     {beat.bpm && (
                       <Badge variant="outline">
@@ -230,7 +230,7 @@ export default async function BeatPage({ params }: BeatPageProps) {
 
           {/* Audio Player with Waveform */}
           <Card className="border-border/50 bg-card/60">
-            <CardContent className="p-4 sm:p-5">
+            <CardContent className="p-3 sm:p-4 md:p-5 overflow-x-hidden">
               <AudioPlayer
                 src={beat.audioTaggedUrl}
                 title={beat.title}
@@ -271,7 +271,7 @@ export default async function BeatPage({ params }: BeatPageProps) {
                 <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                   Description
                 </h2>
-                <p className="whitespace-pre-line text-sm leading-relaxed text-foreground/80">
+                <p className="whitespace-pre-line break-words text-sm leading-relaxed text-foreground/80">
                   {beat.description}
                 </p>
               </CardContent>
@@ -291,13 +291,14 @@ export default async function BeatPage({ params }: BeatPageProps) {
               </h2>
               <Card className="border-border/50 bg-card/80">
                 <CardContent className="p-4">
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                  <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:text-left">
                     <Link
                       href={
                         producer.username
                           ? `/producer/${producer.username}`
                           : "#"
                       }
+                      className="shrink-0"
                     >
                       <Avatar className="h-14 w-14">
                         {(producer.avatarUrl || producer.image) && (
@@ -311,8 +312,8 @@ export default async function BeatPage({ params }: BeatPageProps) {
                         </AvatarFallback>
                       </Avatar>
                     </Link>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
+                    <div className="min-w-0 w-full flex-1">
+                      <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
                         <Link
                           href={
                             producer.username
@@ -335,12 +336,12 @@ export default async function BeatPage({ params }: BeatPageProps) {
                         </p>
                       )}
                       {producer.bio && (
-                        <p className="mt-2 text-sm text-foreground/70 line-clamp-2">
+                        <p className="mt-2 text-sm text-foreground/70 line-clamp-2 break-words">
                           {producer.bio}
                         </p>
                       )}
                       {producer.genres && producer.genres.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1">
+                        <div className="mt-2 flex flex-wrap justify-center gap-1 sm:justify-start">
                           {producer.genres.slice(0, 4).map((g) => (
                             <Badge
                               key={g}
@@ -352,7 +353,7 @@ export default async function BeatPage({ params }: BeatPageProps) {
                           ))}
                         </div>
                       )}
-                      <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
+                      <div className="mt-3 flex items-center justify-center gap-4 text-xs text-muted-foreground sm:justify-start">
                         <span>{producer.salesCount ?? 0} sales</span>
                         <span>{producer.followersCount ?? 0} followers</span>
                       </div>
@@ -390,9 +391,9 @@ export default async function BeatPage({ params }: BeatPageProps) {
 
       {/* Related Beats */}
       {relatedWithPrices.length > 0 && (
-        <div className="mt-16">
-          <div className="mb-6 flex items-center justify-between">
-            <h2 className="text-xl font-bold">You Might Also Like</h2>
+        <div className="mt-12 sm:mt-16">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-2 sm:mb-6">
+            <h2 className="text-lg font-bold sm:text-xl">You Might Also Like</h2>
             <Button asChild variant="ghost" size="sm">
               <Link href={`/beats?genre=${encodeURIComponent(beat.genre)}`}>
                 More {beat.genre}
@@ -400,7 +401,7 @@ export default async function BeatPage({ params }: BeatPageProps) {
               </Link>
             </Button>
           </div>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
             {relatedWithPrices.map(({ beat: rb, startingPrice }) => (
               <BeatCard
                 key={rb._id.toString()}

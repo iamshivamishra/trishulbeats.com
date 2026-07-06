@@ -119,11 +119,16 @@
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground antialiased;
-  }
   html {
     @apply font-sans;
+    overflow-x: hidden;
+    width: 100%;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    overflow-x: hidden;
+    max-width: 100vw;
+    position: relative;
   }
   h1,
   h2,

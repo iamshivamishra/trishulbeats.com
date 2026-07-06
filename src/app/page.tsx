@@ -14,15 +14,15 @@ import { toPublicBeatForUi } from "@/lib/serializers/beat";
 export const dynamic = "force-dynamic";
 
 const GENRE_CARDS = [
-  { name: "Pop", emoji: "🎤", color: "hsl(280, 80%, 55%)" },
-  { name: "Rock", emoji: "🎸", color: "hsl(10, 80%, 55%)" },
-  { name: "Hip Hop", emoji: "🎧", color: "hsl(200, 80%, 55%)" },
-  { name: "Jazz", emoji: "🎷", color: "hsl(45, 80%, 50%)" },
-  { name: "Electronic", emoji: "🎹", color: "hsl(170, 80%, 45%)" },
-  { name: "R&B", emoji: "🎵", color: "hsl(330, 70%, 55%)" },
-  { name: "Trap", emoji: "🔥", color: "hsl(25, 90%, 55%)" },
-  { name: "Lo-Fi", emoji: "🌙", color: "hsl(220, 60%, 55%)" },
-  { name: "Afrobeats", emoji: "🥁", color: "hsl(140, 70%, 45%)" },
+  { name: "Pop", emoji: "", color: "hsl(280, 80%, 55%)" },
+  { name: "Rock", emoji: "", color: "hsl(10, 80%, 55%)" },
+  { name: "Hip Hop", emoji: "", color: "hsl(200, 80%, 55%)" },
+  { name: "Jazz", emoji: "", color: "hsl(45, 80%, 50%)" },
+  { name: "Electronic", emoji: "", color: "hsl(170, 80%, 45%)" },
+  { name: "R&B", emoji: "", color: "hsl(330, 70%, 55%)" },
+  { name: "Trap", emoji: "", color: "hsl(25, 90%, 55%)" },
+  { name: "Lo-Fi", emoji: "", color: "hsl(220, 60%, 55%)" },
+  { name: "Afrobeats", emoji: "", color: "hsl(140, 70%, 45%)" },
 ];
 
 const TESTIMONIALS = [
