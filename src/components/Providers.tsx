@@ -4,6 +4,7 @@ import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "next-themes";
 import type { Session } from "next-auth";
 import CartProvider from "@/components/CartProvider";
+import { AudioPlayerProvider } from "@/components/AudioPlayerContext";
 
 export default function Providers({
   children,
@@ -20,7 +21,11 @@ export default function Providers({
         enableSystem={false}
         disableTransitionOnChange
       >
-        <CartProvider>{children}</CartProvider>
+        <AudioPlayerProvider>
+          <CartProvider>
+            {children}
+          </CartProvider>
+        </AudioPlayerProvider>
       </ThemeProvider>
     </SessionProvider>
   );
