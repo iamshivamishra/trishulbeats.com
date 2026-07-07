@@ -55,6 +55,7 @@ export default function LoginForm() {
     }
   };
 
+
   const handleGoogleSignIn = () => {
     setGoogleLoading(true);
     signIn("google", { callbackUrl: "/dashboard" });

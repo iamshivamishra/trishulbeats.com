@@ -24,7 +24,7 @@ function generateReceipt(): string {
 }
 
 export const paymentService = {
-  /**
+  /**  
    * Create a Razorpay order for a single beat+license (direct buy).
    */
   async createOrder(
