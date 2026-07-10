@@ -314,4 +314,23 @@ export const purchaseRepository = {
     ]);
     return result[0]?.total ?? 0;
   },
+  countAll: () => Purchase.countDocuments(),
+
+getTotalRevenue: async () => {
+  const result = await Purchase.aggregate([
+    { $group: { _id: null, total: { $sum: "$amount" } } },
+  ]);
+  return result[0]?.total ?? 0;
+},
+
+findAllPaginated: async ({ page, limit }: { page: number; limit: number }) => {
+  return Purchase.find()
+    .populate("buyerId", "name email")
+    .populate("beatId", "title coverUrl")
+    .select("buyerId beatId licenseType amount createdAt")
+    .sort({ createdAt: -1 })
+    .skip((page - 1) * limit)
+    .limit(limit)
+    .lean();
+},
 };

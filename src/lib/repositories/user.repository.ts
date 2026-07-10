@@ -91,4 +91,23 @@ export const userRepository = {
     await connectDB();
     return User.countDocuments({ role });
   },
+  countAll: () => User.countDocuments(),
+
+findAllPaginated: async ({ page, limit }: { page: number; limit: number }) => {
+  return User.find()
+    .select("name email role verified salesCount createdAt")
+    .sort({ createdAt: -1 })
+    .skip((page - 1) * limit)
+    .limit(limit)
+    .lean();
+},
+
+updateRole: (userId: string, role: "buyer" | "producer" | "admin") =>
+  User.findByIdAndUpdate(userId, { role }),
+
+toggleVerified: async (userId: string) => {
+  const user = await User.findById(userId).select("verified");
+  if (!user) return null;
+  return User.findByIdAndUpdate(userId, { verified: !user.verified });
+},
 };

@@ -241,4 +241,22 @@ export const beatRepository = {
     await connectDB();
     return Beat.countDocuments({ isPublished: true });
   },
+
+  // --- Niche wale extra functions jo merge kiye gaye hain ---
+
+  async findAllPaginated({ page, limit }: { page: number; limit: number }) {
+    await connectDB(); // Connection ensure karne ke liye yahan bhi add kar diya hai
+    return Beat.find()
+      .populate("producerId", "name username")
+      .select("title genre coverUrl plays status isPublished producerId createdAt")
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
+  },
+
+  async deleteById(beatId: string) {
+    await connectDB();
+    return Beat.findByIdAndDelete(beatId);
+  }
 };
