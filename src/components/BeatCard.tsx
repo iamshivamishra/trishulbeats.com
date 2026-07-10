@@ -93,8 +93,8 @@ export default function BeatCard({
       </div>
 
       {/* CONTENT - transparent, seedha page bg pe */}
-      <Link href={`/beats/${beatId}`} className="block bg-transparent">
-        <div className="space-y-2 pt-3">
+      <div className="space-y-2 pt-3">
+        <Link href={`/beats/${beatId}`} className="block bg-transparent">
           {/* Row 1: BPM left, price (no border) right */}
           <div className="flex items-center justify-between">
             {beat.bpm ? (
@@ -106,13 +106,13 @@ export default function BeatCard({
               <span />
             )}
             {startingPrice !== undefined && (
-  <span className="flex items-center gap-1.5">
-    <ShoppingCart className="h-4 w-4 text-red-500" />
-    <span className="text-sm font-medium text-red-500">
-      ₹{startingPrice.toLocaleString("en-IN")}
-    </span>
-  </span>
-)}
+              <span className="flex items-center gap-1.5">
+                <ShoppingCart className="h-4 w-4 text-red-500" />
+                <span className="text-sm font-medium text-red-500">
+                  ₹{startingPrice.toLocaleString("en-IN")}
+                </span>
+              </span>
+            )}
           </div>
 
           {/* Title + producer badge row */}
@@ -132,13 +132,22 @@ export default function BeatCard({
             </div>
             <MoreVertical className="h-4 w-4 shrink-0 text-zinc-500" />
           </div>
+        </Link>
 
-          {/* Producer */}
+        {/* Producer - outer Link ke bahar, alag <a> tag */}
+        {beat.producerUsername ? (
+          <Link
+            href={`/producer/${beat.producerUsername}`}
+            className="block w-fit truncate text-base text-zinc-400 hover:text-primary hover:underline"
+          >
+            {beat.producerName || "Unknown Producer"}
+          </Link>
+        ) : (
           <p className="truncate text-base text-zinc-400">
             {beat.producerName || "Unknown Producer"}
           </p>
-        </div>
-      </Link>
+        )}
+      </div>
     </div>
   );
 }
