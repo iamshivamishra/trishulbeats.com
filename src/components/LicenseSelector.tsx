@@ -141,7 +141,7 @@ export default function LicenseSelector({
 
               <div className="flex-1 min-w-0">
                 <p className="font-semibold">{lic.name}</p>
-                <p className="text-xs text-muted-foreground truncate">{lic.terms}</p>
+                <p className="text-xs text-muted-foreground line-clamp-2">{lic.terms}</p>
               </div>
 
               <div className="shrink-0 text-right">

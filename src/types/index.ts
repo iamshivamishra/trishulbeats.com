@@ -44,6 +44,8 @@ export interface IBeat {
   title: string;
   description?: string;
   producerId: string | Types.ObjectId;
+  producerName?: string;        // ← add karo
+  producerUsername?: string;    // ← add karo
   bpm?: number;
   key?: string;
   genre: string;

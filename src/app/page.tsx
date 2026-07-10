@@ -10,6 +10,7 @@ import BeatCard from "@/components/BeatCard";
 import { beatRepository } from "@/lib/repositories/beat.repository";
 import { licenseRepository } from "@/lib/repositories/license.repository";
 import { toPublicBeatForUi } from "@/lib/serializers/beat";
+import { userRepository } from "@/lib/repositories/user.repository";
 
 export const dynamic = "force-dynamic";
 
@@ -73,8 +74,14 @@ const STEPS = [
 async function getBeatsWithPrices(beats: Awaited<ReturnType<typeof beatRepository.findRecent>>) {
   return Promise.all(
     beats.map(async (beat) => {
-      const cheapest = await licenseRepository.findCheapestForBeat(beat._id.toString());
-      return { beat, startingPrice: cheapest?.price };
+      const [cheapest, producer] = await Promise.all([
+        licenseRepository.findCheapestForBeat(beat._id.toString()),
+        userRepository.findById(beat.producerId.toString()),
+      ]);
+      return {
+        beat: toPublicBeatForUi(beat, producer),
+        startingPrice: cheapest?.price,
+      };
     })
   );
 }
@@ -209,7 +216,7 @@ export default async function HomePage() {
                 </Link>
               </Button>
               <Button asChild variant="outline" size="lg">
-                <Link href="/signup">Start Selling</Link>
+                {/* <Link href="/signup">Start Selling</Link> */}
               </Button>
             </div>
           </div>
@@ -263,13 +270,13 @@ export default async function HomePage() {
             </Button>
           </div>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {trendingWithPrices.map(({ beat, startingPrice }) => (
-              <BeatCard
-                key={beat._id.toString()}
-                beat={toPublicBeatForUi(beat)}
-                startingPrice={startingPrice}
-              />
-            ))}
+           {trendingWithPrices.map(({ beat, startingPrice }) => (
+  <BeatCard
+    key={beat._id.toString()}
+    beat={beat}
+    startingPrice={startingPrice}
+  />
+))}
           </div>
         </section>
       )}
@@ -289,12 +296,12 @@ export default async function HomePage() {
           </div>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {recentWithPrices.map(({ beat, startingPrice }) => (
-              <BeatCard
-                key={beat._id.toString()}
-                beat={toPublicBeatForUi(beat)}
-                startingPrice={startingPrice}
-              />
-            ))}
+  <BeatCard
+    key={beat._id.toString()}
+    beat={beat}
+    startingPrice={startingPrice}
+  />
+))}
           </div>
         </section>
       )}

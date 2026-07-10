@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   IndianRupee, TrendingUp, Music, BarChart3,
-  ArrowRight, Eye, ShoppingBag, Upload,
+  ArrowRight, Eye, ShoppingBag, Upload, Home, 
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -123,7 +123,13 @@ export default function StudioDashboard() {
             Track your performance and manage your catalog
           </p>
         </div>
-        <div className="flex gap-2">
+       <div className="flex gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link href="/">
+              <Home className="mr-1.5 h-4 w-4" />
+              Home
+            </Link>
+          </Button>
           <Button asChild variant="outline" size="sm">
             <Link href="/studio/beats">
               <Music className="mr-1.5 h-4 w-4" />

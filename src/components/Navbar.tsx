@@ -40,7 +40,7 @@ export default function Navbar({ session }: NavbarProps) {
             className="h-5 w-5"
             priority
           />
-          <span>Trishul Beats</span>
+          <span>Test Mode</span>
         </Link>
 
         <div className="hidden items-center gap-1 md:flex">

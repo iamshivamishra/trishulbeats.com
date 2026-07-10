@@ -62,7 +62,7 @@ export default function ContactPage() {
             <CardContent className="p-5">
               <Mail className="mb-2 h-5 w-5 text-primary" />
               <h3 className="text-sm font-semibold">Email</h3>
-              <p className="mt-1 text-sm text-muted-foreground">contact@trishulbeats.com</p>
+              <p className="mt-1 text-sm text-muted-foreground">contact@beat.com</p>
             </CardContent>
           </Card>
           <Card className="border-border/60 bg-card/80 shadow-sm">

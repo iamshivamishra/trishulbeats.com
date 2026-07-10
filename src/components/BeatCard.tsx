@@ -135,7 +135,7 @@ export default function BeatCard({
 
           {/* Producer */}
           <p className="truncate text-base text-zinc-400">
-            {(beat as any).producerName || "Unknown Producer"}
+            {beat.producerName || "Unknown Producer"}
           </p>
         </div>
       </Link>

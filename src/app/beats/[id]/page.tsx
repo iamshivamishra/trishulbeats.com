@@ -84,11 +84,17 @@ export default async function BeatPage({ params }: BeatPageProps) {
     : false;
 
   const relatedWithPrices = await Promise.all(
-    relatedBeats.map(async (b) => {
-      const cheapest = await licenseRepository.findCheapestForBeat(b._id.toString());
-      return { beat: b, startingPrice: cheapest?.price };
-    })
-  );
+  relatedBeats.map(async (b) => {
+    const [cheapest, relatedProducer] = await Promise.all([
+      licenseRepository.findCheapestForBeat(b._id.toString()),
+      userRepository.findById(b.producerId.toString()),
+    ]);
+    return {
+      beat: toPublicBeatForUi(b, relatedProducer),
+      startingPrice: cheapest?.price,
+    };
+  })
+);
 
   const producerInitials = (producer?.displayName || producer?.name || "?")
     .split(" ")
@@ -142,7 +148,7 @@ export default async function BeatPage({ params }: BeatPageProps) {
       </Button>
 
       {/* Hero: Artwork + Info + Player */}
-      <div className="grid gap-6 sm:gap-8 lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_420px]">
+      <div className="grid grid-cols-1 gap-6 sm:gap-8 lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_420px]">
         {/* ====================== LEFT COLUMN ====================== */}
         <div className="space-y-4 sm:space-y-5 min-w-0">
           {/* Top section: artwork + title/meta side by side on larger screens */}
@@ -402,13 +408,13 @@ export default async function BeatPage({ params }: BeatPageProps) {
             </Button>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
-            {relatedWithPrices.map(({ beat: rb, startingPrice }) => (
-              <BeatCard
-                key={rb._id.toString()}
-                beat={toPublicBeatForUi(rb)}
-                startingPrice={startingPrice}
-              />
-            ))}
+           {relatedWithPrices.map(({ beat, startingPrice }) => (
+  <BeatCard
+    key={beat._id.toString()}
+    beat={beat}
+    startingPrice={startingPrice}
+  />
+))}
           </div>
         </div>
       )}

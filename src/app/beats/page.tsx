@@ -3,6 +3,7 @@ import Link from "next/link";
 import { beatFilterSchema, GENRE_OPTIONS, KEY_OPTIONS, MOOD_OPTIONS } from "@/lib/validators/beat";
 import { beatService } from "@/lib/services/beat.service";
 import { licenseRepository } from "@/lib/repositories/license.repository";
+import { userRepository } from "@/lib/repositories/user.repository";
 import { auth } from "@/lib/auth";
 import { purchaseRepository } from "@/lib/repositories/purchase.repository";
 import { toPublicBeatForUi } from "@/lib/serializers/beat";
@@ -33,16 +34,21 @@ export default async function BeatsPage({ searchParams }: BeatsPageProps) {
     ? await purchaseRepository.getPurchasedBeatIds(session.user.id)
     : [];
 
-  const beatsWithPrices = await Promise.all(
-    result.data.map(async (beat) => {
-      const cheapest = await licenseRepository.findCheapestForBeat(beat._id.toString());
-      return {
-        beat,
-        startingPrice: cheapest?.price,
-        isPurchased: purchasedIds.includes(beat._id.toString()),
-      };
-    })
-  );
+// ...
+
+const beatsWithPrices = await Promise.all(
+  result.data.map(async (beat) => {
+    const [cheapest, producer] = await Promise.all([
+      licenseRepository.findCheapestForBeat(beat._id.toString()),
+      userRepository.findById(beat.producerId.toString()),
+    ]);
+    return {
+      beat: toPublicBeatForUi(beat, producer),
+      startingPrice: cheapest?.price,
+      isPurchased: purchasedIds.includes(beat._id.toString()),
+    };
+  })
+);
 
   return (
     <div className="page-shell">
@@ -69,7 +75,7 @@ export default async function BeatsPage({ searchParams }: BeatsPageProps) {
               {beatsWithPrices.map(({ beat, startingPrice, isPurchased }) => (
                 <BeatCard
                   key={beat._id.toString()}
-                  beat={toPublicBeatForUi(beat)}
+                  beat={beat}
                   startingPrice={startingPrice}
                   isPurchased={isPurchased}
                 />
