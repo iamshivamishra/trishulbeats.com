@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   Music, Clock, ArrowLeft, ExternalLink, BarChart3,
-  ShoppingBag, Disc3,
+  ShoppingBag, Disc3, Calendar, Headphones,
 } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { beatRepository } from "@/lib/repositories/beat.repository";
@@ -202,32 +202,70 @@ export default async function BeatPage({ params }: BeatPageProps) {
                   </div>
 
                   {/* Stats row */}
-                  <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground sm:justify-start sm:gap-x-4 sm:gap-y-2 sm:text-sm">
-                    <span className="flex items-center gap-1">
-                      <BarChart3 className="h-3.5 w-3.5 shrink-0" />
-                      {beat.plays.toLocaleString()} plays
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <ShoppingBag className="h-3.5 w-3.5 shrink-0" />
-                      {beat.salesCount} sold
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3.5 w-3.5 shrink-0" />
-                      {formatDuration(beat.duration)}
-                    </span>
-                  </div>
+               <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground sm:justify-start sm:gap-x-4 sm:gap-y-2 sm:text-sm">
+  <span className="flex items-center gap-1">
+    <BarChart3 className="h-3.5 w-3.5 shrink-0" />
+    {beat.plays.toLocaleString()} plays
+  </span>
+  {canViewUnpublished && (
+    <span className="flex items-center gap-1">
+      <ShoppingBag className="h-3.5 w-3.5 shrink-0" />
+      {beat.salesCount} sold
+    </span>
+  )}
+</div>
 
                   {/* Meta badges */}
-                  <div className="flex flex-wrap justify-center gap-2 sm:justify-start">
-                    <Badge variant="secondary">{beat.genre}</Badge>
-                    {beat.bpm && (
-                      <Badge variant="outline">
-                        <Disc3 className="mr-1 h-3 w-3" />
-                        {beat.bpm} BPM
-                      </Badge>
-                    )}
-                    {beat.key && <Badge variant="outline">Key: {beat.key}</Badge>}
-                    {beat.mood && <Badge variant="outline">{beat.mood}</Badge>}
+                  {/* Meta stats grid */}
+                  <div className="mt-2">
+                    <h2 className="mb-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:text-left">
+                      Stats
+                    </h2>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-4 sm:grid-cols-3">
+                      <div>
+                        <p className="mb-1 text-xs text-muted-foreground">Published</p>
+                        <p className="flex items-center justify-center gap-1.5 text-sm font-semibold sm:justify-start">
+                          <Calendar className="h-4 w-4 shrink-0 text-muted-foreground" />
+                          {new Date(beat.createdAt).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="mb-1 text-xs text-muted-foreground">Genre</p>
+                        <p className="flex items-center justify-center gap-1.5 text-sm font-semibold sm:justify-start">
+                          <Headphones className="h-4 w-4 shrink-0 text-muted-foreground" />
+                          {beat.genre}
+                        </p>
+                      </div>
+                      {beat.bpm && (
+                        <div>
+                          <p className="mb-1 text-xs text-muted-foreground">BPM</p>
+                          <p className="flex items-center justify-center gap-1.5 text-sm font-semibold sm:justify-start">
+                            <Disc3 className="h-4 w-4 shrink-0 text-muted-foreground" />
+                            {beat.bpm}
+                          </p>
+                        </div>
+                      )}
+                      {beat.key && (
+                        <div>
+                          <p className="mb-1 text-xs text-muted-foreground">Key</p>
+                          <p className="flex items-center justify-center gap-1.5 text-sm font-semibold sm:justify-start">
+                            {beat.key}
+                          </p>
+                        </div>
+                      )}
+                      {beat.mood && (
+                        <div>
+                          <p className="mb-1 text-xs text-muted-foreground">Mood</p>
+                          <p className="flex items-center justify-center gap-1.5 text-sm font-semibold sm:justify-start">
+                            {beat.mood}
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
