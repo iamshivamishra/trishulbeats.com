@@ -3,8 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
-import type { Session } from "next-auth";
+import { signOut, useSession } from "next-auth/react";
 import { Menu, X, LogOut, LayoutDashboard } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -12,19 +11,16 @@ import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/co
 import { cn } from "@/lib/utils";
 import ThemeToggle from "@/components/ThemeToggle";
 
-interface NavbarProps {
-  session: Session | null;
-}
-
 const NAV_LINKS = [
   { href: "/beats", label: "Browse" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
 ];
 
-export default function Navbar({ session }: NavbarProps) {
+export default function Navbar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { data: session } = useSession();
   const user = session?.user;
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 

@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
-import { auth } from "@/lib/auth";
 import Providers from "@/components/Providers";
 import AppShell from "@/components/AppShell";
 import ErrorReporter from "@/components/ErrorReporter";
@@ -55,8 +54,6 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth();
-
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
   const jsonLd = {
@@ -98,8 +95,8 @@ export default async function RootLayout({
         )}
       </head>
       <body className="min-h-screen bg-background text-foreground">
-        <Providers session={session}>
-          <AppShell session={session}>{children}</AppShell>
+        <Providers>
+          <AppShell>{children}</AppShell>
           <Toaster richColors position="top-right" />
           <ErrorReporter />
         </Providers>

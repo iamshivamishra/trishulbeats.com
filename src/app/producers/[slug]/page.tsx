@@ -1,7 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { userRepository } from "@/lib/repositories/user.repository";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 interface Props {
   params: Promise<{ slug: string }>;

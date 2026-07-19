@@ -12,7 +12,7 @@ import { licenseRepository } from "@/lib/repositories/license.repository";
 import { toPublicBeatForUi } from "@/lib/serializers/beat";
 import { userRepository } from "@/lib/repositories/user.repository";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 120;
 
 const GENRE_CARDS = [
   { name: "Pop", emoji: "", color: "hsl(280, 80%, 55%)" },

@@ -1,17 +1,15 @@
 "use client";
 
-import type { Session } from "next-auth";
 import { usePathname } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import BottomPlayer from "@/components/BottomPlayer";
 
 interface AppShellProps {
-  session: Session | null;
   children: React.ReactNode;
 }
 
-export default function AppShell({ session, children }: AppShellProps) {
+export default function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   const isDashboardRoute =
     pathname === "/dashboard" ||
@@ -22,7 +20,7 @@ export default function AppShell({ session, children }: AppShellProps) {
 
   return (
     <>
-      {!isDashboardRoute && <Navbar session={session} />}
+      {!isDashboardRoute && <Navbar />}
       <main className="min-h-[calc(100vh-8rem)] bg-[radial-gradient(1200px_500px_at_50%_-120px,oklch(0.7_0.12_24_/_0.12),transparent)] pb-20">
         {children}
       </main>
