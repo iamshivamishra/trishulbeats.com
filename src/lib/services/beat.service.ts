@@ -28,47 +28,55 @@ export const beatService = {
     audioTaggedUrl: string,
     audioFullUrl: string,
     coverUrl?: string,
-    stemsUrl?: string
+    stemsUrl?: string,
+    storageKeys?: IBeat["storageKeys"]
   ): Promise<IBeat> {
     const status = input.status || "draft";
     const isPublished = status === "published";
 
-    const beat = await beatRepository.create({
-      ...input,
-      producerId: producerId as unknown as IBeat["producerId"],
-      audioTaggedUrl,
-      audioFullUrl,
-      stemsUrl,
-      coverUrl: coverUrl || "",
-      status,
-      plays: 0,
-      salesCount: 0,
-      likesCount: 0,
-      isPublished,
+    const beat = await withTransaction(async (session) => {
+      const createdBeat = await beatRepository.create(
+        {
+          ...input,
+          producerId: producerId as unknown as IBeat["producerId"],
+          audioTaggedUrl,
+          audioFullUrl,
+          stemsUrl,
+          coverUrl: coverUrl || "",
+          storageKeys,
+          status,
+          plays: 0,
+          salesCount: 0,
+          likesCount: 0,
+          isPublished,
+        },
+        { session }
+      );
+
+      const defaultLicenses = Object.entries(LICENSE_DEFAULTS).map(
+        ([type, defaults]) => {
+          const override =
+            input.licenses?.[type as "basic" | "premium" | "unlimited"];
+
+          return {
+            beatId: createdBeat._id,
+            type: type as "basic" | "premium" | "unlimited",
+            name: defaults.name,
+            price: override?.price ?? defaults.price,
+            streamLimit: defaults.streamLimit,
+            includesWav: defaults.includesWav,
+            includesStems: defaults.includesStems,
+            commercialUse: defaults.commercialUse,
+            terms: defaults.terms,
+            isActive: true,
+          };
+        }
+      );
+
+      await licenseRepository.createMany(defaultLicenses, { session });
+
+      return createdBeat;
     });
-
-    // Create licenses using custom prices if provided
-    const defaultLicenses = Object.entries(LICENSE_DEFAULTS).map(
-      ([type, defaults]) => {
-        const override =
-          input.licenses?.[type as "basic" | "premium" | "unlimited"];
-
-        return {
-          beatId: beat._id,
-          type: type as "basic" | "premium" | "unlimited",
-          name: defaults.name,
-          price: override?.price ?? defaults.price,
-          streamLimit: defaults.streamLimit,
-          includesWav: defaults.includesWav,
-          includesStems: defaults.includesStems,
-          commercialUse: defaults.commercialUse,
-          terms: defaults.terms,
-          isActive: true,
-        };
-      }
-    );
-
-    await licenseRepository.createMany(defaultLicenses);
 
     logger.info("Beat created", {
       beatId: beat._id,

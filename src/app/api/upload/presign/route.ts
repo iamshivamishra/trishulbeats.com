@@ -6,7 +6,7 @@ import { formatErrorResponse, ForbiddenError, UnauthorizedError } from "@/lib/er
 import { rateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 
 const presignSchema = z.object({
-  producerId: z.string().min(1),
+  producerId: z.string().min(1).optional(),
   beatId: z.string().min(1),
   category: z.enum(["preview", "master", "stems", "artwork"]),
   contentType: z.string().min(1),
@@ -57,12 +57,14 @@ export async function POST(request: NextRequest) {
 
     const input = presignSchema.parse(body);
 
-    if (input.producerId !== session.user.id && session.user.role !== "admin") {
+    const targetProducerId = input.producerId ?? session.user.id;
+
+    if (targetProducerId !== session.user.id && session.user.role !== "admin") {
       throw new ForbiddenError("You can only upload files for your own beats");
     }
 
     const result = await storageService.getPresignedUploadUrl(
-      input.producerId,
+      targetProducerId,
       input.beatId,
       input.category,
       input.contentType,

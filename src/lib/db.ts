@@ -3,7 +3,7 @@
 const MONGODB_URI = process.env.MONGODB_URI!;
  
 if (!MONGODB_URI) {
-  throw new Error("MONGODB_URI .env.local mein set karo");
+  throw new Error("MONGODB_URI must be set in the environment");
 }
  
 // Global cache taaki har request pe naya connection na bane
@@ -50,6 +50,13 @@ export async function withTransaction<T>(
       message.includes("replica set");
 
     if (unsupportedTransactions) {
+      const allowFallback = process.env.ALLOW_NON_TRANSACTIONAL_FALLBACK === "true";
+      const isProd = process.env.NODE_ENV === "production";
+      if (isProd && !allowFallback) {
+        throw new Error(
+          "MongoDB transactions are not supported by this deployment. Use a replica set or set ALLOW_NON_TRANSACTIONAL_FALLBACK=true explicitly."
+        );
+      }
       const fallbackSession = await mongoose.startSession();
       try {
         return await operation(fallbackSession);

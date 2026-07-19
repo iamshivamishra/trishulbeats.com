@@ -25,6 +25,7 @@ interface DownloadAccess {
   coverUrl?: string;
   licenseType: string;
   licenseName: string;
+  expiresInSeconds: number;
   links: DownloadLink[];
 }
 
@@ -52,26 +53,49 @@ function resolveFileUrl(beat: IBeat, type: DownloadFileType): string | null {
   }
 }
 
-function isStorageKey(url: string): boolean {
-  return !url.startsWith("http://") && !url.startsWith("https://");
+function resolveStorageKey(beat: IBeat, type: DownloadFileType): string | null {
+  const storageKeys = beat.storageKeys;
+  switch (type) {
+    case "preview":
+      return storageKeys?.preview || null;
+    case "master":
+      return storageKeys?.master || null;
+    case "stems":
+      return storageKeys?.stems || null;
+  }
 }
 
-async function generateSignedUrl(
-  url: string
-): Promise<string> {
-  if (isStorageKey(url)) {
-    return storageService.getDownloadUrl(url);
+function isStorageKey(value: string): boolean {
+  return !value.startsWith("http://") && !value.startsWith("https://");
+}
+
+async function generateSignedUrl(beat: IBeat, fileType: DownloadFileType): Promise<string> {
+  const storageKey = resolveStorageKey(beat, fileType);
+  if (storageKey) {
+    return storageService.getDownloadUrl(storageKey, {
+      expiresInSeconds: storageService.SIGNED_URL_TTL_SECONDS,
+    });
   }
 
-  // If it's already a full URL (legacy uploads), try to extract the key
-  // from the R2 public URL pattern
+  const url = resolveFileUrl(beat, fileType);
+  if (!url) {
+    throw new NotFoundError(`${fileType} file not available for this beat`);
+  }
+
+  if (isStorageKey(url)) {
+    return storageService.getDownloadUrl(url, {
+      expiresInSeconds: storageService.SIGNED_URL_TTL_SECONDS,
+    });
+  }
+
   const publicBase = process.env.R2_PUBLIC_URL?.replace(/\/$/, "");
   if (publicBase && url.startsWith(publicBase)) {
     const key = url.slice(publicBase.length + 1);
-    return storageService.getDownloadUrl(key);
+    return storageService.getDownloadUrl(key, {
+      expiresInSeconds: storageService.SIGNED_URL_TTL_SECONDS,
+    });
   }
 
-  // Cloudinary or external URL — return as-is (no signing possible)
   return url;
 }
 
@@ -113,7 +137,7 @@ export const downloadService = {
       links.push({
         type: "preview",
         label: "MP3 Preview",
-        url: await generateSignedUrl(previewUrl),
+        url: await generateSignedUrl(beat, "preview"),
         filename,
         available: true,
       });
@@ -126,7 +150,7 @@ export const downloadService = {
       links.push({
         type: "master",
         label: "WAV Master",
-        url: await generateSignedUrl(masterUrl),
+        url: await generateSignedUrl(beat, "master"),
         filename,
         available: true,
       });
@@ -148,7 +172,7 @@ export const downloadService = {
       links.push({
         type: "stems",
         label: "Stems Package",
-        url: await generateSignedUrl(stemsUrl),
+        url: await generateSignedUrl(beat, "stems"),
         filename,
         available: true,
       });
@@ -194,6 +218,7 @@ export const downloadService = {
       coverUrl: beat.coverUrl,
       licenseType: purchase.licenseType,
       licenseName: licenseMatchesBeat ? (license?.name ?? purchase.licenseType) : purchase.licenseType,
+      expiresInSeconds: storageService.SIGNED_URL_TTL_SECONDS,
       links,
     };
   },
@@ -239,7 +264,7 @@ export const downloadService = {
     if (!fileUrl) throw new NotFoundError(`${fileType} file not available for this beat`);
 
     const filename = buildFilename(beat.title, fileType);
-    const url = await generateSignedUrl(fileUrl);
+    const url = await generateSignedUrl(beat, fileType);
 
     logger.info("Signed download URL generated", { userId, beatId, fileType });
     audit({

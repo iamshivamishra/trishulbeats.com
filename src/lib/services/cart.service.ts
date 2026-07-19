@@ -10,13 +10,30 @@ import type { CartItemPopulated } from "@/types";
 export const cartService = {
   async getItems(userId: string): Promise<CartItemPopulated[]> {
     const items = await cartRepository.findByUser(userId);
+    const beatIds = [...new Set(items.map((item) => item.beatId.toString()))];
+    const licenseIds = [...new Set(items.map((item) => item.licenseId.toString()))];
+
+    const [beats, licenses] = await Promise.all([
+      beatRepository.findByIds(beatIds),
+      licenseRepository.findByIds(licenseIds),
+    ]);
+    const beatMap = new Map(beats.map((beat) => [beat._id.toString(), beat]));
+    const licenseMap = new Map(licenses.map((license) => [license._id.toString(), license]));
+
+    const producerIds = [
+      ...new Set(
+        beats
+          .map((beat) => beat.producerId?.toString())
+          .filter((producerId): producerId is string => !!producerId)
+      ),
+    ];
+    const producers = await userRepository.findByIds(producerIds);
+    const producerMap = new Map(producers.map((producer) => [producer._id.toString(), producer]));
 
     const populated: CartItemPopulated[] = [];
     for (const item of items) {
-      const [beat, license] = await Promise.all([
-        beatRepository.findById(item.beatId.toString()),
-        licenseRepository.findById(item.licenseId.toString()),
-      ]);
+      const beat = beatMap.get(item.beatId.toString());
+      const license = licenseMap.get(item.licenseId.toString());
 
       if (
         !beat ||
@@ -29,7 +46,7 @@ export const cartService = {
         continue;
       }
 
-      const producer = await userRepository.findById(beat.producerId.toString());
+      const producer = producerMap.get(beat.producerId.toString());
 
       populated.push({
         beatId: beat._id.toString(),

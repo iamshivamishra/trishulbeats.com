@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { connectDB } from "@/lib/db";
 import License from "@/lib/models/License";
 import type { ILicense } from "@/types";
@@ -20,15 +21,21 @@ export const licenseRepository = {
     return License.findById(id).session(options.session ?? null).lean<ILicense>();
   },
 
+  async findByIds(ids: string[]): Promise<ILicense[]> {
+    await connectDB();
+    if (ids.length === 0) return [];
+    return License.find({ _id: { $in: ids } }).lean<ILicense[]>();
+  },
+
   async create(data: Partial<ILicense>): Promise<ILicense> {
     await connectDB();
     const license = await License.create(data);
     return license.toObject() as ILicense;
   },
 
-  async createMany(data: Partial<ILicense>[]): Promise<ILicense[]> {
+  async createMany(data: Partial<ILicense>[], options: RepoOptions = {}): Promise<ILicense[]> {
     await connectDB();
-    const licenses = await License.insertMany(data);
+    const licenses = await License.insertMany(data, { session: options.session });
     return licenses.map((l) => l.toObject() as ILicense);
   },
 
@@ -54,5 +61,40 @@ export const licenseRepository = {
     return License.findOne({ beatId, isActive: true })
       .sort({ price: 1 })
       .lean<ILicense>();
+  },
+
+  async findCheapestForBeats(
+    beatIds: string[]
+  ): Promise<Record<string, { price: number; licenseId: string }>> {
+    await connectDB();
+    if (beatIds.length === 0) return {};
+
+    const cheapest = await License.aggregate<{
+      _id: string;
+      price: number;
+      licenseId: unknown;
+    }>([
+      {
+        $match: {
+          beatId: { $in: beatIds.map((id) => new mongoose.Types.ObjectId(id)) },
+          isActive: true,
+        },
+      },
+      { $sort: { price: 1 } },
+      {
+        $group: {
+          _id: "$beatId",
+          price: { $first: "$price" },
+          licenseId: { $first: "$_id" },
+        },
+      },
+    ]);
+
+    return Object.fromEntries(
+      cheapest.map((entry) => [
+        entry._id.toString(),
+        { price: entry.price, licenseId: entry.licenseId?.toString() ?? "" },
+      ])
+    );
   },
 };

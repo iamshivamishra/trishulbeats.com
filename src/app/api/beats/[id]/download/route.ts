@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { downloadService, type DownloadFileType } from "@/lib/services/download.service";
+import { storageService } from "@/lib/services/storage.service";
 import { formatErrorResponse, UnauthorizedError } from "@/lib/errors";
 import { rateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 
@@ -40,7 +41,11 @@ export async function GET(
     );
 
     if (asJson) {
-      return Response.json({ url, filename, expiresIn: 900 });
+      return Response.json({
+        url,
+        filename,
+        expiresIn: storageService.SIGNED_URL_TTL_SECONDS,
+      });
     }
 
     return NextResponse.redirect(url, { status: 302 });

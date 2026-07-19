@@ -40,6 +40,39 @@ export const orderRepository = {
     return Order.findOne({ razorpayOrderId }).session(options.session ?? null).lean<IOrder>();
   },
 
+  async findPendingByBuyerAndBeat(
+    buyerId: string,
+    beatId: string,
+    options: RepoOptions = {}
+  ): Promise<IOrder | null> {
+    await connectDB();
+    return Order.findOne({
+      buyerId,
+      status: "pending",
+      "items.beatId": beatId,
+    })
+      .sort({ createdAt: -1 })
+      .session(options.session ?? null)
+      .lean<IOrder>();
+  },
+
+  async findPendingByBuyerAndBeatIds(
+    buyerId: string,
+    beatIds: string[],
+    options: RepoOptions = {}
+  ): Promise<IOrder | null> {
+    await connectDB();
+    if (beatIds.length === 0) return null;
+    return Order.findOne({
+      buyerId,
+      status: "pending",
+      "items.beatId": { $in: beatIds },
+    })
+      .sort({ createdAt: -1 })
+      .session(options.session ?? null)
+      .lean<IOrder>();
+  },
+
   async updateStatus(
     id: string,
     status: OrderStatus,

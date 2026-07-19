@@ -14,8 +14,11 @@ import {
   createPresignedUploadUrl,
 } from "@/lib/storage/r2";
 import {
+  createCloudinaryPresignedUpload,
   uploadToCloudinary,
   deleteFromCloudinary,
+  getCloudinarySignedDownloadUrl,
+  getCloudinaryUrl,
 } from "@/lib/storage/cloudinary";
 import { logger } from "@/lib/logger";
 
@@ -28,6 +31,8 @@ function resourceTypeForCategory(
 }
 
 export const storageService = {
+  SIGNED_URL_TTL_SECONDS: 900,
+
   // ─── Presigned (client-side) uploads ────────────────────────────
 
   /**
@@ -40,11 +45,20 @@ export const storageService = {
     category: "preview" | "master" | "stems" | "artwork",
     contentType: string,
     fileSize: number
-  ): Promise<{ uploadUrl: string; publicUrl: string; key: string }> {
+  ): Promise<{
+    uploadUrl: string;
+    publicUrl: string;
+    key: string;
+    fields?: Record<string, string>;
+  }> {
     const validation = validateFile({ size: fileSize, type: contentType }, category);
     if (!validation.valid) throw new Error(validation.error);
 
     const key = buildBeatKey(producerId, beatId, category);
+    const provider = getStorageProvider();
+    if (provider === "cloudinary") {
+      return createCloudinaryPresignedUpload(key, contentType, category, fileSize);
+    }
     return createPresignedUploadUrl(key, contentType, fileSize);
   },
 
@@ -56,11 +70,20 @@ export const storageService = {
     category: "avatar" | "cover",
     contentType: string,
     fileSize: number
-  ): Promise<{ uploadUrl: string; publicUrl: string; key: string }> {
+  ): Promise<{
+    uploadUrl: string;
+    publicUrl: string;
+    key: string;
+    fields?: Record<string, string>;
+  }> {
     const validation = validateFile({ size: fileSize, type: contentType }, category);
     if (!validation.valid) throw new Error(validation.error);
 
     const key = buildProfileKey(producerId, category);
+    const provider = getStorageProvider();
+    if (provider === "cloudinary") {
+      return createCloudinaryPresignedUpload(key, contentType, category, fileSize);
+    }
     return createPresignedUploadUrl(key, contentType, fileSize);
   },
 
@@ -206,16 +229,22 @@ export const storageService = {
     }
   },
 
-  async getDownloadUrl(key: string): Promise<string> {
+  async getDownloadUrl(
+    key: string,
+    options: { expiresInSeconds?: number } = {}
+  ): Promise<string> {
+    const expiresInSeconds = options.expiresInSeconds ?? this.SIGNED_URL_TTL_SECONDS;
     const provider = getStorageProvider();
     if (provider === "cloudinary") {
-      const { getCloudinaryUrl } = await import("@/lib/storage/cloudinary");
-      return getCloudinaryUrl(key);
+      return getCloudinarySignedDownloadUrl(key, expiresInSeconds);
     }
-    return r2DownloadUrl(key, 3600);
+    return r2DownloadUrl(key, expiresInSeconds);
   },
 
   getPublicUrl(key: string): string {
+    if (getStorageProvider() === "cloudinary") {
+      return getCloudinaryUrl(key);
+    }
     return r2PublicUrl(key);
   },
 

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { LucideIcon } from "lucide-react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 
@@ -8,6 +9,7 @@ import { beatRepository } from "@/lib/repositories/beat.repository";
 import { purchaseRepository } from "@/lib/repositories/purchase.repository";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 import {
   Shield,
@@ -52,8 +54,12 @@ function StatCard({
 export default async function AdminPage() {
   const session = await auth();
 
-  if (!session?.user || session.user.role !== "admin") {
-    redirect("/");
+  if (!session?.user) {
+    redirect("/login");
+  }
+
+  if (session.user.role !== "admin") {
+    redirect("/studio?error=admin_access_required");
   }
 
   const [
@@ -123,6 +129,26 @@ export default async function AdminPage() {
           label="Total Revenue"
           value={`₹${totalRevenue.toLocaleString("en-IN")}`}
         />
+      </div>
+
+      <div className="mt-8 rounded-2xl border border-border/50 bg-card/70 p-5 shadow-sm">
+        <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          Admin Shortcuts
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Jump from high-level metrics to operational views.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <Button asChild variant="outline">
+            <Link href="/admin/users">Manage users</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/admin/beats">Audit beat catalog</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/admin/sales">Inspect sales and revenue</Link>
+          </Button>
+        </div>
       </div>
     </div>
   );

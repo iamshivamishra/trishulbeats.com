@@ -58,6 +58,11 @@ const MOODS = [
   "Upbeat",
 ] as const;
 
+const uploadedAssetSchema = z.object({
+  url: z.string().url("Asset URL must be valid"),
+  key: z.string().min(1, "Asset key is required"),
+});
+
 export const createBeatSchema = z.object({
   title: z
     .string()
@@ -112,6 +117,15 @@ export const createBeatSchema = z.object({
           price: z.coerce.number().min(0),
         })
         .optional(),
+    })
+    .optional(),
+
+  uploadedAssets: z
+    .object({
+      preview: uploadedAssetSchema,
+      master: uploadedAssetSchema,
+      stems: uploadedAssetSchema.optional(),
+      artwork: uploadedAssetSchema.optional(),
     })
     .optional(),
 });

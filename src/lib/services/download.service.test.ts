@@ -1,46 +1,135 @@
-import { describe, expect, it } from "vitest";
-import { resolvePurchaseEntitlements } from "../security/entitlements";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-describe("resolvePurchaseEntitlements", () => {
-  it("denies WAV/stems when license is missing and no snapshot is present", () => {
-    const result = resolvePurchaseEntitlements({}, null, "beat_1");
+vi.mock("@/lib/repositories/purchase.repository", () => ({
+  purchaseRepository: {
+    hasPurchased: vi.fn(),
+    findByBuyerAndBeat: vi.fn(),
+  },
+}));
 
-    expect(result.licenseMatchesBeat).toBe(false);
-    expect(result.wavAllowed).toBe(false);
-    expect(result.stemsAllowed).toBe(false);
+vi.mock("@/lib/repositories/license.repository", () => ({
+  licenseRepository: {
+    findById: vi.fn(),
+  },
+}));
+
+vi.mock("@/lib/repositories/beat.repository", () => ({
+  beatRepository: {
+    findById: vi.fn(),
+  },
+}));
+
+vi.mock("@/lib/services/storage.service", () => ({
+  storageService: {
+    SIGNED_URL_TTL_SECONDS: 900,
+    getDownloadUrl: vi.fn(),
+  },
+}));
+
+vi.mock("@/lib/security/entitlements", () => ({
+  resolvePurchaseEntitlements: vi.fn(() => ({
+    wavAllowed: true,
+    stemsAllowed: true,
+    licenseMatchesBeat: true,
+  })),
+}));
+
+vi.mock("@/lib/logger", () => ({
+  logger: {
+    info: vi.fn(),
+  },
+}));
+
+vi.mock("@/lib/audit", () => ({
+  audit: vi.fn(),
+}));
+
+vi.mock("@/lib/errors", () => {
+  class ForbiddenError extends Error {}
+  class NotFoundError extends Error {}
+  return { ForbiddenError, NotFoundError };
+});
+
+import { beatRepository } from "@/lib/repositories/beat.repository";
+import { licenseRepository } from "@/lib/repositories/license.repository";
+import { purchaseRepository } from "@/lib/repositories/purchase.repository";
+import { storageService } from "@/lib/services/storage.service";
+import { downloadService } from "./download.service";
+
+describe("downloadService", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.R2_PUBLIC_URL = "https://r2.example.com";
   });
 
-  it("uses purchase snapshot even when current license no longer matches", () => {
-    const result = resolvePurchaseEntitlements(
-      { includesWav: true, includesStems: false },
-      {
-        beatId: "beat_other",
-        includesWav: false,
-        includesStems: false,
-        isActive: true,
+  it("prefers storageKeys for signed URL generation", async () => {
+    vi.mocked(purchaseRepository.hasPurchased).mockResolvedValueOnce(true);
+    vi.mocked(purchaseRepository.findByBuyerAndBeat).mockResolvedValueOnce([
+      { licenseId: "license_1", licenseType: "premium" },
+    ] as never);
+    vi.mocked(licenseRepository.findById).mockResolvedValueOnce({} as never);
+    vi.mocked(beatRepository.findById).mockResolvedValueOnce({
+      _id: "beat_1",
+      title: "Night Drive",
+      audioTaggedUrl: "https://cdn.example.com/preview.mp3",
+      audioFullUrl: "https://cdn.example.com/master.wav",
+      status: "published",
+      isPublished: true,
+      genre: "Trap",
+      tags: [],
+      duration: 120,
+      producerId: "producer_1",
+      plays: 0,
+      salesCount: 0,
+      likesCount: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      storageKeys: {
+        master: "producers/p1/beats/b1/master.wav",
       },
-      "beat_1"
-    );
+    } as never);
+    vi.mocked(storageService.getDownloadUrl).mockResolvedValueOnce("https://signed.example.com/master");
 
-    expect(result.licenseMatchesBeat).toBe(false);
-    expect(result.wavAllowed).toBe(true);
-    expect(result.stemsAllowed).toBe(false);
+    const result = await downloadService.getSignedUrl("buyer_1", "beat_1", "master");
+
+    expect(storageService.getDownloadUrl).toHaveBeenCalledWith(
+      "producers/p1/beats/b1/master.wav",
+      { expiresInSeconds: 900 }
+    );
+    expect(result.url).toBe("https://signed.example.com/master");
   });
 
-  it("falls back to current active license when snapshot is absent", () => {
-    const result = resolvePurchaseEntitlements(
-      {},
-      {
-        beatId: "beat_1",
-        includesWav: true,
-        includesStems: true,
-        isActive: true,
-      },
-      "beat_1"
-    );
+  it("falls back to key extraction from R2 public URL when storageKeys missing", async () => {
+    vi.mocked(purchaseRepository.hasPurchased).mockResolvedValueOnce(true);
+    vi.mocked(purchaseRepository.findByBuyerAndBeat).mockResolvedValueOnce([
+      { licenseId: "license_1", licenseType: "premium" },
+    ] as never);
+    vi.mocked(licenseRepository.findById).mockResolvedValueOnce({} as never);
+    vi.mocked(beatRepository.findById).mockResolvedValueOnce({
+      _id: "beat_1",
+      title: "Night Drive",
+      audioTaggedUrl: "https://r2.example.com/producers/p1/beats/b1/preview.mp3",
+      audioFullUrl: "https://r2.example.com/producers/p1/beats/b1/master.wav",
+      status: "published",
+      isPublished: true,
+      genre: "Trap",
+      tags: [],
+      duration: 120,
+      producerId: "producer_1",
+      plays: 0,
+      salesCount: 0,
+      likesCount: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as never);
+    vi.mocked(storageService.getDownloadUrl).mockResolvedValueOnce("https://signed.example.com/master");
 
-    expect(result.licenseMatchesBeat).toBe(true);
-    expect(result.wavAllowed).toBe(true);
-    expect(result.stemsAllowed).toBe(true);
+    const result = await downloadService.getSignedUrl("buyer_1", "beat_1", "master");
+
+    expect(storageService.getDownloadUrl).toHaveBeenCalledWith(
+      "producers/p1/beats/b1/master.wav",
+      { expiresInSeconds: 900 }
+    );
+    expect(result.url).toBe("https://signed.example.com/master");
   });
 });

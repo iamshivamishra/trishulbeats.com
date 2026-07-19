@@ -28,6 +28,13 @@ interface FileSlot {
   status: "idle" | "uploading" | "done" | "error";
 }
 
+interface PresignedUploadPayload {
+  uploadUrl: string;
+  publicUrl: string;
+  key: string;
+  fields?: Record<string, string>;
+}
+
 const MAX_SIZES: Record<string, number> = {
   preview: 20 * 1024 * 1024,
   master: 100 * 1024 * 1024,
@@ -76,6 +83,81 @@ export default function UploadForm() {
     return true;
   }, []);
 
+  const uploadWithPresignedTarget = useCallback(
+    async (
+      file: File,
+      category: "preview" | "master" | "stems" | "artwork",
+      beatId: string,
+      setSlot: React.Dispatch<React.SetStateAction<FileSlot>>
+    ): Promise<{ url: string; key: string }> => {
+      setSlot((s) => ({ ...s, progress: 0, status: "uploading" }));
+
+      const presignRes = await fetch("/api/upload/presign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          beatId,
+          category,
+          contentType: file.type,
+          fileSize: file.size,
+        }),
+      });
+
+      if (!presignRes.ok) {
+        let errorMessage = "Failed to create upload URL";
+        try {
+          const payload = await presignRes.json();
+          errorMessage = payload?.error || errorMessage;
+        } catch {
+          // noop
+        }
+        throw new Error(errorMessage);
+      }
+
+      const target = (await presignRes.json()) as PresignedUploadPayload;
+
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.upload.addEventListener("progress", (event) => {
+          if (event.lengthComputable) {
+            const pct = Math.round((event.loaded / event.total) * 100);
+            setSlot((s) => ({ ...s, progress: pct, status: "uploading" }));
+          }
+        });
+
+        xhr.addEventListener("load", () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            setSlot((s) => ({ ...s, progress: 100, status: "done" }));
+            resolve();
+            return;
+          }
+          reject(new Error(`Upload failed (${xhr.status})`));
+        });
+
+        xhr.addEventListener("error", () => reject(new Error("Network error while uploading")));
+        xhr.addEventListener("abort", () => reject(new Error("Upload cancelled")));
+
+        if (target.fields) {
+          xhr.open("POST", target.uploadUrl);
+          const cloudinaryData = new FormData();
+          cloudinaryData.append("file", file);
+          for (const [field, value] of Object.entries(target.fields)) {
+            cloudinaryData.append(field, value);
+          }
+          xhr.send(cloudinaryData);
+          return;
+        }
+
+        xhr.open("PUT", target.uploadUrl);
+        xhr.setRequestHeader("Content-Type", file.type);
+        xhr.send(file);
+      });
+
+      return { url: target.publicUrl, key: target.key };
+    },
+    []
+  );
+
   const doUpload = async (publishStatus: "draft" | "published") => {
     if (!preview.file || !master.file) {
       toast.error("Preview MP3 and Master WAV are required");
@@ -85,71 +167,59 @@ export default function UploadForm() {
     setLoading(true);
 
     try {
-      const formData = new FormData();
-      formData.append("title", title);
-      if (description) formData.append("description", description);
-      formData.append("genre", genre);
-      if (bpm) formData.append("bpm", bpm);
-      if (key) formData.append("key", key);
-      if (mood) formData.append("mood", mood);
-      if (tags) formData.append("tags", tags);
-      formData.append("status", publishStatus);
+      const beatId = crypto.randomUUID();
+      const [previewAsset, masterAsset, stemsAsset, artworkAsset] = await Promise.all([
+        uploadWithPresignedTarget(preview.file, "preview", beatId, setPreview),
+        uploadWithPresignedTarget(master.file, "master", beatId, setMaster),
+        stems.file
+          ? uploadWithPresignedTarget(stems.file, "stems", beatId, setStems)
+          : Promise.resolve(undefined),
+        artwork.file
+          ? uploadWithPresignedTarget(artwork.file, "artwork", beatId, setArtwork)
+          : Promise.resolve(undefined),
+      ]);
 
-      // Optional license price overrides
-      if (priceBasic || pricePremium || priceUnlimited) {
-        formData.append(
-          "licenses",
-          JSON.stringify({
-            basic: priceBasic ? { price: Number(priceBasic) } : undefined,
-            premium: pricePremium ? { price: Number(pricePremium) } : undefined,
-            unlimited: priceUnlimited ? { price: Number(priceUnlimited) } : undefined,
-          })
-        );
-      }
+      const payload = {
+        title,
+        description: description || undefined,
+        genre,
+        bpm: bpm ? Number(bpm) : undefined,
+        key: key || undefined,
+        mood: mood || undefined,
+        tags: tags
+          ? tags
+              .split(",")
+              .map((tag) => tag.trim())
+              .filter(Boolean)
+          : [],
+        status: publishStatus,
+        licenses:
+          priceBasic || pricePremium || priceUnlimited
+            ? {
+                basic: priceBasic ? { price: Number(priceBasic) } : undefined,
+                premium: pricePremium ? { price: Number(pricePremium) } : undefined,
+                unlimited: priceUnlimited ? { price: Number(priceUnlimited) } : undefined,
+              }
+            : undefined,
+        uploadedAssets: {
+          preview: previewAsset,
+          master: masterAsset,
+          stems: stemsAsset,
+          artwork: artworkAsset,
+        },
+      };
 
-      formData.append("audioTagged", preview.file);
-      formData.append("audioFull", master.file);
-      if (stems.file) formData.append("stems", stems.file);
-      if (artwork.file) formData.append("cover", artwork.file);
-
-      const xhr = new XMLHttpRequest();
-
-      const uploadPromise = new Promise<void>((resolve, reject) => {
-        xhr.upload.addEventListener("progress", (e) => {
-          if (e.lengthComputable) {
-            const pct = Math.round((e.loaded / e.total) * 100);
-            setPreview((s) => ({ ...s, progress: pct, status: "uploading" }));
-            setMaster((s) => ({ ...s, progress: pct, status: "uploading" }));
-            if (stems.file) setStems((s) => ({ ...s, progress: pct, status: "uploading" }));
-            if (artwork.file) setArtwork((s) => ({ ...s, progress: pct, status: "uploading" }));
-          }
-        });
-
-        xhr.addEventListener("load", () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            setPreview((s) => ({ ...s, progress: 100, status: "done" }));
-            setMaster((s) => ({ ...s, progress: 100, status: "done" }));
-            setStems((s) => ({ ...s, progress: 100, status: "done" }));
-            setArtwork((s) => ({ ...s, progress: 100, status: "done" }));
-            resolve();
-          } else {
-            try {
-              const err = JSON.parse(xhr.responseText);
-              reject(new Error(err.error || "Upload failed"));
-            } catch {
-              reject(new Error("Upload failed"));
-            }
-          }
-        });
-
-        xhr.addEventListener("error", () => reject(new Error("Network error")));
-        xhr.addEventListener("abort", () => reject(new Error("Upload cancelled")));
-
-        xhr.open("POST", "/api/beats");
-        xhr.send(formData);
+      const createRes = await fetch("/api/beats", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
 
-      await uploadPromise;
+      if (!createRes.ok) {
+        const errorPayload = await createRes.json().catch(() => null);
+        throw new Error(errorPayload?.error || "Failed to create beat");
+      }
+
       toast.success(
         publishStatus === "published" ? "Beat published!" : "Beat saved as draft"
       );

@@ -22,6 +22,12 @@ export const userRepository = {
     return query.lean<IUser>();
   },
 
+  async findByIds(ids: string[]): Promise<IUser[]> {
+    await connectDB();
+    if (ids.length === 0) return [];
+    return User.find({ _id: { $in: ids } }).lean<IUser[]>();
+  },
+
   async findByUsername(username: string): Promise<IUser | null> {
     await connectDB();
     return User.findOne({ username: username.toLowerCase() }).lean<IUser>();
@@ -87,27 +93,62 @@ export const userRepository = {
     );
   },
 
+  async incrementFollowersCount(userId: string, options: RepoOptions = {}): Promise<void> {
+    await connectDB();
+    await User.findByIdAndUpdate(
+      userId,
+      { $inc: { followersCount: 1 } },
+      { session: options.session }
+    );
+  },
+
+  async decrementFollowersCount(userId: string, options: RepoOptions = {}): Promise<void> {
+    await connectDB();
+    await User.updateOne(
+      { _id: userId, followersCount: { $gt: 0 } },
+      { $inc: { followersCount: -1 } },
+      { session: options.session }
+    );
+  },
+
+  async setFollowersCount(userId: string, count: number, options: RepoOptions = {}): Promise<void> {
+    await connectDB();
+    await User.findByIdAndUpdate(
+      userId,
+      { $set: { followersCount: Math.max(0, count) } },
+      { session: options.session }
+    );
+  },
+
   async countByRole(role: string): Promise<number> {
     await connectDB();
     return User.countDocuments({ role });
   },
-  countAll: () => User.countDocuments(),
 
-findAllPaginated: async ({ page, limit }: { page: number; limit: number }) => {
-  return User.find()
-    .select("name email role verified salesCount createdAt")
-    .sort({ createdAt: -1 })
-    .skip((page - 1) * limit)
-    .limit(limit)
-    .lean();
-},
+  async countAll(): Promise<number> {
+    await connectDB();
+    return User.countDocuments();
+  },
 
-updateRole: (userId: string, role: "buyer" | "producer" | "admin") =>
-  User.findByIdAndUpdate(userId, { role }),
+  async findAllPaginated({ page, limit }: { page: number; limit: number }) {
+    await connectDB();
+    return User.find()
+      .select("name email role verified salesCount createdAt")
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
+  },
 
-toggleVerified: async (userId: string) => {
-  const user = await User.findById(userId).select("verified");
-  if (!user) return null;
-  return User.findByIdAndUpdate(userId, { verified: !user.verified });
-},
+  async updateRole(userId: string, role: "buyer" | "producer" | "admin") {
+    await connectDB();
+    return User.findByIdAndUpdate(userId, { role });
+  },
+
+  async toggleVerified(userId: string) {
+    await connectDB();
+    const user = await User.findById(userId).select("verified");
+    if (!user) return null;
+    return User.findByIdAndUpdate(userId, { verified: !user.verified });
+  },
 };

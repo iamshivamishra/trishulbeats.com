@@ -23,14 +23,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint
-        run: npm run lint
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Test
-        run: npm run test
-
-      - name: Build
-        run: npm run build
+      - name: Check
+        env:
+          NODE_ENV: test
+          MONGODB_URI: mongodb://127.0.0.1:27017/trishul-beats-ci
+          AUTH_SECRET: ci-auth-secret
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
+          GOOGLE_CLIENT_ID: ci-google-client-id
+          GOOGLE_CLIENT_SECRET: ci-google-client-secret
+          RAZORPAY_KEY_ID: ci-razorpay-key-id
+          RAZORPAY_KEY_SECRET: ci-razorpay-key-secret
+          NEXT_PUBLIC_RAZORPAY_KEY_ID: ci-razorpay-key-id
+          STORAGE_PROVIDER: r2
+          R2_ACCOUNT_ID: ci-r2-account
+          R2_ACCESS_KEY_ID: ci-r2-key-id
+          R2_SECRET_ACCESS_KEY: ci-r2-secret
+          R2_BUCKET_NAME: ci-r2-bucket
+          R2_PUBLIC_URL: https://example-r2.invalid
+        run: npm run check

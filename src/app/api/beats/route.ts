@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { Types } from "mongoose";
 import { auth } from "@/lib/auth";
 import { beatService } from "@/lib/services/beat.service";
 import { storageService } from "@/lib/services/storage.service";
@@ -11,7 +12,25 @@ import {
   formatErrorResponse,
   ForbiddenError,
   UnauthorizedError,
+  ValidationError,
 } from "@/lib/errors";
+
+function hasExpectedBeatAssetKeyShape(
+  key: string,
+  producerId: string,
+  category: "preview" | "master" | "stems" | "artwork"
+): boolean {
+  const extByCategory: Record<"preview" | "master" | "stems" | "artwork", string> = {
+    preview: ".mp3",
+    master: ".wav",
+    stems: ".zip",
+    artwork: ".jpg",
+  };
+
+  const expectedPrefix = `producers/${producerId}/beats/`;
+  const expectedSuffix = `/${category}${extByCategory[category]}`;
+  return key.startsWith(expectedPrefix) && key.endsWith(expectedSuffix);
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -40,130 +59,160 @@ export async function POST(request: NextRequest) {
       throw new ForbiddenError("Only producers can upload beats");
     }
 
-    const formData = await request.formData();
+    const contentType = request.headers.get("content-type") || "";
+    const isJsonPayload = contentType.includes("application/json");
+    let beat;
 
-    // Parse metadata
-    const metadata = {
-      title: formData.get("title") as string,
-      description: (formData.get("description") as string) || undefined,
-      bpm: formData.get("bpm")
-        ? Number(formData.get("bpm"))
-        : undefined,
-      key: (formData.get("key") as string) || undefined,
-      genre: formData.get("genre") as string,
-      tags: formData.get("tags")
-        ? (formData.get("tags") as string)
-            .split(",")
-            .map((t) => t.trim())
-        : [],
-      mood: (formData.get("mood") as string) || undefined,
-      status: (formData.get("status") as string) || "draft",
+    if (isJsonPayload) {
+      const body = await request.json();
+      const input = createBeatSchema.parse(body);
+      const { uploadedAssets, ...metadata } = input;
+      if (!uploadedAssets) {
+        throw new ValidationError("Validation failed", {
+          uploadedAssets: ["uploadedAssets is required for JSON uploads"],
+        });
+      }
 
-      // ✅ Added licenses support
-      licenses: formData.get("licenses")
-        ? JSON.parse(formData.get("licenses") as string)
-        : undefined,
-    };
+      const keyChecks: Array<{ key: string; category: "preview" | "master" | "stems" | "artwork" }> = [
+        { key: uploadedAssets.preview.key, category: "preview" },
+        { key: uploadedAssets.master.key, category: "master" },
+        ...(uploadedAssets.stems ? [{ key: uploadedAssets.stems.key, category: "stems" as const }] : []),
+        ...(uploadedAssets.artwork
+          ? [{ key: uploadedAssets.artwork.key, category: "artwork" as const }]
+          : []),
+      ];
 
-    const input = createBeatSchema.parse(metadata);
+      const invalidKey = keyChecks.find(
+        ({ key, category }) => !hasExpectedBeatAssetKeyShape(key, session.user.id, category)
+      );
+      if (invalidKey) {
+        throw new ValidationError("Validation failed", {
+          uploadedAssets: [`Invalid uploaded asset key for ${invalidKey.category}`],
+        });
+      }
 
-    // Files
-    const taggedAudio = formData.get("audioTagged") as File;
-    const fullAudio = formData.get("audioFull") as File;
-    const stemsFile = formData.get("stems") as File | null;
-    const cover = formData.get("cover") as File | null;
-
-    if (!taggedAudio || !fullAudio) {
-      return Response.json(
+      beat = await beatService.create(
+        metadata,
+        session.user.id,
+        uploadedAssets.preview.url,
+        uploadedAssets.master.url,
+        uploadedAssets.artwork?.url,
+        uploadedAssets.stems?.url,
         {
-          error: "Both preview MP3 and master WAV are required",
-        },
+          preview: uploadedAssets.preview.key,
+          master: uploadedAssets.master.key,
+          stems: uploadedAssets.stems?.key,
+          artwork: uploadedAssets.artwork?.key,
+        }
+      );
+    } else {
+      const formData = await request.formData();
+
+      const metadata = {
+        title: formData.get("title") as string,
+        description: (formData.get("description") as string) || undefined,
+        bpm: formData.get("bpm") ? Number(formData.get("bpm")) : undefined,
+        key: (formData.get("key") as string) || undefined,
+        genre: formData.get("genre") as string,
+        tags: formData.get("tags")
+          ? (formData.get("tags") as string)
+              .split(",")
+              .map((t) => t.trim())
+          : [],
+        mood: (formData.get("mood") as string) || undefined,
+        status: (formData.get("status") as string) || "draft",
+        licenses: formData.get("licenses")
+          ? JSON.parse(formData.get("licenses") as string)
+          : undefined,
+      };
+
+      const input = createBeatSchema.parse(metadata);
+
+      const taggedAudio = formData.get("audioTagged") as File;
+      const fullAudio = formData.get("audioFull") as File;
+      const stemsFile = formData.get("stems") as File | null;
+      const cover = formData.get("cover") as File | null;
+
+      if (!taggedAudio || !fullAudio) {
+        throw new ValidationError("Validation failed", {
+          files: ["Both preview MP3 and master WAV are required"],
+        });
+      }
+
+      const previewCheck = validateFile(taggedAudio, "preview");
+      if (!previewCheck.valid) {
+        throw new ValidationError("Validation failed", {
+          audioTagged: [previewCheck.error || "Invalid preview file"],
+        });
+      }
+
+      const masterCheck = validateFile(fullAudio, "master");
+      if (!masterCheck.valid) {
+        throw new ValidationError("Validation failed", {
+          audioFull: [masterCheck.error || "Invalid master file"],
+        });
+      }
+
+      if (stemsFile && stemsFile.size > 0) {
+        const stemsCheck = validateFile(stemsFile, "stems");
+        if (!stemsCheck.valid) {
+          throw new ValidationError("Validation failed", {
+            stems: [stemsCheck.error || "Invalid stems file"],
+          });
+        }
+      }
+
+      if (cover && cover.size > 0) {
+        const artworkCheck = validateFile(cover, "artwork");
+        if (!artworkCheck.valid) {
+          throw new ValidationError("Validation failed", {
+            cover: [artworkCheck.error || "Invalid cover artwork file"],
+          });
+        }
+      }
+
+      const uploadBeatId = new Types.ObjectId().toString();
+
+      const [taggedResult, fullResult] = await Promise.all([
+        storageService.uploadBeatFile(taggedAudio, session.user.id, uploadBeatId, "preview"),
+        storageService.uploadBeatFile(fullAudio, session.user.id, uploadBeatId, "master"),
+      ]);
+
+      let stemsResult: { url: string; key: string } | undefined;
+      if (stemsFile && stemsFile.size > 0) {
+        stemsResult = await storageService.uploadBeatFile(
+          stemsFile,
+          session.user.id,
+          uploadBeatId,
+          "stems"
+        );
+      }
+
+      let coverResult: { url: string; key: string } | undefined;
+      if (cover && cover.size > 0) {
+        coverResult = await storageService.uploadBeatFile(
+          cover,
+          session.user.id,
+          uploadBeatId,
+          "artwork"
+        );
+      }
+
+      beat = await beatService.create(
+        input,
+        session.user.id,
+        taggedResult.url,
+        fullResult.url,
+        coverResult?.url,
+        stemsResult?.url,
         {
-          status: 400,
+          preview: taggedResult.key,
+          master: fullResult.key,
+          stems: stemsResult?.key,
+          artwork: coverResult?.key,
         }
       );
     }
-
-    // Validate preview
-    const previewCheck = validateFile(taggedAudio, "preview");
-
-    if (!previewCheck.valid) {
-      return Response.json(
-        { error: previewCheck.error },
-        { status: 400 }
-      );
-    }
-
-    // Validate master
-    const masterCheck = validateFile(fullAudio, "master");
-
-    if (!masterCheck.valid) {
-      return Response.json(
-        { error: masterCheck.error },
-        { status: 400 }
-      );
-    }
-
-    // Validate stems
-    if (stemsFile && stemsFile.size > 0) {
-      const stemsCheck = validateFile(stemsFile, "stems");
-
-      if (!stemsCheck.valid) {
-        return Response.json(
-          { error: stemsCheck.error },
-          { status: 400 }
-        );
-      }
-    }
-
-    // Validate artwork
-    if (cover && cover.size > 0) {
-      const artworkCheck = validateFile(cover, "artwork");
-
-      if (!artworkCheck.valid) {
-        return Response.json(
-          { error: artworkCheck.error },
-          { status: 400 }
-        );
-      }
-    }
-
-    // Upload audio files
-    const [taggedResult, fullResult] = await Promise.all([
-      storageService.uploadBeatAudio(taggedAudio, "tagged"),
-      storageService.uploadBeatAudio(fullAudio, "full"),
-    ]);
-
-    // Upload stems
-    let stemsUrl: string | undefined;
-
-    if (stemsFile && stemsFile.size > 0) {
-      const stemsResult = await storageService.uploadBeatAudio(
-        stemsFile,
-        "full"
-      );
-
-      stemsUrl = stemsResult.url;
-    }
-
-    // Upload cover
-    let coverUrl: string | undefined;
-
-    if (cover && cover.size > 0) {
-      const coverResult = await storageService.uploadCoverImage(cover);
-
-      coverUrl = coverResult.url;
-    }
-
-    // Create beat
-    const beat = await beatService.create(
-      input,
-      session.user.id,
-      taggedResult.url,
-      fullResult.url,
-      coverUrl,
-      stemsUrl
-    );
 
     return Response.json(
       { beat },

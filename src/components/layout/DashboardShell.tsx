@@ -32,6 +32,7 @@ interface DashboardShellProps {
 export default function DashboardShell({ session, children }: DashboardShellProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const isAdminPath = pathname.startsWith("/admin");
 
   useEffect(() => {
     const stored = window.localStorage.getItem("dashboard.sidebar.collapsed");
@@ -55,6 +56,11 @@ export default function DashboardShell({ session, children }: DashboardShellProp
       : session.user.role === "producer"
         ? "Producer"
         : "Buyer";
+
+  // Admin pages have their own dedicated shell and navigation.
+  if (isAdminPath) {
+    return <>{children}</>;
+  }
 
   const workspaceLinks = [
     { href: "/studio", label: "Overview", icon: LayoutDashboard, show: isProducer },
@@ -212,17 +218,17 @@ export default function DashboardShell({ session, children }: DashboardShellProp
             <div className="flex items-center gap-2">
               <Sheet>
                 <SheetTrigger
-  render={
-    <Button
-      variant="ghost"
-      size="icon"
-      className="lg:hidden"
-      aria-label="Open dashboard navigation"
-    >
-      <Menu className="h-4 w-4" />
-    </Button>
-  }
-/>
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="lg:hidden"
+                      aria-label="Open dashboard navigation"
+                    />
+                  }
+                >
+                  <Menu className="h-4 w-4" />
+                </SheetTrigger>
                 <SheetContent side="left" className="w-80">
                   <SheetHeader>
                     <SheetTitle>Dashboard</SheetTitle>

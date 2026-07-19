@@ -43,6 +43,18 @@ export const purchaseRepository = {
       .lean<IPurchase[]>();
   },
 
+  async findByBuyerAndOrderId(
+    buyerId: string,
+    orderId: string,
+    options: RepoOptions = {}
+  ): Promise<IPurchase[]> {
+    await connectDB();
+    return Purchase.find({ buyerId, orderId })
+      .sort({ createdAt: -1 })
+      .session(options.session ?? null)
+      .lean<IPurchase[]>();
+  },
+
   async create(data: Partial<IPurchase>, options: RepoOptions = {}): Promise<IPurchase> {
     await connectDB();
     const purchase = await Purchase.create([data], { session: options.session });
@@ -314,23 +326,29 @@ export const purchaseRepository = {
     ]);
     return result[0]?.total ?? 0;
   },
-  countAll: () => Purchase.countDocuments(),
 
-getTotalRevenue: async () => {
-  const result = await Purchase.aggregate([
-    { $group: { _id: null, total: { $sum: "$amount" } } },
-  ]);
-  return result[0]?.total ?? 0;
-},
+  async countAll(): Promise<number> {
+    await connectDB();
+    return Purchase.countDocuments();
+  },
 
-findAllPaginated: async ({ page, limit }: { page: number; limit: number }) => {
-  return Purchase.find()
-    .populate("buyerId", "name email")
-    .populate("beatId", "title coverUrl")
-    .select("buyerId beatId licenseType amount createdAt")
-    .sort({ createdAt: -1 })
-    .skip((page - 1) * limit)
-    .limit(limit)
-    .lean();
-},
+  async getTotalRevenue(): Promise<number> {
+    await connectDB();
+    const result = await Purchase.aggregate([
+      { $group: { _id: null, total: { $sum: "$amount" } } },
+    ]);
+    return result[0]?.total ?? 0;
+  },
+
+  async findAllPaginated({ page, limit }: { page: number; limit: number }) {
+    await connectDB();
+    return Purchase.find()
+      .populate("buyerId", "name email")
+      .populate("beatId", "title coverUrl")
+      .select("buyerId beatId licenseType amount createdAt")
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
+  },
 };

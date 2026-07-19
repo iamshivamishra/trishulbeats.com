@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { purchaseRepository } from "@/lib/repositories/purchase.repository";
 import { beatRepository } from "@/lib/repositories/beat.repository";
 import { licenseRepository } from "@/lib/repositories/license.repository";
+import { resolvePurchaseEntitlements } from "@/lib/security/entitlements";
 import { formatErrorResponse, UnauthorizedError } from "@/lib/errors";
 
 /**
@@ -24,17 +25,19 @@ export async function GET() {
         const license = await licenseRepository.findById(
           purchase.licenseId.toString()
         );
+        const beatId = purchase.beatId.toString();
+        const entitlements = resolvePurchaseEntitlements(purchase, license, beatId);
 
         return {
           purchaseId: purchase._id.toString(),
-          beatId: purchase.beatId.toString(),
+          beatId,
           beatTitle: beat?.title || "Unknown",
           beatCoverUrl: beat?.coverUrl,
           beatGenre: beat?.genre || "",
           licenseType: purchase.licenseType,
           licenseName: license?.name || purchase.licenseType,
-          includesWav: license?.includesWav ?? false,
-          includesStems: license?.includesStems ?? false,
+          includesWav: entitlements.wavAllowed,
+          includesStems: entitlements.stemsAllowed,
           hasStemsFile: !!beat?.stemsUrl,
           amount: purchase.amount,
           purchasedAt: purchase.createdAt,

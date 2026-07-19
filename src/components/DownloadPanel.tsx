@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import {
   Download, FileAudio, FileArchive, Music, Lock,
-  Loader2, RefreshCw, ExternalLink, Clock,
+  Loader2, RefreshCw, Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,6 +25,7 @@ interface DownloadAccess {
   beatTitle: string;
   licenseType: string;
   licenseName: string;
+  expiresInSeconds: number;
   links: DownloadLink[];
 }
 
@@ -55,6 +56,7 @@ export default function DownloadPanel({ beatId }: Props) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [downloading, setDownloading] = useState<string | null>(null);
+  const expiryMinutes = access ? Math.max(1, Math.round(access.expiresInSeconds / 60)) : 15;
 
   const fetchLinks = async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -168,7 +170,7 @@ export default function DownloadPanel({ beatId }: Props) {
                 {link.available ? (
                   <p className="text-xs text-muted-foreground flex items-center gap-1">
                     <Clock className="h-3 w-3" />
-                    Link expires in 15 minutes
+                    Link expires in {expiryMinutes} minutes
                   </p>
                 ) : (
                   <p className="text-xs text-muted-foreground">
@@ -195,7 +197,7 @@ export default function DownloadPanel({ beatId }: Props) {
         </div>
 
         <p className="mt-3 text-center text-[10px] text-muted-foreground">
-          Download links are signed and expire after 15 minutes. Refresh to generate new links.
+          Download links are signed and expire after {expiryMinutes} minutes. Refresh to generate new links.
         </p>
       </CardContent>
     </Card>

@@ -37,6 +37,7 @@ const OrderSchema = new Schema<IOrder>(
 );
 
 OrderSchema.index({ buyerId: 1, status: 1 });
+OrderSchema.index({ buyerId: 1, status: 1, "items.beatId": 1 });
 OrderSchema.index({ createdAt: -1 });
 
 const Order: Model<IOrder> =

@@ -27,3 +27,16 @@ export function verifySignature(
     .digest("hex");
   return expectedSignature === signature;
 }
+
+interface RazorpayPaymentLike {
+  id: string;
+  order_id?: string;
+  status?: string;
+  amount?: number;
+  currency?: string;
+}
+
+export async function fetchPaymentById(paymentId: string): Promise<RazorpayPaymentLike> {
+  const payment = await razorpay.payments.fetch(paymentId);
+  return payment as RazorpayPaymentLike;
+}

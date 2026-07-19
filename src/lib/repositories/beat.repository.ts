@@ -117,6 +117,16 @@ export const beatRepository = {
     return dbQuery.lean<IBeat[]>();
   },
 
+  async findByIds(ids: string[], includeFullAudio = false): Promise<IBeat[]> {
+    await connectDB();
+    if (ids.length === 0) return [];
+    const query = Beat.find({ _id: { $in: ids } });
+    if (!includeFullAudio) {
+      query.select(PUBLIC_BEAT_EXCLUSIONS);
+    }
+    return query.lean<IBeat[]>();
+  },
+
   async findByProducerPaginated(
     producerId: string,
     status?: BeatStatus,
@@ -150,10 +160,10 @@ export const beatRepository = {
     };
   },
 
-  async create(data: Partial<IBeat>): Promise<IBeat> {
+  async create(data: Partial<IBeat>, options: RepoOptions = {}): Promise<IBeat> {
     await connectDB();
-    const beat = await Beat.create(data);
-    return beat.toObject() as IBeat;
+    const beat = await Beat.create([data], { session: options.session });
+    return beat[0].toObject() as IBeat;
   },
 
   async update(id: string, data: Partial<IBeat>): Promise<IBeat | null> {
@@ -262,7 +272,7 @@ export const beatRepository = {
 
   async countAll(): Promise<number> {
     await connectDB();
-    return Beat.countDocuments({ isPublished: true });
+    return Beat.countDocuments();
   },
 
   // --- Niche wale extra functions jo merge kiye gaye hain ---

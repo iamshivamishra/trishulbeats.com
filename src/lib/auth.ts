@@ -3,8 +3,7 @@ import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import { MongoDBAdapter } from "@auth/mongodb-adapter";
 import mongoClient from "@/lib/mongodb";
-import { connectDB } from "@/lib/db";
-import User from "@/lib/models/User";
+import { userRepository } from "@/lib/repositories/user.repository";
 import bcrypt from "bcryptjs";
 import type { UserRole } from "@/types";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
@@ -62,10 +61,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
 
         try {
-          await connectDB();
-          const user = await User.findOne({
-            email,
-          }).select("+password");
+          const user = await userRepository.findByEmail(email, true);
 
           if (!user || !user.password) return null;
 
@@ -119,8 +115,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       if (shouldRefreshRole) {
         try {
-          await connectDB();
-          const dbUser = await User.findById(token.id).select("role").lean();
+          const dbUser = await userRepository.findById(token.id);
           if (dbUser) {
             token.role = (dbUser.role as UserRole) || "buyer";
             token.roleRefreshedAt = Date.now();
@@ -141,14 +136,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       // For OAuth sign-ins, sync user to our Mongoose User collection
       if (account?.provider === "google" && user.email) {
         try {
-          await connectDB();
-          const existingUser = await User.findOne({ email: user.email });
+          const existingUser = await userRepository.findByEmail(user.email);
 
           if (!existingUser) {
-            const newUser = await User.create({
-              name: user.name,
-              email: user.email,
-              image: user.image,
+            const newUser = await userRepository.create({
+              name: user.name ?? String(user.email),
+              email: String(user.email),
+              image: user.image ?? undefined,
               role: "buyer",
             });
             user.id = newUser._id.toString();
@@ -158,7 +152,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             user.role = existingUser.role as UserRole;
             // Update image if changed
             if (user.image && user.image !== existingUser.image) {
-              await User.findByIdAndUpdate(existingUser._id, { image: user.image });
+              await userRepository.update(existingUser._id.toString(), { image: user.image });
             }
           }
         } catch {
