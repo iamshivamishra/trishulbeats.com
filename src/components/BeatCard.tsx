@@ -8,8 +8,21 @@ import { Badge } from "@/components/ui/badge";
 import { useAudioPlayer } from "@/components/AudioPlayerContext";
 import type { IBeat } from "@/types";
 
+type BeatCardBeat = Pick<
+  IBeat,
+  | "_id"
+  | "title"
+  | "coverUrl"
+  | "audioTaggedUrl"
+  | "bpm"
+  | "genre"
+  | "likesCount"
+  | "producerName"
+  | "producerUsername"
+>;
+
 interface BeatCardProps {
-  beat: IBeat;
+  beat: BeatCardBeat;
   startingPrice?: number;
   isPurchased?: boolean;
 }

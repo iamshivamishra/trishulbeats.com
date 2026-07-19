@@ -1,16 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { beatFilterSchema, GENRE_OPTIONS, KEY_OPTIONS, MOOD_OPTIONS } from "@/lib/validators/beat";
-import { beatService } from "@/lib/services/beat.service";
-import { licenseRepository } from "@/lib/repositories/license.repository";
-import { userRepository } from "@/lib/repositories/user.repository";
-import { auth } from "@/lib/auth";
-import { purchaseRepository } from "@/lib/repositories/purchase.repository";
-import { toPublicBeatForUi } from "@/lib/serializers/beat";
-import BeatCard from "@/components/BeatCard";
+import { marketplaceService } from "@/lib/services/marketplace.service";
 import { BeatsFilters } from "./BeatsFilters";
+import BeatsGridClient from "./BeatsGridClient";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "Browse Beats",
@@ -29,28 +24,15 @@ export default async function BeatsPage({ searchParams }: BeatsPageProps) {
   }
 
   const filters = beatFilterSchema.parse(params);
-  const result = await beatService.list(filters);
+  const result = await marketplaceService.list(filters);
 
-  const session = await auth();
-  const purchasedIds = session?.user
-    ? await purchaseRepository.getPurchasedBeatIds(session.user.id)
-    : [];
-
-// ...
-
-const beatsWithPrices = await Promise.all(
-  result.data.map(async (beat) => {
-    const [cheapest, producer] = await Promise.all([
-      licenseRepository.findCheapestForBeat(beat._id.toString()),
-      userRepository.findById(beat.producerId.toString()),
-    ]);
-    return {
-      beat: toPublicBeatForUi(beat, producer),
-      startingPrice: cheapest?.price,
-      isPurchased: purchasedIds.includes(beat._id.toString()),
-    };
-  })
-);
+  const beatsWithPrices = result.beats.map((beat) => ({
+    beat: {
+      ...beat,
+      producerUsername: beat.producerUsername ?? undefined,
+    },
+    startingPrice: beat.startingPrice ?? null,
+  }));
 
   return (
     <div className="page-shell">
@@ -73,16 +55,7 @@ const beatsWithPrices = await Promise.all(
 
         <div className="flex-1">
           {beatsWithPrices.length > 0 ? (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {beatsWithPrices.map(({ beat, startingPrice, isPurchased }) => (
-                <BeatCard
-                  key={beat._id.toString()}
-                  beat={beat}
-                  startingPrice={startingPrice}
-                  isPurchased={isPurchased}
-                />
-              ))}
-            </div>
+            <BeatsGridClient items={beatsWithPrices} />
           ) : (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <p className="text-lg font-medium">No beats found</p>
