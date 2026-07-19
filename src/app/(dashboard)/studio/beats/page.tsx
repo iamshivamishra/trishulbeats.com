@@ -7,6 +7,8 @@ import { licenseRepository } from "@/lib/repositories/license.repository";
 import StudioBeatsClient from "@/app/studio/beats/StudioBeatsClient";
 import type { BeatStatus } from "@/types";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = { title: "Studio — My Beats" };
 
 interface Props {

@@ -19,6 +19,8 @@ import { Separator } from "@/components/ui/separator";
 import BeatCard from "@/components/BeatCard";
 import FollowButton from "@/components/FollowButton";
 
+export const dynamic = "force-dynamic";
+
 interface Props {
   params: Promise<{ username: string }>;
 }

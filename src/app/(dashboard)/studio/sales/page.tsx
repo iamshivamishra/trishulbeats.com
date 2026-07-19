@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import SalesClient from "@/app/studio/sales/SalesClient";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Sales History — Studio",
   description: "View your complete sales history and earnings.",

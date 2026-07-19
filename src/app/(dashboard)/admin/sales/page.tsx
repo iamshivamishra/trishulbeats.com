@@ -1,5 +1,16 @@
 import { purchaseRepository } from "@/lib/repositories/purchase.repository";
 
+export const dynamic = "force-dynamic";
+
+type AdminSaleRow = {
+  _id: string;
+  buyerId: { name: string } | string | null;
+  beatId: { title: string } | string | null;
+  licenseType: string;
+  amount: number;
+  createdAt: string | Date;
+};
+
 export default async function AdminSalesPage() {
   const purchases = await purchaseRepository.findAllPaginated({ page: 1, limit: 50 });
 
@@ -18,7 +29,7 @@ export default async function AdminSalesPage() {
             </tr>
           </thead>
           <tbody>
-            {purchases.map((p: any) => {
+            {(purchases as AdminSaleRow[]).map((p) => {
               const buyerName =
                 typeof p.buyerId === "object" && p.buyerId !== null && "name" in p.buyerId
                   ? p.buyerId.name

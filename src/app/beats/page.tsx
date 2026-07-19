@@ -10,6 +10,8 @@ import { toPublicBeatForUi } from "@/lib/serializers/beat";
 import BeatCard from "@/components/BeatCard";
 import { BeatsFilters } from "./BeatsFilters";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Browse Beats",
   description: "Browse and preview high-quality beats across all genres.",

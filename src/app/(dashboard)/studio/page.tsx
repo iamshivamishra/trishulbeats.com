@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import StudioDashboard from "@/app/studio/StudioDashboard";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Studio — Trishul Beats",
   description: "Producer analytics dashboard. Track your revenue, sales, and beat performance.",

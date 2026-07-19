@@ -5,6 +5,8 @@ import { beatRepository } from "@/lib/repositories/beat.repository";
 import { licenseRepository } from "@/lib/repositories/license.repository";
 import EditBeatForm from "@/app/studio/beats/[id]/edit/EditBeatForm";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = { title: "Edit Beat" };
 
 interface Props {

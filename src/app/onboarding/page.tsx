@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import OnboardingForm from "./OnboardingForm";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Choose Your Role",
 };

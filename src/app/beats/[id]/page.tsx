@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
-  Music, Clock, ArrowLeft, ExternalLink, BarChart3,
+  Music, ArrowLeft, ExternalLink, BarChart3,
   ShoppingBag, Disc3, Calendar, Headphones,
 } from "lucide-react";
 import { auth } from "@/lib/auth";
@@ -20,8 +20,9 @@ import AudioPlayer from "@/components/AudioPlayer";
 import LicenseSelector from "@/components/LicenseSelector";
 import DownloadPanel from "@/components/DownloadPanel";
 import BeatCard from "@/components/BeatCard";
-import { formatDuration } from "@/lib/format";
 import { toPublicBeatForUi } from "@/lib/serializers/beat";
+
+export const dynamic = "force-dynamic";
 
 interface BeatPageProps {
   params: Promise<{ id: string }>;

@@ -2,6 +2,8 @@ import Image from "next/image";
 import { beatRepository } from "@/lib/repositories/beat.repository";
 import { deleteBeatAction } from "./actions";
 
+export const dynamic = "force-dynamic";
+
 type AdminBeatRow = {
   _id: string;
   title: string;

@@ -2,6 +2,17 @@ import { userRepository } from "@/lib/repositories/user.repository";
 import { toggleUserVerifiedAction } from "./actions";
 import RoleSelect from "./RoleSelect";
 
+export const dynamic = "force-dynamic";
+
+type AdminUserRow = {
+  _id: string;
+  name: string;
+  email: string;
+  role: "buyer" | "producer" | "admin";
+  verified: boolean;
+  createdAt: string | Date;
+};
+
 export default async function AdminUsersPage() {
   const users = await userRepository.findAllPaginated({ page: 1, limit: 50 });
 
@@ -20,7 +31,7 @@ export default async function AdminUsersPage() {
             </tr>
           </thead>
           <tbody>
-            {users.map((u: any) => (
+            {(users as AdminUserRow[]).map((u) => (
               <tr key={u._id.toString()} className="border-t border-border/30">
                 <td className="p-3">{u.name}</td>
                 <td className="p-3 text-zinc-400">{u.email}</td>

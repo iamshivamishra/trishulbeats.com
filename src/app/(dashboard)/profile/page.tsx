@@ -12,6 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Music, ShoppingBag, Calendar, ArrowRight, Pencil, ExternalLink } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = { title: "Profile" };
 
 export default async function ProfilePage() {
