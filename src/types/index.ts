@@ -44,8 +44,8 @@ export interface IBeat {
   title: string;
   description?: string;
   producerId: string | Types.ObjectId;
-  producerName?: string;        // ← add karo
-  producerUsername?: string;    // ← add karo
+  producerName?: string;
+  producerUsername?: string;
   bpm?: number;
   key?: string;
   genre: string;
@@ -60,7 +60,16 @@ export interface IBeat {
   status: BeatStatus;
   plays: number;
   salesCount: number;
+  likesCount: number;
   isPublished: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ILike {
+  _id?: string | Types.ObjectId;
+  userId: string | Types.ObjectId;
+  beatId: string | Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }

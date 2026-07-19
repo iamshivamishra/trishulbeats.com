@@ -177,6 +177,29 @@ export const beatRepository = {
     await Beat.findByIdAndUpdate(id, { $inc: { salesCount: 1 } }, { session: options.session });
   },
 
+  async incrementLikesCount(id: string, options: RepoOptions = {}): Promise<void> {
+    await connectDB();
+    await Beat.findByIdAndUpdate(id, { $inc: { likesCount: 1 } }, { session: options.session });
+  },
+
+  async decrementLikesCount(id: string, options: RepoOptions = {}): Promise<void> {
+    await connectDB();
+    await Beat.updateOne(
+      { _id: id, likesCount: { $gt: 0 } },
+      { $inc: { likesCount: -1 } },
+      { session: options.session }
+    );
+  },
+
+  async setLikesCount(id: string, likesCount: number, options: RepoOptions = {}): Promise<void> {
+    await connectDB();
+    await Beat.findByIdAndUpdate(
+      id,
+      { $set: { likesCount: Math.max(0, likesCount) } },
+      { session: options.session }
+    );
+  },
+
   async findRecent(limit = 8): Promise<IBeat[]> {
     await connectDB();
     return Beat.find({ isPublished: true })

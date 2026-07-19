@@ -3,7 +3,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Play, Pause, AudioWaveform, ShoppingCart, Music, MoreVertical } from "lucide-react";
+import { Play, Pause, AudioWaveform, ShoppingCart, Music, MoreVertical, Heart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAudioPlayer } from "@/components/AudioPlayerContext";
 import type { IBeat } from "@/types";
@@ -26,14 +26,16 @@ export default function BeatCard({
   const isThisBeatActive = currentBeat?.id === beatId;
   const isThisBeatPlaying = isThisBeatActive && isPlaying;
 
-  const handlePlayClick = (e: React.MouseEvent) => {
+  const handlePlayClick = (
+    e: React.MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>
+  ) => {
     e.preventDefault();
     e.stopPropagation();
 
     playBeat({
       id: beatId,
       title: beat.title,
-      producerName: (beat as any).producerName ?? "",
+      producerName: beat.producerName ?? "",
       coverUrl: beat.coverUrl,
       previewUrl: beat.audioTaggedUrl,
     });
@@ -47,7 +49,7 @@ export default function BeatCard({
         tabIndex={0}
         onClick={handlePlayClick}
         onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") handlePlayClick(e as any);
+          if (e.key === "Enter" || e.key === " ") handlePlayClick(e);
         }}
         aria-label={isThisBeatPlaying ? `Pause ${beat.title}` : `Play ${beat.title}`}
         className={`relative block aspect-square w-full cursor-pointer overflow-hidden rounded-xl ${
@@ -147,6 +149,10 @@ export default function BeatCard({
             {beat.producerName || "Unknown Producer"}
           </p>
         )}
+        <p className="flex items-center gap-1.5 text-xs text-zinc-500">
+          <Heart className="h-3.5 w-3.5" />
+          {(beat.likesCount ?? 0).toLocaleString()} likes
+        </p>
       </div>
     </div>
   );

@@ -29,6 +29,7 @@ const BeatSchema = new Schema<IBeat>(
     },
     plays: { type: Number, default: 0 },
     salesCount: { type: Number, default: 0 },
+    likesCount: { type: Number, default: 0 },
     isPublished: { type: Boolean, default: false },
   },
   { timestamps: true }
@@ -37,6 +38,7 @@ const BeatSchema = new Schema<IBeat>(
 BeatSchema.index({ genre: 1, isPublished: 1 });
 BeatSchema.index({ producerId: 1, status: 1 });
 BeatSchema.index({ plays: -1 });
+BeatSchema.index({ likesCount: -1 });
 BeatSchema.index({ createdAt: -1 });
 BeatSchema.index({ title: "text", tags: "text" });
 

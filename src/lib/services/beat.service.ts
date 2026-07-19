@@ -43,6 +43,7 @@ export const beatService = {
       status,
       plays: 0,
       salesCount: 0,
+      likesCount: 0,
       isPublished,
     });
 

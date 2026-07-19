@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { beatRepository } from "@/lib/repositories/beat.repository";
+import { likeRepository } from "@/lib/repositories/like.repository";
 import { licenseRepository } from "@/lib/repositories/license.repository";
 import { purchaseRepository } from "@/lib/repositories/purchase.repository";
 import { userRepository } from "@/lib/repositories/user.repository";
@@ -20,6 +21,7 @@ import AudioPlayer from "@/components/AudioPlayer";
 import LicenseSelector from "@/components/LicenseSelector";
 import DownloadPanel from "@/components/DownloadPanel";
 import BeatCard from "@/components/BeatCard";
+import LikeButton from "@/components/LikeButton";
 import { toPublicBeatForUi } from "@/lib/serializers/beat";
 
 export const dynamic = "force-dynamic";
@@ -83,6 +85,9 @@ export default async function BeatPage({ params }: BeatPageProps) {
   const hasPurchased = session?.user
     ? await purchaseRepository.hasPurchased(session.user.id, id)
     : false;
+  const canLike = session?.user?.role === "buyer" && beat.isPublished && beat.status === "published";
+  const initialLiked =
+    session?.user && canLike ? await likeRepository.isLiked(session.user.id, id) : false;
 
   const relatedWithPrices = await Promise.all(
   relatedBeats.map(async (b) => {
@@ -203,18 +208,25 @@ export default async function BeatPage({ params }: BeatPageProps) {
                   </div>
 
                   {/* Stats row */}
-               <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground sm:justify-start sm:gap-x-4 sm:gap-y-2 sm:text-sm">
-  <span className="flex items-center gap-1">
-    <BarChart3 className="h-3.5 w-3.5 shrink-0" />
-    {beat.plays.toLocaleString()} plays
-  </span>
-  {canViewUnpublished && (
-    <span className="flex items-center gap-1">
-      <ShoppingBag className="h-3.5 w-3.5 shrink-0" />
-      {beat.salesCount} sold
-    </span>
-  )}
-</div>
+                  <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground sm:justify-start sm:gap-x-4 sm:gap-y-2 sm:text-sm">
+                    <span className="flex items-center gap-1">
+                      <BarChart3 className="h-3.5 w-3.5 shrink-0" />
+                      {beat.plays.toLocaleString()} plays
+                    </span>
+                    {canViewUnpublished && (
+                      <span className="flex items-center gap-1">
+                        <ShoppingBag className="h-3.5 w-3.5 shrink-0" />
+                        {beat.salesCount} sold
+                      </span>
+                    )}
+                    <LikeButton
+                      beatId={id}
+                      initialLiked={initialLiked}
+                      initialLikesCount={beat.likesCount ?? 0}
+                      isLoggedIn={!!session?.user}
+                      canLike={canLike}
+                    />
+                  </div>
 
                   {/* Meta badges */}
                   {/* Meta stats grid */}

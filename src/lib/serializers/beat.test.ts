@@ -21,6 +21,7 @@ const sampleBeat: IBeat = {
   isPublished: true,
   plays: 10,
   salesCount: 3,
+  likesCount: 4,
   createdAt: new Date(),
   updatedAt: new Date(),
 };
