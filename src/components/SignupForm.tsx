@@ -173,8 +173,8 @@ export default function SignupForm() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="buyer">Buy beats (Artist / Buyer)</SelectItem>
-                <SelectItem value="producer">Sell beats (Producer)</SelectItem>
+                <SelectItem value="buyer">Buy beats</SelectItem>
+                {/* <SelectItem value="producer">Sell beats (Producer)</SelectItem> */}
               </SelectContent>
             </Select>
           </div>

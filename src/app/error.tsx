@@ -12,7 +12,7 @@ export default function ErrorPage({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  useEffect(() => {
+  useEffect(() => {   
     console.error("App error:", error);
   }, [error]);
 
