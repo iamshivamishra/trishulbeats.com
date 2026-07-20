@@ -54,7 +54,7 @@ export const storageService = {
     const validation = validateFile({ size: fileSize, type: contentType }, category);
     if (!validation.valid) throw new Error(validation.error);
 
-    const key = buildBeatKey(producerId, beatId, category);
+    const key = buildBeatKey(producerId, beatId, category, contentType);
     const provider = getStorageProvider();
     if (provider === "cloudinary") {
       return createCloudinaryPresignedUpload(key, contentType, category, fileSize);

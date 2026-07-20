@@ -15,22 +15,28 @@ import {
   ValidationError,
 } from "@/lib/errors";
 
+
 function hasExpectedBeatAssetKeyShape(
   key: string,
   producerId: string,
   category: "preview" | "master" | "stems" | "artwork"
 ): boolean {
-  const extByCategory: Record<"preview" | "master" | "stems" | "artwork", string> = {
-    preview: ".mp3",
-    master: ".wav",
-    stems: ".zip",
-    artwork: ".jpg",
+  // preview aur master ab MP3/WAV ke sath-sath ZIP bhi ho sakte hain
+  const extByCategory: Record<"preview" | "master" | "stems" | "artwork", string[]> = {
+    preview: [".mp3", ".zip"],
+    master: [".wav", ".zip"],
+    stems: [".zip"],
+    artwork: [".jpg"],
   };
 
   const expectedPrefix = `producers/${producerId}/beats/`;
-  const expectedSuffix = `/${category}${extByCategory[category]}`;
-  return key.startsWith(expectedPrefix) && key.endsWith(expectedSuffix);
+  const allowedSuffixes = extByCategory[category].map((ext) => `/${category}${ext}`);
+  return (
+    key.startsWith(expectedPrefix) &&
+    allowedSuffixes.some((suffix) => key.endsWith(suffix))
+  );
 }
+
 
 export async function GET(request: NextRequest) {
   try {

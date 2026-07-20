@@ -158,6 +158,7 @@ export default function UploadForm() {
     []
   );
 
+
   const doUpload = async (publishStatus: "draft" | "published") => {
     if (!preview.file || !master.file) {
       toast.error("Preview MP3 and Master WAV are required");
@@ -475,33 +476,33 @@ export default function UploadForm() {
               Files
             </h3>
             <p className="text-xs text-muted-foreground">
-              Supported: MP3 (preview), WAV (master), ZIP (stems), JPEG/PNG/WebP (artwork)
+              Supported: MP3/ZIP (preview), WAV/ZIP (master), ZIP (stems), JPEG/PNG/WebP (artwork)
             </p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             {renderFileSlot(
               "Preview MP3",
-              "audio/mpeg,audio/mp3,.mp3",
+              "audio/mpeg,audio/mp3,.mp3,application/zip,.zip", // ZIP bhi accept
               preview,
               setPreview,
               previewRef,
               "preview",
               <Music className="h-8 w-8" />,
               true,
-              "Max 20 MB — tagged preview"
+              "Max 20 MB — MP3 or ZIP"
             )}
 
             {renderFileSlot(
               "Master WAV",
-              "audio/wav,audio/x-wav,.wav",
+              "audio/wav,audio/x-wav,.wav,application/zip,.zip", // ZIP bhi accept
               master,
               setMaster,
               masterRef,
               "master",
               <Music className="h-8 w-8" />,
               true,
-              "Max 100 MB — untagged master"
+              "Max 100 MB — WAV or ZIP"
             )}
 
             {renderFileSlot(

@@ -9,13 +9,13 @@ export function getStorageProvider(): StorageProvider {
 export const FILE_LIMITS = {
   preview: {
     maxSize: 20 * 1024 * 1024, // 20 MB
-    allowedTypes: ["audio/mpeg", "audio/mp3"],
+    allowedTypes: ["audio/mpeg", "audio/mp3", "application/zip", "application/x-zip-compressed"], // ZIP bhi allowed ab
     label: "Preview MP3",
     ext: ".mp3",
   },
   master: {
     maxSize: 100 * 1024 * 1024, // 100 MB
-    allowedTypes: ["audio/wav", "audio/x-wav"],
+    allowedTypes: ["audio/wav", "audio/x-wav", "application/zip", "application/x-zip-compressed"], // ZIP bhi allowed ab
     label: "Master WAV",
     ext: ".wav",
   },
@@ -53,19 +53,25 @@ export type FileCategory = keyof typeof FILE_LIMITS;
  * Beat files:   producers/{producerId}/beats/{beatId}/preview.mp3
  * Profile:      producers/{producerId}/profile/avatar.jpg
  */
+
 export function buildBeatKey(
   producerId: string,
   beatId: string,
-  category: "preview" | "master" | "stems" | "artwork"
+  category: "preview" | "master" | "stems" | "artwork",
+  contentType?: string // naya optional param - actual file type
 ): string {
+  // Agar ZIP upload hui hai preview/master ke liye, to .zip extension use karo
+  const isZip = contentType === "application/zip" || contentType === "application/x-zip-compressed";
+
   const exts: Record<string, string> = {
-    preview: "mp3",
-    master: "wav",
+    preview: isZip ? "zip" : "mp3",
+    master: isZip ? "zip" : "wav",
     stems: "zip",
     artwork: "jpg",
   };
   return `producers/${producerId}/beats/${beatId}/${category}.${exts[category]}`;
 }
+
 
 export function buildProfileKey(
   producerId: string,
