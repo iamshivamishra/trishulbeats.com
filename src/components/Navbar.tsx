@@ -36,7 +36,7 @@ export default function Navbar() {
             className="h-5 w-5"
             priority
           />
-          <span>Test Mode</span>
+          <span>Trishul Beats</span>
         </Link>
 
         <div className="hidden items-center gap-1 md:flex">
