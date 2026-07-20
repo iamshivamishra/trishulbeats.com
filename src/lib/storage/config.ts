@@ -8,25 +8,25 @@ export function getStorageProvider(): StorageProvider {
 
 export const FILE_LIMITS = {
   preview: {
-    maxSize: 20 * 1024 * 1024, // 20 MB
-    allowedTypes: ["audio/mpeg", "audio/mp3", "application/zip", "application/x-zip-compressed"], // ZIP bhi allowed ab
+    maxSize: 50 * 1024 * 1024, // 50 MB (pehle 20 MB tha)
+    allowedTypes: ["audio/mpeg", "audio/mp3", "application/zip", "application/x-zip-compressed"],
     label: "Preview MP3",
     ext: ".mp3",
   },
   master: {
-    maxSize: 100 * 1024 * 1024, // 100 MB
-    allowedTypes: ["audio/wav", "audio/x-wav", "application/zip", "application/x-zip-compressed"], // ZIP bhi allowed ab
+    maxSize: 500 * 1024 * 1024, // 500 MB (pehle 100 MB tha)
+    allowedTypes: ["audio/wav", "audio/x-wav", "application/zip", "application/x-zip-compressed"],
     label: "Master WAV",
     ext: ".wav",
   },
   stems: {
-    maxSize: 500 * 1024 * 1024, // 500 MB
+    maxSize: 5 * 1024 * 1024 * 1024, // 5 GB (pehle 500 MB tha)
     allowedTypes: ["application/zip", "application/x-zip-compressed"],
     label: "Stems ZIP",
     ext: ".zip",
   },
   artwork: {
-    maxSize: 5 * 1024 * 1024, // 5 MB
+    maxSize: 5 * 1024 * 1024, // 5 MB — same
     allowedTypes: ["image/jpeg", "image/png", "image/webp"],
     label: "Artwork",
     ext: ".jpg",

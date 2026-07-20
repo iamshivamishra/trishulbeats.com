@@ -35,11 +35,12 @@ interface PresignedUploadPayload {
   fields?: Record<string, string>;
 }
 
+
 const MAX_SIZES: Record<string, number> = {
-  preview: 20 * 1024 * 1024,
-  master: 100 * 1024 * 1024,
-  stems: 500 * 1024 * 1024,
-  artwork: 5 * 1024 * 1024,
+  preview: 50 * 1024 * 1024,        // 50 MB
+  master: 500 * 1024 * 1024,        // 500 MB
+  stems: 5 * 1024 * 1024 * 1024,    // 5 GB
+  artwork: 5 * 1024 * 1024,         // 5 MB
 };
 
 function formatSize(bytes: number): string {
