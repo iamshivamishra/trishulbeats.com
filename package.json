@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:cloudinary:creds": "node --env-file=.env scripts/test-cloudinary-credentials.mjs",
     "migrate:storage-keys": "node scripts/backfill-beat-storage-keys.mjs",
     "check": "npm run lint && npm run typecheck && npm run test && npm run build"
   },

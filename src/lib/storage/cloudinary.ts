@@ -109,7 +109,6 @@ export async function createCloudinaryPresignedUpload(
     timestamp,
     type: deliveryType,
     allowed_formats: allowedFormatsForCategory(category),
-    max_file_size: String(maxFileSizeBytes),
     overwrite: "true",
   };
   const signature = cloudinary.utils.api_sign_request(signedParams, apiSecret);
@@ -132,7 +131,6 @@ export async function createCloudinaryPresignedUpload(
       public_id: publicId,
       type: deliveryType,
       allowed_formats: allowedFormatsForCategory(category),
-      max_file_size: String(maxFileSizeBytes),
       overwrite: "true",
     },
   };
