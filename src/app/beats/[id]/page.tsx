@@ -23,6 +23,7 @@ import DownloadPanel from "@/components/DownloadPanel";
 import BeatCard from "@/components/BeatCard";
 import LikeButton from "@/components/LikeButton";
 import { toPublicBeatForUi } from "@/lib/serializers/beat";
+import { storageService } from "@/lib/services/storage.service";
 
 export const dynamic = "force-dynamic";
 
@@ -113,6 +114,20 @@ export default async function BeatPage({ params }: BeatPageProps) {
     (min, l) => (l.isActive && l.price < min ? l.price : min),
     Infinity
   );
+
+  const previewAudioSrc = beat.storageKeys?.preview
+    ? await storageService.getDownloadUrl(beat.storageKeys.preview, {
+        expiresInSeconds: 3600,
+      })
+    : beat.audioTaggedUrl || beat.audioFullUrl;
+
+  const fullAudioSrc = beat.storageKeys?.master
+    ? await storageService.getDownloadUrl(beat.storageKeys.master, {
+        expiresInSeconds: 3600,
+      })
+    : beat.audioFullUrl || beat.audioTaggedUrl;
+
+  const audioSrc = hasPurchased ? fullAudioSrc : previewAudioSrc;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const producerName = producer?.displayName || producer?.name || "Unknown";
 
@@ -289,7 +304,7 @@ export default async function BeatPage({ params }: BeatPageProps) {
           <Card className="border-border/50 bg-card/60">
             <CardContent className="p-3 sm:p-4 md:p-5 overflow-x-hidden">
               <AudioPlayer
-                src={beat.audioTaggedUrl}
+                src={audioSrc}
                 title={beat.title}
                 previewOnly={!hasPurchased}
                 beatId={id}

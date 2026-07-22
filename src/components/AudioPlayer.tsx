@@ -5,6 +5,7 @@ import { Play, Pause, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import Waveform from "@/components/Waveform";
+import { hasPlayableAudioSource, normalizeAudioSource } from "@/lib/audio-source";
 
 interface AudioPlayerProps {
   src: string;
@@ -35,7 +36,10 @@ export default function AudioPlayer({
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.8);
   const [isMuted, setIsMuted] = useState(false);
+  const [audioError, setAudioError] = useState<string | null>(null);
   const playTracked = useRef(false);
+  const normalizedSrc = normalizeAudioSource(src);
+  const canPlayAudio = hasPlayableAudioSource(normalizedSrc);
 
   const handleTimeUpdate = useCallback(() => {
     const audio = audioRef.current;
@@ -54,19 +58,56 @@ export default function AudioPlayer({
     audio.volume = isMuted ? 0 : volume;
   }, [volume, isMuted]);
 
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (!normalizedSrc) {
+      audio.pause();
+      audio.removeAttribute("src");
+      audio.load();
+      setCurrentTime(0);
+      setDuration(0);
+      setIsPlaying(false);
+      setAudioError("Preview audio is currently unavailable.");
+      return;
+    }
+
+    audio.pause();
+    audio.src = normalizedSrc;
+    audio.load();
+    setCurrentTime(0);
+    setDuration(0);
+    setIsPlaying(false);
+    setAudioError(null);
+  }, [normalizedSrc]);
+
   const togglePlay = async () => {
     const audio = audioRef.current;
     if (!audio) return;
+
+    if (!canPlayAudio) {
+      setAudioError("Preview audio is currently unavailable.");
+      return;
+    }
+
     if (isPlaying) {
       audio.pause();
       setIsPlaying(false);
-    } else {
+      return;
+    }
+
+    try {
       await audio.play();
       setIsPlaying(true);
+      setAudioError(null);
       if (!playTracked.current && beatId) {
         playTracked.current = true;
         fetch(`/api/beats/${beatId}/plays`, { method: "POST" }).catch(() => {});
       }
+    } catch {
+      setIsPlaying(false);
+      setAudioError("Playback could not start for this audio source.");
     }
   };
 
@@ -96,10 +137,14 @@ export default function AudioPlayer({
     <div className="rounded-xl border border-border/50 bg-card/50 p-4">
       <audio
         ref={audioRef}
-        src={src}
+        src={normalizedSrc}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={() => setDuration(audioRef.current?.duration ?? 0)}
         onEnded={() => setIsPlaying(false)}
+        onError={() => {
+          setAudioError("The audio source could not be loaded.");
+          setIsPlaying(false);
+        }}
         preload="metadata"
       />
 
@@ -122,6 +167,7 @@ export default function AudioPlayer({
           size="icon"
           className="h-10 w-10 shrink-0 rounded-full"
           onClick={togglePlay}
+          disabled={!canPlayAudio}
           aria-label={isPlaying ? "Pause" : "Play"}
         >
           {isPlaying ? (
@@ -179,11 +225,13 @@ export default function AudioPlayer({
         </div>
       </div>
 
-      {previewOnly && (
+      {audioError ? (
+        <p className="mt-2 text-center text-xs text-destructive">{audioError}</p>
+      ) : previewOnly ? (
         <p className="mt-2 text-center text-xs text-muted-foreground">
           Preview limited to {PREVIEW_LIMIT} seconds. Purchase to unlock full track.
         </p>
-      )}
+      ) : null}
     </div>
   );
 }
