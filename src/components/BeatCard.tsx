@@ -17,6 +17,8 @@ type BeatCardBeat = Pick<
   | "bpm"
   | "genre"
   | "likesCount"
+  | "tags"
+  | "saleMode"
   | "producerName"
   | "producerUsername"
 >;
@@ -35,6 +37,7 @@ export default function BeatCard({
   const { playBeat, currentBeat, isPlaying } = useAudioPlayer();
 
   const beatId = beat._id.toString();
+  const isPackOnly = beat.saleMode === "pack_only";
 
   const isThisBeatActive = currentBeat?.id === beatId;
   const isThisBeatPlaying = isThisBeatActive && isPlaying;
@@ -78,8 +81,8 @@ export default function BeatCard({
             className="object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-zinc-800">
-            <Music className="h-10 w-10 text-zinc-500" />
+          <div className="flex h-full w-full items-center justify-center bg-muted">
+            <Music className="h-10 w-10 text-muted-foreground/50" />
           </div>
         )}
 
@@ -105,6 +108,11 @@ export default function BeatCard({
             Purchased
           </Badge>
         )}
+        {isPackOnly && (
+          <Badge className="absolute left-2 top-2 z-20 rounded-full bg-amber-500 px-2 py-0.5 text-[10px] text-black shadow">
+            Pack Only
+          </Badge>
+        )}
       </div>
 
       {/* CONTENT - transparent, seedha page bg pe */}
@@ -113,7 +121,7 @@ export default function BeatCard({
           {/* Row 1: BPM left, price (no border) right */}
           <div className="flex items-center justify-between">
             {beat.bpm ? (
-              <span className="flex items-center gap-1.5 text-sm text-zinc-400">
+              <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 <AudioWaveform className="h-4 w-4" />
                 {beat.bpm} BPM
               </span>
@@ -133,7 +141,7 @@ export default function BeatCard({
           {/* Title + producer badge row */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 min-w-0">
-              <h3 className="truncate text-lg font-semibold text-white transition-colors duration-300 group-hover:text-primary">
+              <h3 className="truncate text-lg font-semibold text-foreground transition-colors duration-300 group-hover:text-primary">
                 {beat.title}
               </h3>
               {beat.genre && (
@@ -145,7 +153,7 @@ export default function BeatCard({
                 </Badge>
               )}
             </div>
-            <MoreVertical className="h-4 w-4 shrink-0 text-zinc-500" />
+            <MoreVertical className="h-4 w-4 shrink-0 text-muted-foreground" />
           </div>
         </Link>
 
@@ -153,16 +161,16 @@ export default function BeatCard({
         {beat.producerUsername ? (
           <Link
             href={`/producer/${beat.producerUsername}`}
-            className="block w-fit truncate text-base text-zinc-400 hover:text-primary hover:underline"
+            className="block w-fit truncate text-base text-muted-foreground hover:text-primary hover:underline"
           >
             {beat.producerName || "Unknown Producer"}
           </Link>
         ) : (
-          <p className="truncate text-base text-zinc-400">
+          <p className="truncate text-base text-muted-foreground">
             {beat.producerName || "Unknown Producer"}
           </p>
         )}
-        <p className="flex items-center gap-1.5 text-xs text-zinc-500">
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Heart className="h-3.5 w-3.5" />
           {(beat.likesCount ?? 0).toLocaleString()} likes
         </p>

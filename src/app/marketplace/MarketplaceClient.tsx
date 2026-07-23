@@ -41,6 +41,7 @@ interface MarketplaceBeat {
   producerName: string;
   producerUsername: string | null;
   createdAt: string;
+  saleMode?: "single" | "pack_only";
 }
 
 interface Filters {
@@ -90,6 +91,7 @@ function BeatCardSkeleton() {
 }
 
 function MarketplaceBeatCard({ beat }: { beat: MarketplaceBeat }) {
+  const isPackOnly = beat.saleMode === "pack_only";
   return (
     <Link href={`/beats/${beat._id}`}>
       <Card className="group overflow-hidden border-border/50 bg-card/50 transition-all hover:border-primary/30 hover:bg-card">
@@ -112,6 +114,9 @@ function MarketplaceBeatCard({ beat }: { beat: MarketplaceBeat }) {
               <Play className="h-5 w-5 fill-primary-foreground text-primary-foreground" />
             </div>
           </div>
+          {isPackOnly && (
+            <Badge className="absolute left-2 top-2 bg-amber-500 text-black">Pack Only</Badge>
+          )}
         </div>
         <CardContent className="p-3">
           <h3 className="truncate text-sm font-semibold">{beat.title}</h3>

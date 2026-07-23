@@ -3,7 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { beatRepository } from "@/lib/repositories/beat.repository";
 import { licenseRepository } from "@/lib/repositories/license.repository";
-import EditBeatForm from "@/app/studio/beats/[id]/edit/EditBeatForm";
+import EditBeatForm from "@/features/studio/EditBeatForm";
 
 export const dynamic = "force-dynamic";
 

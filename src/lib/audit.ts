@@ -20,6 +20,8 @@ export type AuditAction =
   | "download.signed_url"
   | "upload.presign"
   | "cart.checkout"
+  | "webhook.payment_captured"
+  | "webhook.payment_failed"
   | "admin.action";
 
 interface AuditEntry {

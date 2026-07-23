@@ -12,6 +12,7 @@ import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { ApiError } from "@/lib/api/http";
 import { cartApi } from "@/lib/api/cart";
+import { packCartApi } from "@/lib/api/pack-cart";
 import type { CartItemPopulated } from "@/types";
 
 const STORAGE_KEY = "trishul_cart";
@@ -25,6 +26,8 @@ interface CartContextType {
   items: CartItemPopulated[];
   count: number;
   total: number;
+  packCount: number;
+  totalCount: number;
   loading: boolean;
   addItem: (beatId: string, licenseId: string) => Promise<void>;
   removeItem: (beatId: string) => Promise<void>;
@@ -68,10 +71,21 @@ export default function CartProvider({ children }: { children: ReactNode }) {
   const isLoading = status === "loading";
 
   const [items, setItems] = useState<CartItemPopulated[]>([]);
+  const [packCount, setPackCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const total = items.reduce((sum, i) => sum + i.price, 0);
   const count = items.length;
+  const totalCount = count + packCount;
+
+  const fetchPackCount = useCallback(async () => {
+    try {
+      const data = await packCartApi.get();
+      setPackCount(data.count);
+    } catch {
+      setPackCount(0);
+    }
+  }, []);
 
   // Fetch server cart for logged-in users
   const fetchServerCart = useCallback(async () => {
@@ -123,15 +137,16 @@ export default function CartProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       if (isLoggedIn) {
         await syncGuestCartToServer();
-        await fetchServerCart();
+        await Promise.all([fetchServerCart(), fetchPackCount()]);
       } else {
         loadGuestCart();
+        setPackCount(0);
       }
       setLoading(false);
     };
 
     init();
-  }, [isLoggedIn, isLoading, fetchServerCart, loadGuestCart, syncGuestCartToServer]);
+  }, [isLoggedIn, isLoading, fetchServerCart, fetchPackCount, loadGuestCart, syncGuestCartToServer]);
 
   const addItem = useCallback(
     async (beatId: string, licenseId: string) => {
@@ -245,9 +260,9 @@ export default function CartProvider({ children }: { children: ReactNode }) {
 
   const refresh = useCallback(async () => {
     if (isLoggedIn) {
-      await fetchServerCart();
+      await Promise.all([fetchServerCart(), fetchPackCount()]);
     }
-  }, [isLoggedIn, fetchServerCart]);
+  }, [isLoggedIn, fetchServerCart, fetchPackCount]);
 
   const isInCart = useCallback(
     (beatId: string) => items.some((i) => i.beatId === beatId),
@@ -260,6 +275,8 @@ export default function CartProvider({ children }: { children: ReactNode }) {
         items,
         count,
         total,
+        packCount,
+        totalCount,
         loading,
         addItem,
         removeItem,

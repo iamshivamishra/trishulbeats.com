@@ -4,15 +4,17 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { Menu, X, LogOut, LayoutDashboard } from "lucide-react";
+import { Menu, X, LogOut, LayoutDashboard, ShoppingCart } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import ThemeToggle from "@/components/ThemeToggle";
+import { useCart } from "@/components/CartProvider";
 
 const NAV_LINKS = [
   { href: "/beats", label: "Browse" },
+  { href: "/beat-packs", label: "Beat Packs" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
 ];
@@ -21,6 +23,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: session } = useSession();
+  const { totalCount: cartCount } = useCart();
   const user = session?.user;
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
@@ -58,6 +61,18 @@ export default function Navbar() {
 
         <div className="hidden items-center gap-2 md:flex">
           <ThemeToggle />
+          <Link
+            href="/cart"
+            className="focus-ring relative inline-flex items-center justify-center rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+            aria-label="Shopping cart"
+          >
+            <ShoppingCart className="h-5 w-5" />
+            {cartCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                {cartCount > 9 ? "9+" : cartCount}
+              </span>
+            )}
+          </Link>
           {user ? (
             <div className="flex items-center gap-2">
               <Button asChild variant="outline" size="sm" className="gap-1.5">
@@ -124,6 +139,24 @@ export default function Navbar() {
                   {link.label}
                 </Link>
               ))}
+              <Link
+                href="/cart"
+                onClick={() => setMobileOpen(false)}
+                className={cn(
+                  "focus-ring flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
+                  isActive("/cart")
+                    ? "bg-accent text-foreground"
+                    : "text-muted-foreground hover:bg-accent"
+                )}
+              >
+                <ShoppingCart className="h-4 w-4" />
+                Cart
+                {cartCount > 0 && (
+                  <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">
+                    {cartCount > 9 ? "9+" : cartCount}
+                  </span>
+                )}
+              </Link>
               <div className="my-3 h-px bg-border" />
               <div className="px-2 pb-2">
                 <ThemeToggle className="h-8 w-8" />

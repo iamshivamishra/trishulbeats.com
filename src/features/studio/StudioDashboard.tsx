@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   IndianRupee, TrendingUp, Music, BarChart3,
-  ArrowRight, Eye, ShoppingBag, Upload, Home, 
+  ArrowRight, Eye, ShoppingBag, Upload, Home, Layers,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -278,6 +278,12 @@ export default function StudioDashboard() {
                 <Link href="/studio/beats">
                   <Music className="mr-2 h-4 w-4" />
                   Manage Beats
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="w-full justify-start" size="sm">
+                <Link href="/studio/beat-packs">
+                  <Layers className="mr-2 h-4 w-4" />
+                  Manage Beat Packs
                 </Link>
               </Button>
               <Button asChild variant="outline" className="w-full justify-start" size="sm">

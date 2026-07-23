@@ -18,6 +18,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import AudioPlayer from "@/components/AudioPlayer";
+import ShareDialog from "@/components/ShareDialog";
 import LicenseSelector from "@/components/LicenseSelector";
 import DownloadPanel from "@/components/DownloadPanel";
 import BeatCard from "@/components/BeatCard";
@@ -86,6 +87,7 @@ export default async function BeatPage({ params }: BeatPageProps) {
   const hasPurchased = session?.user
     ? await purchaseRepository.hasPurchased(session.user.id, id)
     : false;
+  const isPackOnly = beat.saleMode === "pack_only";
   const canLike = session?.user?.role === "buyer" && beat.isPublished && beat.status === "published";
   const initialLiked =
     session?.user && canLike ? await likeRepository.isLiked(session.user.id, id) : false;
@@ -240,6 +242,10 @@ export default async function BeatPage({ params }: BeatPageProps) {
                       initialLikesCount={beat.likesCount ?? 0}
                       isLoggedIn={!!session?.user}
                       canLike={canLike}
+                    />
+                    <ShareDialog
+                      title={beat.title}
+                      url={`${appUrl}/beats/${id}`}
                     />
                   </div>
 
@@ -451,13 +457,31 @@ export default async function BeatPage({ params }: BeatPageProps) {
 
         {/* ====================== RIGHT COLUMN ====================== */}
         <div className="lg:sticky lg:top-24 lg:self-start">
-          <LicenseSelector
-            licenses={JSON.parse(JSON.stringify(licenses))}
-            beatId={id}
-            beatTitle={beat.title}
-            isLoggedIn={!!session?.user}
-            hasPurchased={hasPurchased}
-          />
+          {isPackOnly && !hasPurchased ? (
+            <Card className="border-amber-500/30 bg-amber-500/5">
+              <CardContent className="space-y-3 p-5">
+                <Badge className="bg-amber-500 text-black">Pack Only</Badge>
+                <h2 className="text-lg font-semibold">This beat is sold inside a Beat Pack</h2>
+                <p className="text-sm text-muted-foreground">
+                  Individual checkout is disabled for this track. Purchase the full pack to access all
+                  included beats and downloads.
+                </p>
+                <Button asChild className="w-full">
+                  <Link href={beat.packId ? `/beat-packs/${beat.packId}` : "/beat-packs"}>
+                    View Beat Pack
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <LicenseSelector
+              licenses={JSON.parse(JSON.stringify(licenses))}
+              beatId={id}
+              beatTitle={beat.title}
+              isLoggedIn={!!session?.user}
+              hasPurchased={hasPurchased}
+            />
+          )}
         </div>
       </div>
 

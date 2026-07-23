@@ -2,16 +2,20 @@ import { orderRepository } from "@/lib/repositories/order.repository";
 import { purchaseRepository } from "@/lib/repositories/purchase.repository";
 import { licenseRepository } from "@/lib/repositories/license.repository";
 import { beatRepository } from "@/lib/repositories/beat.repository";
+import { beatPackRepository } from "@/lib/repositories/beat-pack.repository";
 import { userRepository } from "@/lib/repositories/user.repository";
 import { cartRepository } from "@/lib/repositories/cart.repository";
+import { packCartRepository } from "@/lib/repositories/pack-cart.repository";
 import { cartService } from "@/lib/services/cart.service";
 import { withTransaction } from "@/lib/db";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
 import { fetchPaymentById, razorpay, verifySignature } from "@/lib/razorpay";
 import { logger } from "@/lib/logger";
 import { audit } from "@/lib/audit";
+import { packCartService } from "@/lib/services/pack-cart.service";
 import type {
   CreateOrderInput,
+  CreatePackOrderInput,
   VerifyPaymentInput,
   CheckoutCartInput,
 } from "@/lib/validators/payment";
@@ -25,6 +29,13 @@ function generateReceipt(): string {
   const ts = Date.now().toString(36);
   const rand = Math.random().toString(36).substring(2, 8);
   return `rcpt_${ts}_${rand}`;
+}
+
+function allocateAmounts(totalAmount: number, count: number): number[] {
+  if (count <= 0) return [];
+  const base = Math.floor(totalAmount / count);
+  const remainder = totalAmount - base * count;
+  return Array.from({ length: count }, (_, idx) => base + (idx < remainder ? 1 : 0));
 }
 
 export const paymentService = {
@@ -63,6 +74,9 @@ export const paymentService = {
     if (!beat) throw new NotFoundError("Beat");
     if (!beat.isPublished || beat.status !== "published") {
       throw new ConflictError("This beat is not available for purchase");
+    }
+    if (beat.saleMode === "pack_only") {
+      throw new ConflictError("This beat is sold only via a beat pack");
     }
 
     const receipt = generateReceipt();
@@ -110,6 +124,88 @@ export const paymentService = {
     return {
       orderId: razorpayOrder.id,
       amount: license.price,
+      currency: "INR",
+      internalOrderId: order._id.toString(),
+    };
+  },
+
+  async createPackOrder(
+    input: CreatePackOrderInput,
+    buyerId: string
+  ): Promise<{ orderId: string; amount: number; currency: string; internalOrderId: string }> {
+    const pack = await beatPackRepository.findById(input.packId);
+    if (!pack || !pack.isPublished || pack.status !== "published") {
+      throw new NotFoundError("Beat pack");
+    }
+
+    const beatIds = pack.beatIds.map((beatId) => beatId.toString());
+    if (beatIds.length === 0) {
+      throw new ConflictError("This beat pack has no beats");
+    }
+
+    const beats = await beatRepository.findByIds(beatIds);
+    if (beats.length !== beatIds.length) {
+      throw new ConflictError("One or more beats in this pack are unavailable");
+    }
+    if (beats.some((beat) => !beat.isPublished || beat.status !== "published")) {
+      throw new ConflictError("This beat pack contains unpublished beats");
+    }
+
+    const alreadyOwned = await Promise.all(
+      beatIds.map((beatId) => purchaseRepository.hasPurchased(buyerId, beatId))
+    );
+    if (alreadyOwned.every(Boolean)) {
+      throw new ConflictError("You already own all beats in this pack");
+    }
+
+    const licenses = await Promise.all(
+      beatIds.map(async (beatId) => {
+        const options = await licenseRepository.findByBeatId(beatId);
+        return options.find((license) => license.type === input.tier && license.isActive);
+      })
+    );
+    if (licenses.some((license) => !license)) {
+      throw new ConflictError(`Missing ${input.tier} license on one or more beats in this pack`);
+    }
+
+    const totalAmount = pack.prices[input.tier];
+    const perBeatAmounts = allocateAmounts(totalAmount, beatIds.length);
+    const receipt = generateReceipt();
+
+    const orderItems: IOrderItem[] = beats.map((beat, idx) => ({
+      beatId: beat._id as unknown as IOrderItem["beatId"],
+      licenseId: licenses[idx]!._id as unknown as IOrderItem["licenseId"],
+      licenseType: input.tier,
+      price: perBeatAmounts[idx],
+      beatTitle: beat.title,
+      sourceType: "pack",
+      sourcePackId: pack._id as unknown as IOrderItem["sourcePackId"],
+    }));
+
+    const order = await orderRepository.create({
+      buyerId: buyerId as unknown as IOrder["buyerId"],
+      items: orderItems,
+      totalAmount,
+      status: "pending",
+      receipt,
+    });
+
+    const razorpayOrder = await razorpay.orders.create({
+      amount: totalAmount * 100,
+      currency: "INR",
+      receipt,
+      notes: {
+        internalOrderId: order._id.toString(),
+        buyerId,
+        packId: pack._id.toString(),
+        packTier: input.tier,
+      },
+    });
+    await orderRepository.attachRazorpayOrderId(order._id.toString(), razorpayOrder.id);
+
+    return {
+      orderId: razorpayOrder.id,
+      amount: totalAmount,
       currency: "INR",
       internalOrderId: order._id.toString(),
     };
@@ -195,6 +291,132 @@ export const paymentService = {
       resourceType: "order",
       resourceId: order._id.toString(),
       metadata: { items: cartItems.length, totalAmount },
+    });
+
+    return {
+      orderId: razorpayOrder.id,
+      amount: totalAmount,
+      currency: "INR",
+      internalOrderId: order._id.toString(),
+    };
+  },
+
+  /**
+   * Create a single Razorpay order for both beat cart items and pack cart items.
+   */
+  async checkoutCombined(
+    buyerId: string
+  ): Promise<{ orderId: string; amount: number; currency: string; internalOrderId: string }> {
+    const [cartItems, packItems] = await Promise.all([
+      cartService.getItems(buyerId),
+      packCartService.getItems(buyerId),
+    ]);
+
+    if (cartItems.length === 0 && packItems.length === 0) {
+      throw new ConflictError("Your cart is empty");
+    }
+
+    // Validate individual beats not already purchased
+    for (const item of cartItems) {
+      const already = await purchaseRepository.hasPurchased(buyerId, item.beatId);
+      if (already) {
+        throw new ConflictError(`You already own "${item.beatTitle}". Remove it from your cart.`);
+      }
+    }
+
+    const orderItems: IOrderItem[] = [];
+
+    // Add individual beat items
+    for (const item of cartItems) {
+      orderItems.push({
+        beatId: item.beatId as unknown as IOrderItem["beatId"],
+        licenseId: item.licenseId as unknown as IOrderItem["licenseId"],
+        licenseType: item.licenseType,
+        price: item.price,
+        beatTitle: item.beatTitle,
+      });
+    }
+
+    // Add pack items (expand each pack into its individual beats)
+    for (const packItem of packItems) {
+      const pack = await beatPackRepository.findById(packItem.packId);
+      if (!pack || !pack.isPublished || pack.status !== "published") continue;
+
+      const beatIds = pack.beatIds.map((id) => id.toString());
+      const beats = await beatRepository.findByIds(beatIds);
+      const licenses = await Promise.all(
+        beatIds.map(async (beatId) => {
+          const options = await licenseRepository.findByBeatId(beatId);
+          return options.find((lic) => lic.type === packItem.tier && lic.isActive);
+        })
+      );
+
+      const packTotal = pack.prices[packItem.tier];
+      const perBeatAmounts = allocateAmounts(packTotal, beatIds.length);
+
+      for (let idx = 0; idx < beats.length; idx++) {
+        const beat = beats[idx];
+        const license = licenses[idx];
+        if (!license) continue;
+
+        orderItems.push({
+          beatId: beat._id as unknown as IOrderItem["beatId"],
+          licenseId: license._id as unknown as IOrderItem["licenseId"],
+          licenseType: packItem.tier,
+          price: perBeatAmounts[idx],
+          beatTitle: beat.title,
+          sourceType: "pack",
+          sourcePackId: pack._id as unknown as IOrderItem["sourcePackId"],
+        });
+      }
+    }
+
+    if (orderItems.length === 0) {
+      throw new ConflictError("No valid items to checkout");
+    }
+
+    const totalAmount = orderItems.reduce((sum, item) => sum + item.price, 0);
+    const receipt = generateReceipt();
+
+    const order = await orderRepository.create({
+      buyerId: buyerId as unknown as IOrder["buyerId"],
+      items: orderItems,
+      totalAmount,
+      status: "pending",
+      receipt,
+    });
+
+    const razorpayOrder = await razorpay.orders.create({
+      amount: totalAmount * 100,
+      currency: "INR",
+      receipt,
+      notes: {
+        internalOrderId: order._id.toString(),
+        buyerId,
+        itemCount: String(orderItems.length),
+        combined: "true",
+      },
+    });
+
+    await orderRepository.attachRazorpayOrderId(order._id.toString(), razorpayOrder.id);
+
+    logger.info("Combined checkout order created", {
+      orderId: order._id,
+      razorpayOrderId: razorpayOrder.id,
+      beatItems: cartItems.length,
+      packItems: packItems.length,
+      totalAmount,
+    });
+    audit({
+      action: "cart.checkout",
+      userId: buyerId,
+      resourceType: "order",
+      resourceId: order._id.toString(),
+      metadata: {
+        beatItems: cartItems.length,
+        packItems: packItems.length,
+        totalAmount,
+      },
     });
 
     return {
@@ -313,6 +535,9 @@ export const paymentService = {
         if (!beat.isPublished || beat.status !== "published") {
           throw new ConflictError("Beat is no longer available for purchase");
         }
+        if (beat.saleMode === "pack_only" && item.sourceType !== "pack") {
+          throw new ConflictError("Beat is only purchasable through its beat pack");
+        }
         if (!license || !license.isActive) {
           throw new ConflictError("License is no longer available");
         }
@@ -332,6 +557,8 @@ export const paymentService = {
               orderId: input.orderId,
               paymentId: input.paymentId,
               amount: item.price,
+              sourceType: item.sourceType ?? "beat",
+              sourcePackId: item.sourcePackId as unknown as IPurchase["sourcePackId"],
             },
             { session }
           );
@@ -365,8 +592,30 @@ export const paymentService = {
 
       await cartRepository.clear(buyerId, { session });
 
+      // Increment beat pack salesCount and clear pack cart for pack purchases
+      const packIds = new Set<string>();
+      for (const item of paidOrder.items) {
+        if (item.sourceType === "pack" && item.sourcePackId) {
+          packIds.add(item.sourcePackId.toString());
+        }
+      }
+      for (const packId of packIds) {
+        await beatPackRepository.incrementSalesCount(packId, { session });
+      }
+
       return { paidOrder, purchases, createdCount, reusedCount };
     });
+
+    // Clear pack cart items outside the transaction (non-critical)
+    const purchasedPackIds = new Set<string>();
+    for (const item of result.paidOrder.items) {
+      if (item.sourceType === "pack" && item.sourcePackId) {
+        purchasedPackIds.add(item.sourcePackId.toString());
+      }
+    }
+    for (const packId of purchasedPackIds) {
+      await packCartRepository.remove(buyerId, packId).catch(() => {});
+    }
 
     logger.info("Payment verified and recorded", {
       orderId: order._id,

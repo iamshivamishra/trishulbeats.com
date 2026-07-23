@@ -15,6 +15,7 @@ export interface MarketplaceBeatDto {
   startingPrice: number | null;
   producerName: string;
   producerUsername: string | null;
+  saleMode?: "single" | "pack_only";
   createdAt: string;
 }
 

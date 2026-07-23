@@ -5,8 +5,18 @@ export const createOrderSchema = z.object({
   licenseId: z.string().min(1, "License ID is required"),
 });
 
+export const createPackOrderSchema = z.object({
+  packId: z.string().min(1, "Pack ID is required"),
+  tier: z.enum(["basic", "premium", "unlimited"]),
+});
+
 export const checkoutCartSchema = z.object({
   fromCart: z.literal(true),
+});
+
+export const checkoutCombinedSchema = z.object({
+  fromCart: z.literal(true),
+  includePackCart: z.literal(true),
 });
 
 export const verifyPaymentSchema = z.object({
@@ -21,6 +31,8 @@ export const failOrderSchema = z.object({
 });
 
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
+export type CreatePackOrderInput = z.infer<typeof createPackOrderSchema>;
 export type CheckoutCartInput = z.infer<typeof checkoutCartSchema>;
+export type CheckoutCombinedInput = z.infer<typeof checkoutCombinedSchema>;
 export type VerifyPaymentInput = z.infer<typeof verifyPaymentSchema>;
 export type FailOrderInput = z.infer<typeof failOrderSchema>;

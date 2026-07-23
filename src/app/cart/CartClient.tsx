@@ -25,7 +25,8 @@ import {
 } from "@/components/ui/select";
 import { useCart } from "@/components/CartProvider";
 import { tierAccent } from "@/lib/license-ui";
-import type { CartItemPopulated, ILicense } from "@/types";
+import { packCartApi } from "@/lib/api/pack-cart";
+import type { BeatPackCartItemPopulated, CartItemPopulated, ILicense } from "@/types";
 
 function CartItemRow({
   item,
@@ -148,12 +149,38 @@ export default function CartClient() {
   const { data: session } = useSession();
   const { items, count, total, loading, removeItem, updateLicense, clearCart, refresh } = useCart();
   const router = useRouter();
+  const [packItems, setPackItems] = useState<BeatPackCartItemPopulated[]>([]);
+  const [loadingPackItems, setLoadingPackItems] = useState(true);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [removingPackId, setRemovingPackId] = useState<string | null>(null);
   const [clearing, setClearing] = useState(false);
   const [checkingOut, setCheckingOut] = useState(false);
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
 
   const isGuest = !session?.user;
+  const packTotal = packItems.reduce((sum, item) => sum + item.price, 0);
+  const overallTotal = total + packTotal;
+  const overallCount = count + packItems.length;
+
+  useEffect(() => {
+    const fetchPackItems = async () => {
+      if (isGuest) {
+        setPackItems([]);
+        setLoadingPackItems(false);
+        return;
+      }
+      try {
+        setLoadingPackItems(true);
+        const response = await packCartApi.get();
+        setPackItems(response.items);
+      } catch {
+        setPackItems([]);
+      } finally {
+        setLoadingPackItems(false);
+      }
+    };
+    fetchPackItems();
+  }, [isGuest]);
 
   const handleRemove = async (beatId: string) => {
     setRemovingId(beatId);
@@ -164,7 +191,26 @@ export default function CartClient() {
   const handleClear = async () => {
     setClearing(true);
     await clearCart();
+    if (!isGuest) {
+      await fetch("/api/cart/packs", { method: "DELETE" }).catch(() => {});
+      setPackItems([]);
+    }
     setClearing(false);
+  };
+
+  const handleRemovePack = async (packId: string) => {
+    setRemovingPackId(packId);
+    try {
+      await packCartApi.remove(packId);
+      const response = await packCartApi.get();
+      setPackItems(response.items);
+      toast.success("Pack removed from cart");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not remove pack";
+      toast.error(message);
+    } finally {
+      setRemovingPackId(null);
+    }
   };
 
   const handleUpdateLicense = async (beatId: string, licenseId: string) => {
@@ -180,10 +226,15 @@ export default function CartClient() {
         return;
       }
 
+      const hasPackItems = packItems.length > 0;
       const res = await fetch("/api/payment/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fromCart: true }),
+        body: JSON.stringify(
+          hasPackItems
+            ? { fromCart: true, includePackCart: true }
+            : { fromCart: true }
+        ),
       });
 
       if (!res.ok) {
@@ -199,7 +250,7 @@ export default function CartClient() {
         amount: amount * 100,
         currency: "INR",
         name: "Trishul Beats",
-        description: `${count} ${count === 1 ? "beat" : "beats"} — Trishul Beats`,
+        description: `${overallCount} ${overallCount === 1 ? "item" : "items"} — Trishul Beats`,
         order_id: orderId,
         handler: async (response: {
           razorpay_order_id: string;
@@ -285,12 +336,12 @@ export default function CartClient() {
         <div>
           <h1 className="text-3xl font-semibold">Your Cart</h1>
           <p className="mt-1 text-muted-foreground">
-            {count === 0
+            {overallCount === 0
               ? "Your cart is empty"
-              : `${count} ${count === 1 ? "item" : "items"} in your cart`}
+              : `${overallCount} ${overallCount === 1 ? "item" : "items"} in your cart`}
           </p>
         </div>
-        {count > 0 && (
+        {overallCount > 0 && (
           <Button
             variant="ghost"
             size="sm"
@@ -308,17 +359,17 @@ export default function CartClient() {
         )}
       </div>
 
-      {count === 0 ? (
+      {count === 0 && packItems.length === 0 && !loadingPackItems ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <ShoppingCart className="mb-4 h-16 w-16 text-muted-foreground/30" />
           <p className="text-lg font-medium">No items in your cart</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Browse beats and add tracks you love.
+            Browse beats or beat packs and add what you love.
           </p>
           <Button asChild className="mt-6" size="lg">
-            <Link href="/beats">
+            <Link href="/beat-packs">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Browse Beats
+              Browse Beat Packs
             </Link>
           </Button>
         </div>
@@ -327,6 +378,36 @@ export default function CartClient() {
           {/* Items list */}
           <Card className="border-border/50 bg-card/80">
             <CardContent className="divide-y divide-border/50 p-4 sm:p-6">
+              {packItems.map((item) => (
+                <div key={`pack-${item.packId}`} className="flex items-center justify-between py-4">
+                  <div>
+                    <p className="font-semibold">{item.packTitle}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Beat Pack • {item.beatCount} beats • by {item.producerName}
+                    </p>
+                    <Badge variant="outline" className="mt-1 text-xs capitalize">
+                      {item.tier} tier
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-lg font-bold text-primary">₹{item.price.toLocaleString()}</p>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                      onClick={() => handleRemovePack(item.packId)}
+                      disabled={removingPackId === item.packId}
+                    >
+                      {removingPackId === item.packId ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              ))}
+
               {items.map((item) => (
                 <CartItemRow
                   key={item.beatId}
@@ -349,6 +430,16 @@ export default function CartClient() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2 text-sm">
+                  {packItems.map((item) => (
+                    <div key={`summary-pack-${item.packId}`} className="flex justify-between">
+                      <span className="truncate pr-2 text-muted-foreground">
+                        {item.packTitle} ({item.tier})
+                      </span>
+                      <span className="shrink-0 font-medium">
+                        ₹{item.price.toLocaleString()}
+                      </span>
+                    </div>
+                  ))}
                   {items.map((item) => (
                     <div key={item.beatId} className="flex justify-between">
                       <span className="truncate pr-2 text-muted-foreground">
@@ -366,7 +457,7 @@ export default function CartClient() {
                 <div className="flex justify-between text-base font-bold">
                   <span>Total</span>
                   <span className="text-primary">
-                    ₹{total.toLocaleString()}
+                    ₹{overallTotal.toLocaleString()}
                   </span>
                 </div>
 
@@ -393,30 +484,38 @@ export default function CartClient() {
                     </Button>
                   </div>
                 ) : (
-                  <Button
-                    className="w-full"
-                    size="lg"
-                    onClick={handleCheckout}
-                    disabled={checkingOut}
-                  >
-                    {checkingOut ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Creating order...
-                      </>
-                    ) : (
-                      <>
-                        <CreditCard className="mr-2 h-4 w-4" />
-                        Checkout — ₹{total.toLocaleString()}
-                      </>
-                    )}
-                  </Button>
+                  <div className="space-y-2">
+                    <Button
+                      className="w-full"
+                      size="lg"
+                      onClick={handleCheckout}
+                      disabled={checkingOut}
+                    >
+                      {checkingOut ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Creating order...
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="mr-2 h-4 w-4" />
+                          Checkout — ₹{overallTotal.toLocaleString()}
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 )}
 
                 <Button asChild variant="ghost" size="sm" className="w-full">
                   <Link href="/beats">
                     <ArrowLeft className="mr-1.5 h-4 w-4" />
-                    Continue Shopping
+                    Continue Shopping Beats
+                  </Link>
+                </Button>
+                <Button asChild variant="ghost" size="sm" className="w-full">
+                  <Link href="/beat-packs">
+                    <ArrowLeft className="mr-1.5 h-4 w-4" />
+                    Continue Shopping Packs
                   </Link>
                 </Button>
               </CardContent>
