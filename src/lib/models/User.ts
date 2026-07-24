@@ -25,6 +25,8 @@ const UserSchema = new Schema<IUser>(
     verified: { type: Boolean, default: false },
     followersCount: { type: Number, default: 0 },
     salesCount: { type: Number, default: 0 },
+    resetToken: { type: String, select: false },
+    resetTokenExpiry: { type: Date, select: false },
   },
   { timestamps: true }
 );

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import SalesClient from "@/app/studio/sales/SalesClient";
+import SalesClient from "@/features/studio/SalesClient";
 
 export const dynamic = "force-dynamic";
 

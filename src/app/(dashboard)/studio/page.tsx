@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import StudioDashboard from "@/app/studio/StudioDashboard";
+import StudioDashboard from "@/features/studio/StudioDashboard";
 
 export const dynamic = "force-dynamic";
 

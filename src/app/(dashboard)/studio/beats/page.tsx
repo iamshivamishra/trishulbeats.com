@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { beatService } from "@/lib/services/beat.service";
+import { beatPackRepository } from "@/lib/repositories/beat-pack.repository";
 import { purchaseRepository } from "@/lib/repositories/purchase.repository";
 import { licenseRepository } from "@/lib/repositories/license.repository";
-import StudioBeatsClient from "@/app/studio/beats/StudioBeatsClient";
+import StudioBeatsClient from "@/features/studio/StudioBeatsClient";
 import type { BeatStatus } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -32,10 +33,17 @@ export default async function StudioBeatsPage({ searchParams }: Props) {
     purchaseRepository.getEarningsByProducer(session.user.id),
   ]);
 
+  const packIds = [...new Set(
+    result.data.filter((b) => b.packId).map((b) => b.packId!.toString())
+  )];
+  const packs = packIds.length > 0 ? await beatPackRepository.findByIds(packIds) : [];
+  const packMap = new Map(packs.map((p) => [p._id.toString(), p.title]));
+
   const beatsWithLicenses = await Promise.all(
     result.data.map(async (beat) => {
       const cheapest = await licenseRepository.findCheapestForBeat(beat._id.toString());
-      return { ...JSON.parse(JSON.stringify(beat)), startingPrice: cheapest?.price };
+      const packTitle = beat.packId ? packMap.get(beat.packId.toString()) || null : null;
+      return { ...JSON.parse(JSON.stringify(beat)), startingPrice: cheapest?.price, packTitle };
     })
   );
 

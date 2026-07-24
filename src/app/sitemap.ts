@@ -18,7 +18,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   await connectDB();
 
   const [beats, producers] = await Promise.all([
-    Beat.find({ isPublished: true })
+    Beat.find({
+      isPublished: true,
+      $or: [{ saleMode: { $exists: false } }, { saleMode: "single" }],
+    })
       .select("_id updatedAt")
       .sort({ updatedAt: -1 })
       .limit(500)

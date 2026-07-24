@@ -39,6 +39,7 @@ export const cartService = {
         !beat ||
         !beat.isPublished ||
         beat.status !== "published" ||
+        beat.saleMode === "pack_only" ||
         !license ||
         !license.isActive
       ) {
@@ -69,6 +70,9 @@ export const cartService = {
     if (!beat) throw new NotFoundError("Beat");
     if (!beat.isPublished || beat.status !== "published") {
       throw new ConflictError("This beat is not available for purchase");
+    }
+    if (beat.saleMode === "pack_only") {
+      throw new ConflictError("This beat is only available as part of a beat pack");
     }
 
     const license = await licenseRepository.findById(licenseId);

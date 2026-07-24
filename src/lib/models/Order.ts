@@ -12,6 +12,8 @@ const OrderItemSchema = new Schema(
     },
     price: { type: Number, required: true, min: 0 },
     beatTitle: { type: String, required: true },
+    sourceType: { type: String, enum: ["beat", "pack"], default: "beat" },
+    sourcePackId: { type: Schema.Types.ObjectId, ref: "BeatPack" },
   },
   { _id: false }
 );

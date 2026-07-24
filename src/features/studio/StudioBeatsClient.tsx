@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import {
   Music, Upload, Play, DollarSign, BarChart3, FileText,
   Pencil, Trash2, Eye, EyeOff, Archive, MoreHorizontal,
-  ChevronLeft, ChevronRight, Loader2,
+  ChevronLeft, ChevronRight, Layers, Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +32,7 @@ import type { IBeat, BeatStatus } from "@/types";
 
 interface BeatWithPrice extends IBeat {
   startingPrice?: number;
+  packTitle?: string | null;
 }
 
 interface Props {
@@ -248,6 +249,7 @@ export default function StudioBeatsClient({
                 <TableHead className="hidden md:table-cell">BPM</TableHead>
                 <TableHead className="hidden lg:table-cell">Plays</TableHead>
                 <TableHead className="hidden lg:table-cell">Sales</TableHead>
+                <TableHead className="hidden md:table-cell">Pack</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="hidden sm:table-cell">Date</TableHead>
                 <TableHead className="w-[50px]" />
@@ -309,6 +311,20 @@ export default function StudioBeatsClient({
 
                   <TableCell className="hidden lg:table-cell text-sm">
                     {beat.salesCount ?? 0}
+                  </TableCell>
+
+                  <TableCell className="hidden md:table-cell">
+                    {beat.packTitle ? (
+                      <Link
+                        href={`/studio/beat-packs/${beat.packId}/edit`}
+                        className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                      >
+                        <Layers className="h-3 w-3" />
+                        <span className="max-w-[120px] truncate">{beat.packTitle}</span>
+                      </Link>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
                   </TableCell>
 
                   <TableCell>{statusBadge(beat.status)}</TableCell>

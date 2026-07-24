@@ -35,6 +35,10 @@ async function decodeAudioData(url: string): Promise<Float32Array | null> {
   try {
     const ctx = new AudioContext();
     const response = await fetch(url);
+    if (!response.ok) {
+      return null;
+    }
+
     const arrayBuffer = await response.arrayBuffer();
     const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
     const channelData = audioBuffer.getChannelData(0);

@@ -49,6 +49,8 @@ export const beatService = {
           salesCount: 0,
           likesCount: 0,
           isPublished,
+          saleMode: "single",
+          packId: undefined,
         },
         { session }
       );

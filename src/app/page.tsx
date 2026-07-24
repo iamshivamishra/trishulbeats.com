@@ -1,13 +1,15 @@
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowRight, Headphones, Music, Zap, TrendingUp,
-  Search, ShoppingCart, Download, Star,
+  Search, ShoppingCart, Download, Star, Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import BeatCard from "@/components/BeatCard";
 import { beatRepository } from "@/lib/repositories/beat.repository";
+import { beatPackRepository } from "@/lib/repositories/beat-pack.repository";
 import { licenseRepository } from "@/lib/repositories/license.repository";
 import { toPublicBeatForUi } from "@/lib/serializers/beat";
 import { userRepository } from "@/lib/repositories/user.repository";
@@ -15,15 +17,15 @@ import { userRepository } from "@/lib/repositories/user.repository";
 export const revalidate = 120;
 
 const GENRE_CARDS = [
-  { name: "Pop", emoji: "", color: "hsl(280, 80%, 55%)" },
-  { name: "Rock", emoji: "", color: "hsl(10, 80%, 55%)" },
-  { name: "Hip Hop", emoji: "", color: "hsl(200, 80%, 55%)" },
-  { name: "Jazz", emoji: "", color: "hsl(45, 80%, 50%)" },
-  { name: "Electronic", emoji: "", color: "hsl(170, 80%, 45%)" },
-  { name: "R&B", emoji: "", color: "hsl(330, 70%, 55%)" },
-  { name: "Trap", emoji: "", color: "hsl(25, 90%, 55%)" },
-  { name: "Lo-Fi", emoji: "", color: "hsl(220, 60%, 55%)" },
-  { name: "Afrobeats", emoji: "", color: "hsl(140, 70%, 45%)" },
+  { name: "Pop", emoji: "🎵", color: "hsl(280, 80%, 55%)" },
+  { name: "Rock", emoji: "🎸", color: "hsl(10, 80%, 55%)" },
+  { name: "Hip Hop", emoji: "🎤", color: "hsl(200, 80%, 55%)" },
+  { name: "Jazz", emoji: "🎷", color: "hsl(45, 80%, 50%)" },
+  { name: "Electronic", emoji: "🎧", color: "hsl(170, 80%, 45%)" },
+  { name: "R&B", emoji: "🎹", color: "hsl(330, 70%, 55%)" },
+  { name: "Trap", emoji: "🔊", color: "hsl(25, 90%, 55%)" },
+  { name: "Lo-Fi", emoji: "🌙", color: "hsl(220, 60%, 55%)" },
+  { name: "Afrobeats", emoji: "🥁", color: "hsl(140, 70%, 45%)" },
 ];
 
 const TESTIMONIALS = [
@@ -94,6 +96,22 @@ export default async function HomePage() {
 
   const recentWithPrices = await getBeatsWithPrices(recentBeats);
   const trendingWithPrices = await getBeatsWithPrices(trendingBeats);
+
+  const packResult = await beatPackRepository.listPublished(1, 3);
+  const featuredPacks = await Promise.all(
+    packResult.data.map(async (pack) => {
+      const producer = await userRepository.findById(pack.producerId.toString());
+      const minPrice = Math.min(pack.prices.basic, pack.prices.premium, pack.prices.unlimited);
+      return {
+        id: pack._id.toString(),
+        title: pack.title,
+        coverUrl: pack.coverUrl,
+        beatCount: pack.beatIds.length,
+        producerName: producer?.displayName || producer?.name || "Unknown",
+        startingPrice: minPrice,
+      };
+    })
+  );
 
   return (
     <div>
@@ -216,7 +234,7 @@ export default async function HomePage() {
                 </Link>
               </Button>
               <Button asChild variant="outline" size="lg">
-                {/* <Link href="/signup">Start Selling</Link> */}
+                <Link href="/signup">Start Selling</Link>
               </Button>
             </div>
           </div>
@@ -302,6 +320,55 @@ export default async function HomePage() {
     startingPrice={startingPrice}
   />
 ))}
+          </div>
+        </section>
+      )}
+
+      {/* Featured Beat Packs */}
+      {featuredPacks.length > 0 && (
+        <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <div className="mb-8 flex items-end justify-between">
+            <div>
+              <h2 className="text-2xl font-semibold sm:text-3xl">Featured Beat Packs</h2>
+              <p className="mt-2 text-muted-foreground">
+                Curated collections — get more beats for less.
+              </p>
+            </div>
+            <Link href="/beat-packs" className="text-sm font-medium text-primary hover:underline">
+              View All →
+            </Link>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {featuredPacks.map((pack) => (
+              <Link key={pack.id} href={`/beat-packs/${pack.id}`} className="group">
+                <div className="overflow-hidden rounded-xl border border-border/50 bg-card/80 transition hover:border-border hover:shadow-md">
+                  <div className="relative aspect-video w-full bg-muted/30">
+                    {pack.coverUrl ? (
+                      <Image
+                        src={pack.coverUrl}
+                        alt={pack.title}
+                        fill
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                        className="object-cover transition group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <Layers className="h-8 w-8 text-muted-foreground/40" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-4">
+                    <h3 className="font-semibold group-hover:text-primary transition-colors">{pack.title}</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {pack.beatCount} beats • by {pack.producerName}
+                    </p>
+                    <p className="mt-2 text-sm font-bold text-primary">
+                      Starting at ₹{pack.startingPrice.toLocaleString("en-IN")}
+                    </p>
+                  </div>
+                </div>
+              </Link>
+            ))}
           </div>
         </section>
       )}

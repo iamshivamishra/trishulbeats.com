@@ -15,6 +15,9 @@ const SORT_MAP: Record<SortOption, Record<string, SortOrder>> = {
 };
 
 const PUBLIC_BEAT_EXCLUSIONS = "-audioFullUrl -stemsUrl -storageKeys";
+const PUBLIC_SALE_MODE_FILTER: FilterQuery<IBeat> = {
+  $or: [{ saleMode: { $exists: false } }, { saleMode: "single" }],
+};
 
 interface RepoOptions {
   session?: ClientSession;
@@ -32,6 +35,9 @@ export const beatRepository = {
 
     if (filters.isPublished !== undefined) query.isPublished = filters.isPublished;
     else query.isPublished = true;
+    if (query.isPublished) {
+      Object.assign(query, PUBLIC_SALE_MODE_FILTER);
+    }
 
     if (filters.genre) query.genre = filters.genre;
     if (filters.key) query.key = filters.key;
@@ -109,7 +115,10 @@ export const beatRepository = {
   async findByProducerId(producerId: string, includeUnpublished = false): Promise<IBeat[]> {
     await connectDB();
     const query: FilterQuery<IBeat> = { producerId };
-    if (!includeUnpublished) query.isPublished = true;
+    if (!includeUnpublished) {
+      query.isPublished = true;
+      Object.assign(query, PUBLIC_SALE_MODE_FILTER);
+    }
     const dbQuery = Beat.find(query).sort({ createdAt: -1 });
     if (!includeUnpublished) {
       dbQuery.select(PUBLIC_BEAT_EXCLUSIONS);
@@ -212,7 +221,7 @@ export const beatRepository = {
 
   async findRecent(limit = 8): Promise<IBeat[]> {
     await connectDB();
-    return Beat.find({ isPublished: true })
+    return Beat.find({ isPublished: true, ...PUBLIC_SALE_MODE_FILTER })
       .select(PUBLIC_BEAT_EXCLUSIONS)
       .sort({ createdAt: -1 })
       .limit(limit)
@@ -221,7 +230,7 @@ export const beatRepository = {
 
   async findTrending(limit = 8): Promise<IBeat[]> {
     await connectDB();
-    return Beat.find({ isPublished: true })
+    return Beat.find({ isPublished: true, ...PUBLIC_SALE_MODE_FILTER })
       .select(PUBLIC_BEAT_EXCLUSIONS)
       .sort({ plays: -1 })
       .limit(limit)
@@ -248,6 +257,7 @@ export const beatRepository = {
     const byGenre = await Beat.find({
       _id: { $ne: beatId },
       isPublished: true,
+      ...PUBLIC_SALE_MODE_FILTER,
       $or: [{ genre }, { producerId }],
     })
       .select(PUBLIC_BEAT_EXCLUSIONS)
@@ -261,6 +271,7 @@ export const beatRepository = {
     const filler = await Beat.find({
       _id: { $nin: existingIds },
       isPublished: true,
+      ...PUBLIC_SALE_MODE_FILTER,
     })
       .select(PUBLIC_BEAT_EXCLUSIONS)
       .sort({ plays: -1 })
@@ -291,5 +302,30 @@ export const beatRepository = {
   async deleteById(beatId: string) {
     await connectDB();
     return Beat.findByIdAndDelete(beatId);
+  },
+
+  async assignPackToBeats(beatIds: string[], packId: string, options: RepoOptions = {}): Promise<void> {
+    await connectDB();
+    await Beat.updateMany(
+      { _id: { $in: beatIds } },
+      { $set: { packId, saleMode: "pack_only" } },
+      { session: options.session }
+    );
+  },
+
+  async clearPackFromBeats(beatIds: string[], options: RepoOptions = {}): Promise<void> {
+    await connectDB();
+    await Beat.updateMany(
+      { _id: { $in: beatIds } },
+      { $set: { saleMode: "single" }, $unset: { packId: 1 } },
+      { session: options.session }
+    );
+  },
+
+  async findByPackId(packId: string, includeFullAudio = false): Promise<IBeat[]> {
+    await connectDB();
+    const query = Beat.find({ packId });
+    if (!includeFullAudio) query.select(PUBLIC_BEAT_EXCLUSIONS);
+    return query.lean<IBeat[]>();
   }
 };

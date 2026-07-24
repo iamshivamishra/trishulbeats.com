@@ -19,6 +19,7 @@ import {
   Music,
 } from "lucide-react";
 import { useAudioPlayer } from "@/components/AudioPlayerContext";
+import ShareDialog from "@/components/ShareDialog";
 import { formatDuration } from "@/lib/format";
 
 export default function BottomPlayer() {
@@ -46,14 +47,7 @@ export default function BottomPlayer() {
     seek(percent);
   };
 
-  const handleShare = async () => {
-    const url = `${window.location.origin}/beats/${currentBeat.id}`;
-    if (navigator.share) {
-      navigator.share({ title: currentBeat.title, url }).catch(() => {});
-    } else {
-      navigator.clipboard.writeText(url);
-    }
-  };
+  const beatUrl = typeof window !== "undefined" ? `${window.location.origin}/beats/${currentBeat.id}` : "";
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#0d0d0d]">
@@ -93,9 +87,14 @@ export default function BottomPlayer() {
 
         {/* Share / Download / Like - tablet+ only */}
         <div className="hidden shrink-0 items-center gap-3 text-zinc-400 md:flex">
-          <button onClick={handleShare} aria-label="Share" className="hover:text-white">
-            <Share2 className="h-4 w-4" />
-          </button>
+          <ShareDialog
+            title={currentBeat.title}
+            url={beatUrl}
+          >
+            <button aria-label="Share" className="hover:text-white text-zinc-400">
+              <Share2 className="h-4 w-4" />
+            </button>
+          </ShareDialog>
           <Link href={`/beats/${currentBeat.id}`} aria-label="Download" className="hover:text-white">
             <Download className="h-4 w-4" />
           </Link>

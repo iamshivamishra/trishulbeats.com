@@ -26,6 +26,8 @@ export interface IUser {
   verified?: boolean;
   followersCount?: number;
   salesCount?: number;
+  resetToken?: string;
+  resetTokenExpiry?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -62,6 +64,30 @@ export interface IBeat {
   salesCount: number;
   likesCount: number;
   isPublished: boolean;
+  saleMode?: "single" | "pack_only";
+  packId?: string | Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type BeatPackStatus = "draft" | "published" | "archived";
+
+export interface IBeatPack {
+  _id: string | Types.ObjectId;
+  title: string;
+  description?: string;
+  producerId: string | Types.ObjectId;
+  coverUrl?: string;
+  tags: string[];
+  beatIds: Array<string | Types.ObjectId>;
+  prices: {
+    basic: number;
+    premium: number;
+    unlimited: number;
+  };
+  status: BeatPackStatus;
+  isPublished: boolean;
+  salesCount: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -103,6 +129,8 @@ export interface IPurchase {
   orderId: string;
   paymentId: string;
   amount: number;
+  sourceType?: "beat" | "pack";
+  sourcePackId?: string | Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -115,6 +143,8 @@ export interface IOrderItem {
   licenseType: LicenseType;
   price: number;
   beatTitle: string;
+  sourceType?: "beat" | "pack";
+  sourcePackId?: string | Types.ObjectId;
 }
 
 export interface IOrder {
@@ -151,6 +181,23 @@ export interface CartItemPopulated {
   licenseName: string;
   licenseType: LicenseType;
   price: number;
+}
+
+export interface IBeatPackCartItem {
+  _id?: string | Types.ObjectId;
+  userId: string | Types.ObjectId;
+  packId: string | Types.ObjectId;
+  tier: LicenseType;
+  addedAt: Date;
+}
+
+export interface BeatPackCartItemPopulated {
+  packId: string;
+  packTitle: string;
+  tier: LicenseType;
+  price: number;
+  beatCount: number;
+  producerName: string;
 }
 
 export interface JWTPayload {

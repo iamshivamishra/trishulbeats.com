@@ -5,12 +5,13 @@ import { auth } from "@/lib/auth";
 import { userRepository } from "@/lib/repositories/user.repository";
 import { purchaseRepository } from "@/lib/repositories/purchase.repository";
 import { beatRepository } from "@/lib/repositories/beat.repository";
+import { beatPackRepository } from "@/lib/repositories/beat-pack.repository";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Music, ShoppingBag, Calendar, ArrowRight, Pencil, ExternalLink } from "lucide-react";
+import { Music, ShoppingBag, Calendar, ArrowRight, Pencil, ExternalLink, Layers } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,39 @@ export default async function ProfilePage() {
       return { purchase: p, beat };
     })
   );
+  const packPurchaseMap = new Map<string, {
+    packId: string;
+    purchasedAt: Date;
+    tier: string;
+    beatCount: number;
+  }>();
+  for (const purchase of purchases) {
+    const packId = purchase.sourcePackId?.toString();
+    if (!packId) continue;
+    const existing = packPurchaseMap.get(packId);
+    if (!existing) {
+      packPurchaseMap.set(packId, {
+        packId,
+        purchasedAt: purchase.createdAt,
+        tier: purchase.licenseType,
+        beatCount: 1,
+      });
+      continue;
+    }
+    existing.beatCount += 1;
+    if (purchase.createdAt < existing.purchasedAt) {
+      existing.purchasedAt = purchase.createdAt;
+    }
+  }
+  const purchasedPackIds = Array.from(packPurchaseMap.keys());
+  const purchasedPacks = await beatPackRepository.findByIds(purchasedPackIds);
+  const purchasedPackRows = purchasedPacks.map((pack) => ({
+    packId: pack._id.toString(),
+    title: pack.title,
+    beatCount: pack.beatIds.length,
+    purchasedAt: packPurchaseMap.get(pack._id.toString())?.purchasedAt ?? new Date(),
+    tier: packPurchaseMap.get(pack._id.toString())?.tier ?? "basic",
+  }));
 
   const displayName = user.displayName || user.name;
   const initials = displayName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
@@ -84,6 +118,52 @@ export default async function ProfilePage() {
       </Card>
 
       <Separator className="my-8" />
+
+      <Card className="mb-8 rounded-2xl border-border/50 bg-card/80 shadow-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Layers className="h-5 w-5 text-primary" />
+            My Beat Packs
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {purchasedPackRows.length > 0 ? (
+            <div className="space-y-3">
+              {purchasedPackRows.map((pack) => (
+                <div
+                  key={pack.packId}
+                  className="flex items-center justify-between rounded-lg border border-border/30 bg-background p-3"
+                >
+                  <div>
+                    <p className="text-sm font-medium">{pack.title}</p>
+                    <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                      <Badge variant="outline" className="capitalize text-xs">
+                        {pack.tier}
+                      </Badge>
+                      <span>{pack.beatCount} beats</span>
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {new Date(pack.purchasedAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                  <Button asChild variant="outline" size="sm">
+                    <Link href={`/beat-packs/${pack.packId}`}>Open Pack</Link>
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="py-8 text-center text-muted-foreground">
+              <Layers className="mx-auto mb-2 h-8 w-8" />
+              <p>No beat pack purchases yet.</p>
+              <Button asChild variant="link" className="mt-2">
+                <Link href="/beat-packs">Browse Beat Packs</Link>
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="rounded-2xl border-border/50 bg-card/80 shadow-sm">
         <CardHeader>
