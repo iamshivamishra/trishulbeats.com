@@ -12,7 +12,7 @@ import {
   CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle,
+  CardTitle,  
 } from "@/components/ui/card";
 
 export default function ForgotPasswordForm() {
