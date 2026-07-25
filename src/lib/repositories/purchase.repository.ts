@@ -31,6 +31,15 @@ export const purchaseRepository = {
     return (await Purchase.countDocuments({ buyerId, beatId }).session(options.session ?? null)) > 0;
   },
 
+  async hasPurchasedBatch(buyerId: string, beatIds: string[], options: RepoOptions = {}): Promise<Set<string>> {
+    await connectDB();
+    if (beatIds.length === 0) return new Set();
+    const results = await Purchase.find({ buyerId, beatId: { $in: beatIds } })
+      .distinct("beatId")
+      .session(options.session ?? null);
+    return new Set(results.map((id: unknown) => id?.toString() ?? ""));
+  },
+
   async findByBuyerAndBeat(
     buyerId: string,
     beatId: string,
@@ -75,18 +84,18 @@ export const purchaseRepository = {
     if (!producerObjectId) {
       return 0;
     }
-    // Requires a join with Beat to filter by producerId
     const result = await Purchase.aggregate([
       {
         $lookup: {
           from: "beats",
-          localField: "beatId",
-          foreignField: "_id",
+          let: { beatId: "$beatId" },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$_id", "$$beatId"] }, producerId: producerObjectId } },
+          ],
           as: "beat",
         },
       },
       { $unwind: "$beat" },
-      { $match: { "beat.producerId": producerObjectId } },
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]);
     return result[0]?.total ?? 0;
@@ -118,22 +127,20 @@ export const purchaseRepository = {
     const since = new Date();
     since.setMonth(since.getMonth() - months);
 
+    const producerObjectId = new mongoose.Types.ObjectId(producerId);
     const result = await Purchase.aggregate([
       { $match: { createdAt: { $gte: since } } },
       {
         $lookup: {
           from: "beats",
-          localField: "beatId",
-          foreignField: "_id",
+          let: { beatId: "$beatId" },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$_id", "$$beatId"] }, producerId: producerObjectId } },
+          ],
           as: "beat",
         },
       },
       { $unwind: "$beat" },
-      {
-        $match: {
-          "beat.producerId": new mongoose.Types.ObjectId(producerId),
-        },
-      },
       {
         $group: {
           _id: {
@@ -178,21 +185,19 @@ export const purchaseRepository = {
     { beatId: string; title: string; revenue: number; sales: number }[]
   > {
     await connectDB();
+    const producerObjectId = new mongoose.Types.ObjectId(producerId);
     const result = await Purchase.aggregate([
       {
         $lookup: {
           from: "beats",
-          localField: "beatId",
-          foreignField: "_id",
+          let: { beatId: "$beatId" },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$_id", "$$beatId"] }, producerId: producerObjectId } },
+          ],
           as: "beat",
         },
       },
       { $unwind: "$beat" },
-      {
-        $match: {
-          "beat.producerId": new mongoose.Types.ObjectId(producerId),
-        },
-      },
       {
         $group: {
           _id: "$beatId",
@@ -238,21 +243,19 @@ export const purchaseRepository = {
   }> {
     await connectDB();
 
+    const producerObjectId = new mongoose.Types.ObjectId(producerId);
     const pipeline: mongoose.PipelineStage[] = [
       {
         $lookup: {
           from: "beats",
-          localField: "beatId",
-          foreignField: "_id",
+          let: { beatId: "$beatId" },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$_id", "$$beatId"] }, producerId: producerObjectId } },
+          ],
           as: "beat",
         },
       },
       { $unwind: "$beat" },
-      {
-        $match: {
-          "beat.producerId": new mongoose.Types.ObjectId(producerId),
-        },
-      },
       { $sort: { createdAt: -1 as const } },
     ];
 
@@ -307,21 +310,19 @@ export const purchaseRepository = {
    */
   async countByProducer(producerId: string): Promise<number> {
     await connectDB();
+    const producerObjectId = new mongoose.Types.ObjectId(producerId);
     const result = await Purchase.aggregate([
       {
         $lookup: {
           from: "beats",
-          localField: "beatId",
-          foreignField: "_id",
+          let: { beatId: "$beatId" },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$_id", "$$beatId"] }, producerId: producerObjectId } },
+          ],
           as: "beat",
         },
       },
       { $unwind: "$beat" },
-      {
-        $match: {
-          "beat.producerId": new mongoose.Types.ObjectId(producerId),
-        },
-      },
       { $count: "total" },
     ]);
     return result[0]?.total ?? 0;
@@ -338,6 +339,21 @@ export const purchaseRepository = {
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]);
     return result[0]?.total ?? 0;
+  },
+
+  async findByBuyerIdPaginated(
+    buyerId: string,
+    page = 1,
+    limit = 20
+  ): Promise<{ data: IPurchase[]; total: number; page: number; totalPages: number }> {
+    await connectDB();
+    const total = await Purchase.countDocuments({ buyerId });
+    const data = await Purchase.find({ buyerId })
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean<IPurchase[]>();
+    return { data, total, page, totalPages: Math.ceil(total / limit) };
   },
 
   async findAllPaginated({ page, limit }: { page: number; limit: number }) {

@@ -33,7 +33,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { GENRE_OPTIONS, KEY_OPTIONS, MOOD_OPTIONS } from "@/lib/validators/beat";
-import { useAudioPlayer } from "@/components/AudioPlayerContext";
+import { useAudioActions } from "@/components/AudioPlayerContext";
 
 // ─── Types ────────────────────────────────────────────────────────
 
@@ -428,7 +428,7 @@ function FilePickerSlot({
 // ─── Component ───────────────────────────────────────────────────
 
 export default function PackBeatUploader({ slots, onChange, disabled }: Props) {
-  const { currentBeat, isPlaying, playBeat } = useAudioPlayer();
+  const { currentBeat, isPlaying, playBeat } = useAudioActions();
   const [expandedIndex, setExpandedIndex] = useState<number | null>(
     slots.length > 0 && slots[slots.length - 1].status === "pending"
       ? slots.length - 1

@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import NextImage from "next/image"
 import { Avatar as AvatarPrimitive } from "@base-ui/react/avatar"
 
 import { cn } from "@/lib/utils"
@@ -25,10 +26,27 @@ function Avatar({
   )
 }
 
-function AvatarImage({ className, ...props }: AvatarPrimitive.Image.Props) {
+function AvatarImage({ className, src, ...props }: AvatarPrimitive.Image.Props) {
+  if (src && (src.startsWith("http://") || src.startsWith("https://"))) {
+    return (
+      <NextImage
+        data-slot="avatar-image"
+        src={src}
+        alt={(props as Record<string, string>).alt || ""}
+        fill
+        className={cn(
+          "absolute inset-0 z-10 rounded-full object-cover",
+          className
+        )}
+        sizes="(max-width: 640px) 40px, 96px"
+      />
+    )
+  }
+
   return (
     <AvatarPrimitive.Image
       data-slot="avatar-image"
+      src={src}
       className={cn(
         "aspect-square size-full rounded-full object-cover",
         className

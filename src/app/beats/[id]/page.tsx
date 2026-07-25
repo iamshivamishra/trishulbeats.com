@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -26,7 +27,11 @@ import LikeButton from "@/components/LikeButton";
 import { toPublicBeatForUi } from "@/lib/serializers/beat";
 import { storageService } from "@/lib/services/storage.service";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
+
+const getCachedBeat = cache(async (id: string) => {
+  return beatRepository.findById(id);
+});
 
 interface BeatPageProps {
   params: Promise<{ id: string }>;
@@ -34,7 +39,7 @@ interface BeatPageProps {
 
 export async function generateMetadata({ params }: BeatPageProps): Promise<Metadata> {
   const { id } = await params;
-  const beat = await beatRepository.findById(id);
+  const beat = await getCachedBeat(id);
   if (!beat || !beat.isPublished || beat.status !== "published") {
     return { title: "Beat Not Found" };
   }
@@ -70,7 +75,7 @@ export async function generateMetadata({ params }: BeatPageProps): Promise<Metad
 export default async function BeatPage({ params }: BeatPageProps) {
   const { id } = await params;
   const session = await auth();
-  const beat = await beatRepository.findById(id);
+  const beat = await getCachedBeat(id);
   if (!beat) notFound();
   const isOwner = session?.user?.id === beat.producerId.toString();
   const canViewUnpublished = isOwner || session?.user?.role === "admin";
@@ -92,18 +97,22 @@ export default async function BeatPage({ params }: BeatPageProps) {
   const initialLiked =
     session?.user && canLike ? await likeRepository.isLiked(session.user.id, id) : false;
 
-  const relatedWithPrices = await Promise.all(
-  relatedBeats.map(async (b) => {
-    const [cheapest, relatedProducer] = await Promise.all([
-      licenseRepository.findCheapestForBeat(b._id.toString()),
-      userRepository.findById(b.producerId.toString()),
-    ]);
+  const relatedBeatIds = relatedBeats.map((b) => b._id.toString());
+  const relatedProducerIds = [...new Set(relatedBeats.map((b) => b.producerId.toString()))];
+  const [relatedCheapestMap, relatedProducers] = await Promise.all([
+    licenseRepository.findCheapestForBeats(relatedBeatIds),
+    userRepository.findByIds(relatedProducerIds),
+  ]);
+  const relatedProducerMap = new Map(relatedProducers.map((p) => [p._id.toString(), p]));
+
+  const relatedWithPrices = relatedBeats.map((b) => {
+    const relatedProducer = relatedProducerMap.get(b.producerId.toString()) ?? null;
+    const cheapest = relatedCheapestMap[b._id.toString()];
     return {
       beat: toPublicBeatForUi(b, relatedProducer),
       startingPrice: cheapest?.price,
     };
-  })
-);
+  });
 
   const producerInitials = (producer?.displayName || producer?.name || "?")
     .split(" ")

@@ -5,7 +5,13 @@ const nextConfig: NextConfig = {
     "192.168.0.101",
   ],
 
+  experimental: {
+    optimizePackageImports: ["lucide-react", "@base-ui/react"],
+  },
+
   images: {
+    formats: ["image/avif", "image/webp"],
+    minimumCacheTTL: 86400,
     remotePatterns: [
       {
         protocol: "https",
@@ -58,11 +64,20 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        source: "/api/(.*)",
+        source: "/api/(auth|payment|cart|upload|user|studio|admin)(.*)",
         headers: [
           {
             key: "Cache-Control",
             value: "no-store, max-age=0",
+          },
+        ],
+      },
+      {
+        source: "/api/(marketplace|beats|beat-packs|producers)(.*)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, s-maxage=60, stale-while-revalidate=120",
           },
         ],
       },

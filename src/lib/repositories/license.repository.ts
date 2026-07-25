@@ -56,6 +56,16 @@ export const licenseRepository = {
     return result.deletedCount;
   },
 
+  async findByBeatIds(beatIds: string[], activeOnly = true): Promise<ILicense[]> {
+    await connectDB();
+    if (beatIds.length === 0) return [];
+    const query: Record<string, unknown> = {
+      beatId: { $in: beatIds.map((id) => new mongoose.Types.ObjectId(id)) },
+    };
+    if (activeOnly) query.isActive = true;
+    return License.find(query).sort({ price: 1 }).lean<ILicense[]>();
+  },
+
   async findCheapestForBeat(beatId: string): Promise<ILicense | null> {
     await connectDB();
     return License.findOne({ beatId, isActive: true })

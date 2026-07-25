@@ -21,6 +21,7 @@ const PurchaseSchema = new Schema<IPurchase>(
 PurchaseSchema.index({ buyerId: 1, beatId: 1 }, { unique: true });
 PurchaseSchema.index({ buyerId: 1 });
 PurchaseSchema.index({ beatId: 1 });
+PurchaseSchema.index({ beatId: 1, createdAt: -1 });
 
 const Purchase: Model<IPurchase> =
   mongoose.models.Purchase || mongoose.model<IPurchase>("Purchase", PurchaseSchema);

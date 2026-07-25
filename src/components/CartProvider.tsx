@@ -6,6 +6,7 @@ import {
   useState,
   useEffect,
   useCallback,
+  useMemo,
   type ReactNode,
 } from "react";
 import { useSession } from "next-auth/react";
@@ -269,23 +270,26 @@ export default function CartProvider({ children }: { children: ReactNode }) {
     [items]
   );
 
+  const contextValue = useMemo(
+    () => ({
+      items,
+      count,
+      total,
+      packCount,
+      totalCount,
+      loading,
+      addItem,
+      removeItem,
+      updateLicense,
+      clearCart,
+      refresh,
+      isInCart,
+    }),
+    [items, count, total, packCount, totalCount, loading, addItem, removeItem, updateLicense, clearCart, refresh, isInCart]
+  );
+
   return (
-    <CartContext.Provider
-      value={{
-        items,
-        count,
-        total,
-        packCount,
-        totalCount,
-        loading,
-        addItem,
-        removeItem,
-        updateLicense,
-        clearCart,
-        refresh,
-        isInCart,
-      }}
-    >
+    <CartContext.Provider value={contextValue}>
       {children}
     </CartContext.Provider>
   );

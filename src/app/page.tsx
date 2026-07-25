@@ -74,44 +74,55 @@ const STEPS = [
 ];
 
 async function getBeatsWithPrices(beats: Awaited<ReturnType<typeof beatRepository.findRecent>>) {
-  return Promise.all(
-    beats.map(async (beat) => {
-      const [cheapest, producer] = await Promise.all([
-        licenseRepository.findCheapestForBeat(beat._id.toString()),
-        userRepository.findById(beat.producerId.toString()),
-      ]);
-      return {
-        beat: toPublicBeatForUi(beat, producer),
-        startingPrice: cheapest?.price,
-      };
-    })
-  );
+  if (beats.length === 0) return [];
+
+  const beatIds = beats.map((b) => b._id.toString());
+  const uniqueProducerIds = [...new Set(beats.map((b) => b.producerId.toString()))];
+
+  const [cheapestMap, producers] = await Promise.all([
+    licenseRepository.findCheapestForBeats(beatIds),
+    userRepository.findByIds(uniqueProducerIds),
+  ]);
+
+  const producerMap = new Map(producers.map((p) => [p._id.toString(), p]));
+
+  return beats.map((beat) => {
+    const producer = producerMap.get(beat.producerId.toString()) ?? null;
+    const cheapest = cheapestMap[beat._id.toString()];
+    return {
+      beat: toPublicBeatForUi(beat, producer),
+      startingPrice: cheapest?.price,
+    };
+  });
 }
 
 export default async function HomePage() {
-  const [recentBeats, trendingBeats] = await Promise.all([
+  const [recentBeats, trendingBeats, packResult] = await Promise.all([
     beatRepository.findRecent(8),
     beatRepository.findTrending(4),
+    beatPackRepository.listPublished(1, 3),
   ]);
 
-  const recentWithPrices = await getBeatsWithPrices(recentBeats);
-  const trendingWithPrices = await getBeatsWithPrices(trendingBeats);
+  const [recentWithPrices, trendingWithPrices] = await Promise.all([
+    getBeatsWithPrices(recentBeats),
+    getBeatsWithPrices(trendingBeats),
+  ]);
+  const packProducerIds = [...new Set(packResult.data.map((p) => p.producerId.toString()))];
+  const packProducers = await userRepository.findByIds(packProducerIds);
+  const packProducerMap = new Map(packProducers.map((p) => [p._id.toString(), p]));
 
-  const packResult = await beatPackRepository.listPublished(1, 3);
-  const featuredPacks = await Promise.all(
-    packResult.data.map(async (pack) => {
-      const producer = await userRepository.findById(pack.producerId.toString());
-      const minPrice = Math.min(pack.prices.basic, pack.prices.premium, pack.prices.unlimited);
-      return {
-        id: pack._id.toString(),
-        title: pack.title,
-        coverUrl: pack.coverUrl,
-        beatCount: pack.beatIds.length,
-        producerName: producer?.displayName || producer?.name || "Unknown",
-        startingPrice: minPrice,
-      };
-    })
-  );
+  const featuredPacks = packResult.data.map((pack) => {
+    const producer = packProducerMap.get(pack.producerId.toString());
+    const minPrice = Math.min(pack.prices.basic, pack.prices.premium, pack.prices.unlimited);
+    return {
+      id: pack._id.toString(),
+      title: pack.title,
+      coverUrl: pack.coverUrl,
+      beatCount: pack.beatIds.length,
+      producerName: producer?.displayName || producer?.name || "Unknown",
+      startingPrice: minPrice,
+    };
+  });
 
   return (
     <div>
@@ -233,9 +244,6 @@ export default async function HomePage() {
                   Browse Beats <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
-              <Button asChild variant="outline" size="lg">
-                <Link href="/signup">Start Selling</Link>
-              </Button>
             </div>
           </div>
         </div>
@@ -304,7 +312,7 @@ export default async function HomePage() {
         <section className="app-container pb-16">
           <div className="mb-6 flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-2xl font-bold">
-              <span aria-hidden>🆕</span> Recently Added
+              Recently Added
             </h2>
             <Button asChild variant="ghost" size="sm">
               <Link href="/beats?sort=newest">

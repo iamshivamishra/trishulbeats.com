@@ -12,7 +12,14 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { tierAccent } from "@/lib/license-ui";
 import { useCart } from "@/components/CartProvider";
-import RazorpayButton from "@/components/RazorpayButton";
+import dynamic from "next/dynamic";
+
+const RazorpayButton = dynamic(() => import("@/components/RazorpayButton"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-10 w-full animate-pulse rounded-md bg-muted" />
+  ),
+});
 import type { ILicense } from "@/types";
 
 interface Props {

@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Play, Pause, AudioWaveform, ShoppingCart, Music, MoreVertical, Heart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { useAudioPlayer } from "@/components/AudioPlayerContext";
+import { useAudioActions } from "@/components/AudioPlayerContext";
 import type { IBeat } from "@/types";
 
 type BeatCardBeat = Pick<
@@ -34,7 +34,7 @@ export default function BeatCard({
   startingPrice,
   isPurchased,
 }: BeatCardProps) {
-  const { playBeat, currentBeat, isPlaying } = useAudioPlayer();
+  const { playBeat, currentBeat, isPlaying } = useAudioActions();
 
   const beatId = beat._id.toString();
   const isPackOnly = beat.saleMode === "pack_only";

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -19,7 +20,11 @@ import { Separator } from "@/components/ui/separator";
 import BeatCard from "@/components/BeatCard";
 import FollowButton from "@/components/FollowButton";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
+
+const getCachedProducer = cache(async (username: string) =>
+  userRepository.findByUsername(username)
+);
 
 interface Props {
   params: Promise<{ username: string }>;
@@ -27,7 +32,7 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { username } = await params;
-  const producer = await userRepository.findByUsername(username);
+  const producer = await getCachedProducer(username);
   if (!producer) return { title: "Producer Not Found" };
 
   const displayName = producer.displayName || producer.name;
@@ -60,7 +65,7 @@ function socialLabel(platform: string): string {
 
 export default async function ProducerProfilePage({ params }: Props) {
   const { username } = await params;
-  const producer = await userRepository.findByUsername(username);
+  const producer = await getCachedProducer(username);
   if (!producer || producer.role !== "producer") notFound();
 
   const session = await auth();
@@ -75,15 +80,23 @@ export default async function ProducerProfilePage({ params }: Props) {
   const beats = await beatRepository.findByProducerId(producer._id.toString());
   const totalPlays = beats.reduce((sum, b) => sum + b.plays, 0);
 
-  const beatsWithPrices = await Promise.all(
-    beats.map(async (beat) => {
-      const cheapest = await licenseRepository.findCheapestForBeat(beat._id.toString());
-      const isPurchased = session?.user
-        ? await purchaseRepository.hasPurchased(session.user.id, beat._id.toString())
-        : false;
-      return { beat, startingPrice: cheapest?.price, isPurchased };
-    })
-  );
+  const allBeatIds = beats.map((b) => b._id.toString());
+
+  const [cheapestMap, purchasedSet] = await Promise.all([
+    licenseRepository.findCheapestForBeats(allBeatIds),
+    session?.user
+      ? purchaseRepository.hasPurchasedBatch(session.user.id, allBeatIds)
+      : Promise.resolve(new Set<string>()),
+  ]);
+
+  const beatsWithPrices = beats.map((beat) => {
+    const id = beat._id.toString();
+    return {
+      beat,
+      startingPrice: cheapestMap[id]?.price,
+      isPurchased: purchasedSet.has(id),
+    };
+  });
 
   const displayName = producer.displayName || producer.name;
   const initials = displayName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
