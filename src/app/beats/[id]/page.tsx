@@ -57,14 +57,15 @@ export async function generateMetadata({ params }: BeatPageProps): Promise<Metad
     openGraph: {
       title: `${beat.title} — Trishul Beats`,
       description: `${beat.genre} beat at ${beat.bpm || "—"} BPM. License now.`,
-      images: beat.coverUrl ? [beat.coverUrl] : [],
+      images: beat.coverUrl ? [beat.coverUrl] : ["/og-default.png"],
       type: "music.song",
+      url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/beats/${id}`,
     },
     twitter: {
       card: "summary_large_image",
       title: `${beat.title} by ${producerName}`,
       description,
-      images: beat.coverUrl ? [beat.coverUrl] : [],
+      images: beat.coverUrl ? [beat.coverUrl] : ["/og-default.png"],
     },
     alternates: {
       canonical: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/beats/${id}`,
@@ -150,8 +151,10 @@ export default async function BeatPage({ params }: BeatPageProps) {
     genre: beat.genre,
     url: `${appUrl}/beats/${id}`,
     image: beat.coverUrl || undefined,
+    datePublished: beat.createdAt ? new Date(beat.createdAt).toISOString() : undefined,
+    duration: beat.duration ? `PT${Math.floor(beat.duration / 60)}M${beat.duration % 60}S` : undefined,
     byArtist: {
-      "@type": "MusicGroup",
+      "@type": "Person",
       name: producerName,
       url: producer?.username ? `${appUrl}/producer/${producer.username}` : undefined,
     },
@@ -165,11 +168,25 @@ export default async function BeatPage({ params }: BeatPageProps) {
       : undefined,
   };
 
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: appUrl },
+      { "@type": "ListItem", position: 2, name: "Browse Beats", item: `${appUrl}/beats` },
+      { "@type": "ListItem", position: 3, name: beat.title, item: `${appUrl}/beats/${id}` },
+    ],
+  };
+
   return (
     <div className="page-shell px-4 sm:px-6 lg:px-8 pb-20 lg:pb-0">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(beatJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
       {/* Back */}
       <Button asChild variant="ghost" size="sm" className="mb-3 sm:mb-8">
@@ -359,18 +376,16 @@ export default async function BeatPage({ params }: BeatPageProps) {
           )}
 
           {/* Description */}
-          {beat.description && (
-            <Card className="border-border/50 bg-card/60">
-              <CardContent className="p-3 sm:p-5">
-                <h2 className="mb-2 text-xs sm:text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                  Description
-                </h2>
-                <p className="whitespace-pre-line break-words text-sm leading-relaxed text-foreground/80">
-                  {beat.description}
-                </p>
-              </CardContent>
-            </Card>
-          )}
+          <Card className="border-border/50 bg-card/60">
+            <CardContent className="p-3 sm:p-5">
+              <h2 className="mb-2 text-xs sm:text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                Description
+              </h2>
+              <p className="whitespace-pre-line break-words text-sm leading-relaxed text-foreground/80">
+                {beat.description || `"${beat.title}" is a ${beat.genre.toLowerCase()} beat${beat.bpm ? ` at ${beat.bpm} BPM` : ""}${beat.key ? ` in the key of ${beat.key}` : ""}${beat.mood ? ` with a ${beat.mood.toLowerCase()} mood` : ""}. Produced by ${producerName}${beat.tags.length > 0 ? `, featuring elements of ${beat.tags.slice(0, 3).join(", ")}` : ""}. Available for licensing on Trishul Beats with basic, premium, and unlimited license options.`}
+              </p>
+            </CardContent>
+          </Card>
 
           {/* Download section (purchased users) */}
           {hasPurchased && <DownloadPanel beatId={id} />}

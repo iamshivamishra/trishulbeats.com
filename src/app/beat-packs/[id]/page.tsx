@@ -27,6 +27,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: `${pack.title} — Beat Pack`,
       description: pack.description || `Beat pack by ${pack.producerName || "a producer"} on Trishul Beats.`,
       images: pack.imageUrls?.[0] ? [pack.imageUrls[0]] : pack.coverUrl ? [pack.coverUrl] : [],
+      url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/beat-packs/${id}`,
     },
     twitter: {
       card: "summary_large_image",
