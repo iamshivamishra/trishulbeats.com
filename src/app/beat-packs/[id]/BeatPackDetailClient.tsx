@@ -451,7 +451,7 @@ export default function BeatPackDetailClient({
                             : "border-transparent opacity-60 hover:opacity-100"
                         }`}
                       >
-                        <Image src={url} alt={`Thumbnail ${i + 1}`} fill sizes="56px" className="object-cover" />
+                        <Image src={url} alt={`${pack.title} — image ${i + 1}`} fill sizes="56px" className="object-cover" />
                       </button>
                     ))}
                   </div>
@@ -464,7 +464,7 @@ export default function BeatPackDetailClient({
             )}
             <div className="px-3 py-3 sm:px-5 sm:py-4">
               <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                <h2 className="text-base font-semibold tracking-tight sm:text-2xl">{pack.title}</h2>
+                <h1 className="text-base font-semibold tracking-tight sm:text-2xl">{pack.title}</h1>
                 <Badge className="text-[11px]">{pack.beatCount} beats</Badge>
               </div>
               {pack.metadata && (

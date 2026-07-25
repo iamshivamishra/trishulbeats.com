@@ -8,6 +8,7 @@ import type { BeatPackUi } from "@/features/beats/beat-pack-ui";
 export const metadata: Metadata = {
   title: "Beat Packs",
   description: "Discover curated beat collections available for full-pack purchase.",
+  alternates: { canonical: "/beat-packs" },
 };
 
 export const revalidate = 60;

@@ -10,6 +10,7 @@ export const revalidate = 60;
 export const metadata: Metadata = {
   title: "Browse Beats",
   description: "Browse and preview high-quality beats across all genres.",
+  alternates: { canonical: "/beats" },
 };
 
 interface BeatsPageProps {

@@ -1,4 +1,4 @@
-import { redirect, notFound } from "next/navigation";
+import { permanentRedirect, notFound } from "next/navigation";
 import { userRepository } from "@/lib/repositories/user.repository";
 
 export const revalidate = 300;
@@ -13,5 +13,5 @@ export default async function LegacyProducerRedirect({ params }: Props) {
   if (!producer) notFound();
 
   const username = producer.username || slug;
-  redirect(`/producer/${username}`);
+  permanentRedirect(`/producer/${username}`);
 }

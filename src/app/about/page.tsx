@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 export const metadata: Metadata = {
   title: "About",
   description: "Learn about Trishul Beats — the marketplace connecting producers and artists.",
+  alternates: { canonical: "/about" },
 };
 
 export default function AboutPage() {
