@@ -1,0 +1,62 @@
+---
+description: MongoDB — indexes, queries, aggregation, N+1 prevention, schema design
+globs: src/lib/models/**/*.ts,src/lib/repositories/**/*.ts
+alwaysApply: false
+---
+
+# MongoDB
+
+## Indexes
+
+- Every query pattern needs a supporting index.
+- Compound indexes: most selective field first.
+- Add indexes on the schema, not at runtime.
+- Review with `explain()` for slow queries.
+
+## Query performance
+
+```typescript
+// ✅ GOOD — projection, lean, limit
+Beat.find({ genre }).select("title coverUrl bpm").lean().limit(20);
+
+// ❌ BAD — fetches everything
+Beat.find({ genre });
+```
+
+- Always use `.lean()` for read-only queries.
+- Always use `.select()` to project only needed fields.
+- Always use `.limit()` — never unbounded queries.
+
+## N+1 prevention
+
+```typescript
+// ❌ BAD — N+1 queries in a loop
+for (const beat of beats) {
+  const producer = await User.findById(beat.producerId);
+}
+
+// ✅ GOOD — batch query
+const producerIds = [...new Set(beats.map(b => b.producerId.toString()))];
+const producers = await User.find({ _id: { $in: producerIds } }).lean();
+const producerMap = new Map(producers.map(p => [p._id.toString(), p]));
+```
+
+## Aggregation
+
+- Use aggregation pipelines for complex queries (stats, grouping, lookups).
+- `$match` early to reduce pipeline volume.
+- Use `$project` to limit fields in pipeline stages.
+
+## Schema design
+
+- **Embed** when data is always read together and bounded in size.
+- **Reference** when data is shared across documents or unbounded.
+- Review read/write patterns before choosing.
+- Keep document size under 1MB (well under for performance).
+- Plan for schema evolution — use optional fields, avoid breaking changes.
+
+## Transactions
+
+- Use `withTransaction()` from `@/lib/db` for multi-document writes.
+- Transactions require replica set (or `ALLOW_NON_TRANSACTIONAL_FALLBACK` in dev).
+- Keep transactions short — no external API calls inside.

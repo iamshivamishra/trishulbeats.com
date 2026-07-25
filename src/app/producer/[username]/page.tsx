@@ -42,13 +42,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       producer.bio || `Check out beats by ${displayName} on Trishul Beats.`,
     alternates: { canonical: `/producer/${username}` },
     openGraph: {
-      images: producer.avatarUrl ? [producer.avatarUrl] : [],
+      images: producer.avatarUrl ? [producer.avatarUrl] : ["/og-default.png"],
+      url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/producer/${username}`,
     },
     twitter: {
       card: "summary_large_image" as const,
       title: `${displayName} (@${producer.username})`,
       description: producer.bio || `Check out beats by ${displayName} on Trishul Beats.`,
-      images: producer.avatarUrl ? [producer.avatarUrl] : [],
+      images: producer.avatarUrl ? [producer.avatarUrl] : ["/og-default.png"],
     },
   };
 }

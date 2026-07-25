@@ -1,0 +1,40 @@
+---
+description: Observability — logging, metrics, audit logs, health checks, error reporting
+globs: src/lib/**/*.ts,src/app/api/**/*.ts
+alwaysApply: false
+---
+
+# Observability
+
+## Logging
+
+- Use `logger` from `@/lib/logger` — never `console.log` in production code.
+- Log levels: `debug`, `info`, `warn`, `error`.
+- Include context: `logger.error("Payment failed", { orderId, userId, error })`.
+- Never log secrets, tokens, passwords, or full credit card numbers.
+
+## Audit logs
+
+Use `audit()` for important business actions:
+- Purchases and payments
+- Status changes (publish, unpublish)
+- Admin actions (user role changes, content moderation)
+- Account changes (password reset, email change)
+
+## Error reporting
+
+- Client: `ErrorReporter` component catches unhandled errors.
+- Server: `formatErrorResponse` logs via logger and returns clean responses.
+- API: `src/app/api/errors/report/route.ts` receives client-side error reports.
+
+## Health checks
+
+- Database connectivity via `connectDB()`.
+- External service availability (Razorpay, Cloudinary, Resend).
+
+## Metrics to track
+
+- API response times and error rates.
+- Database query performance.
+- Payment success/failure rates.
+- User sign-up and conversion funnels.

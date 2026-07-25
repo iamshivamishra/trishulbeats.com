@@ -1,0 +1,31 @@
+---
+description: Zod validation — schemas, naming, usage patterns
+globs: src/lib/validators/**/*.ts
+alwaysApply: false
+---
+
+# Validation with Zod
+
+## Location & naming
+
+All schemas in `src/lib/validators/{domain}.ts`.
+
+```typescript
+export const createBeatSchema = z.object({
+  title: z.string().min(1).max(100),
+  genre: z.string().min(1),
+  bpm: z.number().int().min(40).max(300).optional(),
+});
+
+export type CreateBeatInput = z.infer<typeof createBeatSchema>;
+```
+
+- Schema: `{action}{Domain}Schema` — `createBeatSchema`, `beatFilterSchema`
+- Type: `{Action}{Domain}Input` — `CreateBeatInput`, `BeatFilterInput`
+
+## Usage
+
+- Parse in API routes before services: `const input = schema.parse(body)`.
+- Use `z.coerce` for query params that arrive as strings.
+- Compose schemas with `.merge()` or `.extend()`.
+- Use `formatZodError()` from `@/lib/errors` for user-friendly messages.

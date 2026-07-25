@@ -16,6 +16,12 @@ import { userRepository } from "@/lib/repositories/user.repository";
 
 export const revalidate = 120;
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
+
 const GENRE_CARDS = [
   { name: "Pop", emoji: "🎵", color: "hsl(280, 80%, 55%)" },
   { name: "Rock", emoji: "🎸", color: "hsl(10, 80%, 55%)" },
@@ -124,8 +130,28 @@ export default async function HomePage() {
     };
   });
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+  const trendingItemList = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "Trending Beats on Trishul Beats",
+    itemListOrder: "https://schema.org/ItemListOrderDescending",
+    numberOfItems: trendingWithPrices.length,
+    itemListElement: trendingWithPrices.slice(0, 8).map((item, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      url: `${appUrl}/beats/${item.beat._id}`,
+      name: item.beat.title,
+    })),
+  };
+
   return (
     <div>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(trendingItemList) }}
+      />
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-border/30">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,oklch(0.58_0.22_280_/_0.15),transparent_70%)]" />

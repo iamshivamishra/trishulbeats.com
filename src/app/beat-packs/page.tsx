@@ -9,6 +9,15 @@ export const metadata: Metadata = {
   title: "Beat Packs",
   description: "Discover curated beat collections available for full-pack purchase.",
   alternates: { canonical: "/beat-packs" },
+  openGraph: {
+    title: "Beat Packs — Trishul Beats",
+    description: "Discover curated beat collections available for full-pack purchase.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Beat Packs — Trishul Beats",
+    description: "Discover curated beat collections available for full-pack purchase.",
+  },
 };
 
 export const revalidate = 60;

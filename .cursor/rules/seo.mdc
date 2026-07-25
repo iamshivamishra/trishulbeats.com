@@ -1,0 +1,43 @@
+---
+description: SEO — metadata, canonicals, structured data, sitemap, semantic HTML
+globs: src/app/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# SEO
+
+## Every public page must have
+
+- [ ] **Title** — unique, descriptive, under 60 chars.
+- [ ] **Description** — compelling, under 160 chars.
+- [ ] **Canonical URL** — `alternates: { canonical }` to prevent duplicates.
+- [ ] **OpenGraph** — `title`, `description`, `images`, `url`, `type`.
+- [ ] **Twitter Card** — `card: "summary_large_image"`, `title`, `description`, `images`.
+- [ ] **Semantic headings** — single `h1`, logical `h2`→`h3` hierarchy.
+- [ ] **Image alt text** — descriptive, not "image" or "photo".
+
+## Structured data (JSON-LD)
+
+| Page | Schema |
+|------|--------|
+| Root layout | `WebSite` + `SearchAction` |
+| Beat detail | `MusicRecording` + `BreadcrumbList` |
+| Beat pack detail | `Product` + `AggregateOffer` + `BreadcrumbList` |
+| Producer profile | `ProfilePage` + `Person` |
+| Homepage | `ItemList` (trending beats) |
+| About | `FAQPage` |
+
+## Private pages
+
+Dashboard, cart, auth pages: `robots: { index: false, follow: false }`.
+
+## Sitemap & robots
+
+- `src/app/sitemap.ts` — all public pages, dynamic beat/pack/producer pages.
+- `src/app/robots.ts` — disallow private paths.
+- No auth pages in sitemap.
+
+## Filtered/paginated views
+
+- Filtered URLs (e.g., `/beats?genre=trap`): `robots: { index: false, follow: true }`.
+- Canonical always points to the base URL without filters.

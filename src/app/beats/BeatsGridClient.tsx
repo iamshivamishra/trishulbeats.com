@@ -50,12 +50,13 @@ export default function BeatsGridClient({ items }: BeatsGridClientProps) {
 
   return (
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      {items.map(({ beat, startingPrice }) => (
+      {items.map(({ beat, startingPrice }, index) => (
         <BeatCard
           key={beat._id.toString()}
           beat={beat}
           startingPrice={startingPrice ?? undefined}
           isPurchased={purchasedIds.has(beat._id.toString())}
+          priority={index < 4}
         />
       ))}
     </div>
