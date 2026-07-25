@@ -41,8 +41,10 @@ export default async function BeatPackDetailPage({ params }: Props) {
   const uiPack: BeatPackUi = {
     id: pack._id.toString(),
     title: pack.title,
+    metadata: pack.metadata || "",
     description: pack.description || "",
     coverUrl: pack.coverUrl,
+    imageUrls: pack.imageUrls || [],
     producerName: pack.producerName,
     producerUsername: pack.producerUsername || "",
     producerAvatarUrl: pack.producerAvatarUrl ?? undefined,

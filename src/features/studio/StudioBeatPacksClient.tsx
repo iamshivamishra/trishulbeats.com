@@ -105,9 +105,9 @@ export default function StudioBeatPacksClient({ packs }: Props) {
             <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex min-w-0 items-center gap-3">
                 <div className="relative h-14 w-20 shrink-0 overflow-hidden rounded-md border border-border/50 bg-muted/30">
-                  {pack.coverUrl ? (
+                  {(pack.imageUrls?.[0] || pack.coverUrl) ? (
                     <Image
-                      src={pack.coverUrl}
+                      src={pack.imageUrls?.[0] || pack.coverUrl!}
                       alt={pack.title}
                       fill
                       sizes="80px"

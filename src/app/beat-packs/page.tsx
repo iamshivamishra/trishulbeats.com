@@ -38,6 +38,7 @@ export default async function BeatPacksPage() {
       title: pack.title,
       description: pack.description || "",
       coverUrl: pack.coverUrl,
+      imageUrls: pack.imageUrls || [],
       producerName: producer?.displayName || producer?.name || "Unknown Producer",
       producerUsername: producer?.username || "",
       tags: pack.tags || [],

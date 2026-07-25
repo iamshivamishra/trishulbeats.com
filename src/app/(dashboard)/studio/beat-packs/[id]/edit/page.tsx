@@ -51,8 +51,10 @@ export default async function EditBeatPackPage({ params }: Props) {
   const initialPack: BeatPackUi = {
     id: pack._id.toString(),
     title: pack.title,
+    metadata: pack.metadata || "",
     description: pack.description || "",
     coverUrl: pack.coverUrl,
+    imageUrls: pack.imageUrls || [],
     producerName: session.user.name || "Producer",
     producerUsername: "",
     tags: pack.tags || [],

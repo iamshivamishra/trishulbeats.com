@@ -27,10 +27,15 @@ interface Props {
 export default function BeatPackEditorForm({ mode, initialPack }: Props) {
   const router = useRouter();
   const [title, setTitle] = useState(initialPack?.title ?? "");
+  const [metadata, setMetadata] = useState(initialPack?.metadata ?? "");
   const [description, setDescription] = useState(initialPack?.description ?? "");
-  const [coverUrl, setCoverUrl] = useState(initialPack?.coverUrl ?? "");
-  const [uploadingCover, setUploadingCover] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [imageUrls, setImageUrls] = useState<string[]>(() => {
+    const urls = initialPack?.imageUrls ?? [];
+    if (urls.length === 0 && initialPack?.coverUrl) return [initialPack.coverUrl];
+    return urls;
+  });
+  const [uploadingGallery, setUploadingGallery] = useState(false);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const [basicPrice, setBasicPrice] = useState(
     initialPack?.prices.find((p) => p.tier === "basic")?.price.toString() ?? ""
   );
@@ -91,8 +96,10 @@ export default function BeatPackEditorForm({ mode, initialPack }: Props) {
       // 2. Create or update the pack
       const payload = {
         title,
+        metadata: metadata || undefined,
         description: description || undefined,
-        coverUrl: coverUrl.trim() || undefined,
+        coverUrl: imageUrls[0] || undefined,
+        imageUrls,
         beatIds,
         prices: {
           basic: Number(basicPrice),
@@ -150,6 +157,20 @@ export default function BeatPackEditorForm({ mode, initialPack }: Props) {
             />
           </div>
 
+          {/* Metadata */}
+          <div className="space-y-2">
+            <Label htmlFor="pack-metadata">Metadata</Label>
+            <Textarea
+              id="pack-metadata"
+              rows={3}
+              placeholder="Additional metadata for this pack..."
+              value={metadata}
+              onChange={(e) => setMetadata(e.target.value)}
+              maxLength={2000}
+            />
+            <p className="text-right text-xs text-muted-foreground">{metadata.length}/2000</p>
+          </div>
+
           {/* Description */}
           <div className="space-y-2">
             <Label htmlFor="pack-description">Description</Label>
@@ -162,75 +183,90 @@ export default function BeatPackEditorForm({ mode, initialPack }: Props) {
             />
           </div>
 
-          {/* Cover Image Upload */}
+          {/* Pack Images */}
           <div className="space-y-2">
-            <Label>Pack Cover Image</Label>
+            <Label>Pack Images <span className="text-xs text-muted-foreground">({imageUrls.length}/10 · first image is the cover)</span></Label>
             <input
-              ref={fileInputRef}
+              ref={galleryInputRef}
               type="file"
               accept="image/jpeg,image/png,image/webp"
+              multiple
               className="hidden"
               onChange={async (e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                if (file.size > 5 * 1024 * 1024) {
-                  toast.error("Image must be under 5 MB");
+                const files = Array.from(e.target.files ?? []);
+                if (files.length === 0) return;
+                const remaining = 10 - imageUrls.length;
+                if (files.length > remaining) {
+                  toast.error(`You can add ${remaining} more image${remaining === 1 ? "" : "s"}`);
                   return;
                 }
-                setUploadingCover(true);
+                const oversized = files.find((f) => f.size > 5 * 1024 * 1024);
+                if (oversized) {
+                  toast.error(`"${oversized.name}" exceeds 5 MB limit`);
+                  return;
+                }
+                setUploadingGallery(true);
                 try {
-                  const formData = new FormData();
-                  formData.append("file", file);
-                  const res = await fetch("/api/beat-packs/upload-cover", { method: "POST", body: formData });
-                  if (!res.ok) {
-                    const err = await res.json().catch(() => ({}));
-                    throw new Error(err.error || "Upload failed");
+                  const uploaded: string[] = [];
+                  for (const file of files) {
+                    const formData = new FormData();
+                    formData.append("file", file);
+                    const res = await fetch("/api/beat-packs/upload-cover", { method: "POST", body: formData });
+                    if (!res.ok) {
+                      const err = await res.json().catch(() => ({}));
+                      throw new Error(err.error || `Failed to upload ${file.name}`);
+                    }
+                    const { url } = await res.json();
+                    uploaded.push(url);
                   }
-                  const { url } = await res.json();
-                  setCoverUrl(url);
-                  toast.success("Cover image uploaded");
+                  setImageUrls((prev) => [...prev, ...uploaded]);
+                  toast.success(`${uploaded.length} image${uploaded.length === 1 ? "" : "s"} uploaded`);
                 } catch (error) {
                   toast.error(error instanceof Error ? error.message : "Upload failed");
                 } finally {
-                  setUploadingCover(false);
-                  if (fileInputRef.current) fileInputRef.current.value = "";
+                  setUploadingGallery(false);
+                  if (galleryInputRef.current) galleryInputRef.current.value = "";
                 }
               }}
             />
-            {coverUrl ? (
-              <div className="relative mt-1 aspect-video w-full max-w-md overflow-hidden rounded-lg border border-border/60 bg-muted/30">
-                <Image src={coverUrl} alt="Beat pack cover preview" fill sizes="(max-width: 768px) 100vw, 512px" className="object-cover" />
-                <div className="absolute right-2 top-2 flex gap-1.5">
-                  <Button type="button" variant="secondary" size="sm" className="h-8 bg-background/80 backdrop-blur-sm" onClick={() => fileInputRef.current?.click()} disabled={uploadingCover}>
-                    {uploadingCover ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="mr-1.5 h-3.5 w-3.5" />}
-                    Replace
-                  </Button>
-                  <Button type="button" variant="secondary" size="icon" className="h-8 w-8 bg-background/80 backdrop-blur-sm text-destructive hover:text-destructive" onClick={() => setCoverUrl("")}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
+            {imageUrls.length > 0 && (
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
+                {imageUrls.map((url, index) => (
+                  <div key={index} className="group relative aspect-square overflow-hidden rounded-lg border border-border/60 bg-muted/30">
+                    <Image src={url} alt={`Gallery image ${index + 1}`} fill sizes="120px" className="object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setImageUrls((prev) => prev.filter((_, i) => i !== index))}
+                      className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                      aria-label={`Remove image ${index + 1}`}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
               </div>
-            ) : (
+            )}
+            {imageUrls.length < 10 && (
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploadingCover}
-                className="flex w-full max-w-md flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border/60 bg-muted/20 px-6 py-10 text-muted-foreground transition hover:border-primary/40 hover:bg-muted/30"
+                onClick={() => galleryInputRef.current?.click()}
+                disabled={uploadingGallery}
+                className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border/60 bg-muted/20 px-4 py-4 text-sm text-muted-foreground transition hover:border-primary/40 hover:bg-muted/30"
               >
-                {uploadingCover ? (
+                {uploadingGallery ? (
                   <>
-                    <Loader2 className="h-8 w-8 animate-spin" />
-                    <span className="text-sm">Uploading...</span>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Uploading...
                   </>
                 ) : (
                   <>
-                    <ImagePlus className="h-8 w-8" />
-                    <span className="text-sm font-medium">Click to upload cover image</span>
-                    <span className="text-xs">JPG, PNG, or WebP — max 5 MB</span>
+                    <ImagePlus className="h-4 w-4" />
+                    Add images (select multiple)
                   </>
                 )}
               </button>
             )}
+            <p className="text-xs text-muted-foreground">JPG, PNG, or WebP — max 5 MB each. Up to 10 images.</p>
           </div>
 
           {/* Tier Pricing */}
