@@ -45,9 +45,30 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await request.json();
-    const input = updateBeatSchema.parse(body);
+    const { uploadedAssets, ...input } = updateBeatSchema.parse(body);
 
-    const beat = await beatService.update(id, session.user.id, session.user.role, input);
+    // Map re-uploaded file assets to the beat's URL and storage key fields
+    const updateData: Record<string, unknown> = { ...input };
+    if (uploadedAssets) {
+      if (uploadedAssets.preview) {
+        updateData.audioTaggedUrl = uploadedAssets.preview.url;
+        updateData["storageKeys.preview"] = uploadedAssets.preview.key;
+      }
+      if (uploadedAssets.master) {
+        updateData.audioFullUrl = uploadedAssets.master.url;
+        updateData["storageKeys.master"] = uploadedAssets.master.key;
+      }
+      if (uploadedAssets.stems) {
+        updateData.stemsUrl = uploadedAssets.stems.url;
+        updateData["storageKeys.stems"] = uploadedAssets.stems.key;
+      }
+      if (uploadedAssets.artwork) {
+        updateData.coverUrl = uploadedAssets.artwork.url;
+        updateData["storageKeys.artwork"] = uploadedAssets.artwork.key;
+      }
+    }
+
+    const beat = await beatService.update(id, session.user.id, session.user.role, updateData);
 
     return Response.json({ beat });
   } catch (error) {

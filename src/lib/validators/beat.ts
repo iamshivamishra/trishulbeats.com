@@ -182,6 +182,15 @@ export const updateBeatSchema = z.object({
         .optional(),
     })
     .optional(),
+
+  uploadedAssets: z
+    .object({
+      preview: uploadedAssetSchema.optional(),
+      master: uploadedAssetSchema.optional(),
+      stems: uploadedAssetSchema.optional(),
+      artwork: uploadedAssetSchema.optional(),
+    })
+    .optional(),
 });
 
 export const beatFilterSchema = z.object({
