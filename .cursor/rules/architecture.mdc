@@ -1,0 +1,43 @@
+---
+description: Layered architecture rules — services, repositories, serializers, models
+alwaysApply: true
+---
+
+# Architecture
+
+This app uses a strict layered architecture. Never bypass layers.
+
+```
+Page / API route  →  Service  →  Repository  →  Mongoose Model
+                         ↓
+                    Serializer (DTO shaping)
+```
+
+## Layer rules
+
+- **Pages & API routes** are orchestration only — no business logic, no direct Mongoose calls.
+- **Services** (`src/lib/services/*.service.ts`) contain business logic, validation, and transactions.
+- **Repositories** (`src/lib/repositories/*.repository.ts`) handle persistence only — no cross-domain rules.
+- **Serializers** (`src/lib/serializers/`) shape DTOs for the UI — reuse across pages and APIs.
+- **Validators** (`src/lib/validators/`) define Zod schemas — parse in API routes and services.
+
+## Export pattern
+
+Services and repositories export **plain objects**, not classes:
+
+```typescript
+// ✅ GOOD
+export const beatService = { async create(...) { ... } };
+
+// ❌ BAD
+export class BeatService { ... }
+```
+
+## Feature code
+
+Keep shared feature code under `src/features/`:
+- `src/features/beats/` — beat-pack UI types, shared beat logic
+- `src/features/payments/` — payment-related shared code
+- `src/features/studio/` — producer dashboard components
+
+Generic UI primitives go in `src/components/ui/`; app shell in `src/components/layout/`.

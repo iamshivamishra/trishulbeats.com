@@ -1,0 +1,46 @@
+---
+description: React component conventions — client/server, naming, styling
+globs: src/components/**/*.tsx,src/features/**/*.tsx
+alwaysApply: false
+---
+
+# Component Conventions
+
+## Naming
+
+| Type | Pattern | Location |
+|------|---------|----------|
+| Shared components | `PascalCase.tsx` | `src/components/` |
+| Client wrappers | `*Client.tsx` | Colocated with page or in `src/features/` |
+| Forms | `*Form.tsx` | Colocated with page or in `src/features/` |
+| UI primitives (shadcn) | `kebab-case.tsx` | `src/components/ui/` |
+| Layout components | `PascalCase.tsx` | `src/components/layout/` |
+
+## Client components
+
+Add `"use client"` only when the component needs:
+- React hooks (`useState`, `useEffect`, `useContext`)
+- Event handlers (`onClick`, `onSubmit`)
+- Browser APIs (`window`, `document`)
+- Third-party client libraries (Razorpay, audio player)
+
+## Styling
+
+- Use **Tailwind CSS v4** classes — no CSS modules, no styled-components.
+- Use `cn()` from `@/lib/utils` for conditional classes (clsx + tailwind-merge).
+- Use CVA (`class-variance-authority`) for component variants in `src/components/ui/`.
+- Icons from `lucide-react` only.
+- Dark mode is default; use `dark:` variant for light-mode overrides via `@custom-variant dark`.
+
+## Props
+
+```typescript
+// ✅ Destructure props, use TypeScript interfaces
+interface BeatCardProps {
+  beat: PublicBeat;
+  startingPrice?: number | null;
+  priority?: boolean;
+}
+
+export default function BeatCard({ beat, startingPrice, priority }: BeatCardProps) { ... }
+```

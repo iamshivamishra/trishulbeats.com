@@ -1,0 +1,44 @@
+---
+description: Service and repository layer conventions
+globs: src/lib/services/**/*.ts,src/lib/repositories/**/*.ts
+alwaysApply: false
+---
+
+# Services & Repositories
+
+## Services (`src/lib/services/*.service.ts`)
+
+- Contain business logic, authorization checks, and orchestration.
+- Call repositories for persistence — never import Mongoose models directly.
+- Use `withTransaction()` from `@/lib/db` for multi-step writes.
+- Throw typed errors from `@/lib/errors`: `NotFoundError`, `ForbiddenError`, etc.
+- Use `logger` from `@/lib/logger` for structured logging.
+- Use `audit()` for important actions (purchases, status changes).
+
+```typescript
+export const beatService = {
+  async create(input: CreateBeatInput, producerId: string): Promise<IBeat> {
+    return withTransaction(async (session) => {
+      const beat = await beatRepository.create({ ...input, producerId }, { session });
+      await licenseRepository.createDefaults(beat._id.toString(), producerId, { session });
+      return beat;
+    });
+  },
+};
+```
+
+## Repositories (`src/lib/repositories/*.repository.ts`)
+
+- Handle persistence only — no business rules.
+- Always call `await connectDB()` before queries.
+- Accept optional `{ session }` parameter for transactions.
+- Return plain objects (`.lean()`) when possible for performance.
+
+```typescript
+export const beatRepository = {
+  async findById(id: string) {
+    await connectDB();
+    return Beat.findById(id).lean<IBeat>();
+  },
+};
+```

@@ -1,0 +1,44 @@
+---
+description: Testing conventions with Vitest
+globs: **/*.test.ts
+alwaysApply: false
+---
+
+# Testing
+
+## Stack
+
+- **Vitest** with Node environment.
+- Tests colocated next to source files: `*.test.ts`.
+- Path alias `@/` → `./src/` configured in `vitest.config.ts`.
+
+## Test file naming
+
+```
+src/lib/services/beat.service.ts       → src/lib/services/beat.service.test.ts
+src/lib/repositories/like.repository.ts → src/lib/repositories/like.repository.test.ts
+src/app/api/beats/route.ts            → src/app/api/beats/route.test.ts
+```
+
+## Running tests
+
+```bash
+npm run test          # Run all tests
+npm run test:coverage # With coverage report
+```
+
+## Pattern
+
+```typescript
+import { describe, it, expect, vi } from "vitest";
+
+describe("beatService.create", () => {
+  it("should create a beat with default licenses", async () => {
+    // arrange
+    // act
+    // assert
+  });
+});
+```
+
+Mock Mongoose models and external services with `vi.mock()`.

@@ -1,0 +1,45 @@
+---
+description: API route conventions — error handling, auth, rate limiting, validation
+globs: src/app/api/**/*.ts
+alwaysApply: false
+---
+
+# API Route Conventions
+
+## Standard handler pattern
+
+```typescript
+import { NextRequest } from "next/server";
+import { auth } from "@/lib/auth";
+import { formatErrorResponse } from "@/lib/errors";
+import { getClientIp, rateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
+
+export async function POST(request: NextRequest) {
+  try {
+    const ip = getClientIp(request);
+    const { success } = await rateLimit(ip, "action-name");
+    if (!success) return rateLimitResponse();
+
+    const session = await auth();
+    if (!session?.user) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const input = createSchema.parse(body);
+    const result = await someService.create(input, session.user.id);
+
+    return Response.json(result, { status: 201 });
+  } catch (error) {
+    return formatErrorResponse(error);
+  }
+}
+```
+
+## Rules
+
+- Always use `formatErrorResponse` in catch — never return raw errors.
+- Rate-limit all public POST/PATCH/DELETE endpoints.
+- Parse request bodies with Zod schemas from `@/lib/validators/`.
+- Delegate to services — no business logic in route handlers.
+- Use typed errors: `NotFoundError`, `ForbiddenError`, `ValidationError`, `UnauthorizedError`.

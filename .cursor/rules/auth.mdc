@@ -1,0 +1,42 @@
+---
+description: Authentication and authorization patterns
+globs: src/lib/auth.ts,src/app/api/**/*.ts,src/proxy.ts
+alwaysApply: false
+---
+
+# Authentication
+
+## Stack
+
+- **NextAuth v5** (`next-auth@5.0.0-beta.31`) with JWT strategy.
+- Providers: Google OAuth + Credentials (bcrypt).
+- Adapter: `@auth/mongodb-adapter` for session storage.
+- Config in `src/lib/auth.ts` — exports `auth`, `signIn`, `signOut`, `handlers`.
+
+## Roles
+
+Three roles: `buyer` | `producer` | `admin` (defined in `src/types/index.ts`).
+
+## Checking auth in routes
+
+```typescript
+import { auth } from "@/lib/auth";
+
+// In API route
+const session = await auth();
+if (!session?.user) {
+  return Response.json({ error: "Unauthorized" }, { status: 401 });
+}
+
+// Role check
+if (session.user.role !== "admin") {
+  throw new ForbiddenError("Admin access required");
+}
+```
+
+## Route protection
+
+- `src/proxy.ts` handles route-level protection (Next.js 16 proxy pattern).
+- Dashboard layout calls `auth()` + `redirect("/login")`.
+- Admin pages use `notFound()` for non-admin users.
+- Client-side: `useSession()` from `next-auth/react` via `SessionProvider`.
