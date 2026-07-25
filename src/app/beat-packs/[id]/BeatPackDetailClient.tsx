@@ -8,7 +8,7 @@ import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAudioPlayer } from "@/components/AudioPlayerContext";
+import { useAudioActions, useAudioProgress } from "@/components/AudioPlayerContext";
 import ShareDialog from "@/components/ShareDialog";
 import PackRazorpayButton from "@/components/PackRazorpayButton";
 import type { BeatPackUi } from "@/features/beats/beat-pack-ui";
@@ -31,7 +31,8 @@ export default function BeatPackDetailClient({
   const [selectedTier, setSelectedTier] = useState<LicenseType>("basic");
   const [addingToCart, setAddingToCart] = useState(false);
   const [inPackCart, setInPackCart] = useState(false);
-  const { playBeat, currentBeat, isPlaying, progress, currentTime } = useAudioPlayer();
+  const { playBeat, currentBeat, isPlaying } = useAudioActions();
+  const { progress, currentTime } = useAudioProgress();
   const [pageUrl, setPageUrl] = useState("");
 
   useEffect(() => {

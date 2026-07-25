@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import BeatPackEditorForm from "@/features/studio/BeatPackEditorForm";
 import { beatPackService } from "@/lib/services/beat-pack.service";
 import { beatRepository } from "@/lib/repositories/beat.repository";
+import { licenseRepository } from "@/lib/repositories/license.repository";
 import type { BeatPackUi } from "@/features/beats/beat-pack-ui";
 
 interface Props {
@@ -29,6 +30,24 @@ export default async function EditBeatPackPage({ params }: Props) {
   }
   const beats = await beatRepository.findByIds(pack.beatIds.map((beatId) => beatId.toString()));
 
+  // Fetch license prices for each beat
+  const beatLicenses = await Promise.all(
+    beats.map((beat) => licenseRepository.findByBeatId(beat._id.toString()))
+  );
+  const licensePriceMap = new Map(
+    beats.map((beat, i) => {
+      const licenses = beatLicenses[i];
+      return [
+        beat._id.toString(),
+        {
+          basic: licenses.find((l) => l.type === "basic")?.price,
+          premium: licenses.find((l) => l.type === "premium")?.price,
+          unlimited: licenses.find((l) => l.type === "unlimited")?.price,
+        },
+      ];
+    })
+  );
+
   const initialPack: BeatPackUi = {
     id: pack._id.toString(),
     title: pack.title,
@@ -43,15 +62,26 @@ export default async function EditBeatPackPage({ params }: Props) {
       { tier: "premium", price: pack.prices.premium },
       { tier: "unlimited", price: pack.prices.unlimited },
     ],
-    tracks: beats.map((beat) => ({
-      id: beat._id.toString(),
-      title: beat.title,
-      genre: beat.genre,
-      bpm: beat.bpm,
-      durationLabel: beat.duration
-        ? `${Math.floor(beat.duration / 60)}:${String(beat.duration % 60).padStart(2, "0")}`
-        : "—",
-    })),
+    tracks: beats.map((beat) => {
+      const prices = licensePriceMap.get(beat._id.toString());
+      return {
+        id: beat._id.toString(),
+        title: beat.title,
+        description: beat.description || "",
+        genre: beat.genre,
+        bpm: beat.bpm,
+        key: beat.key || "",
+        mood: beat.mood || "",
+        tags: beat.tags || [],
+        priceBasic: prices?.basic,
+        pricePremium: prices?.premium,
+        priceUnlimited: prices?.unlimited,
+        durationLabel: beat.duration
+          ? `${Math.floor(beat.duration / 60)}:${String(beat.duration % 60).padStart(2, "0")}`
+          : "—",
+        previewUrl: beat.audioTaggedUrl || "",
+      };
+    }),
     status: pack.status === "published" ? "published" : "draft",
     updatedAtLabel: `Updated ${new Date(pack.updatedAt).toLocaleDateString()}`,
   };

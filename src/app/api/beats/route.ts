@@ -14,6 +14,7 @@ import {
   UnauthorizedError,
   ValidationError,
 } from "@/lib/errors";
+import { rateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 
 
 function hasExpectedBeatAssetKeyShape(
@@ -40,6 +41,10 @@ function hasExpectedBeatAssetKeyShape(
 
 export async function GET(request: NextRequest) {
   try {
+    const ip = getClientIp(request);
+    const rl = await rateLimit(ip, { limit: 60, windowSec: 60, prefix: "api:beats" });
+    if (!rl.success) return rateLimitResponse(rl.resetAt);
+
     const params = Object.fromEntries(request.nextUrl.searchParams);
     const filters = beatFilterSchema.parse(params);
     const result = await beatService.list(filters);

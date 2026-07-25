@@ -4,8 +4,6 @@ import { auth } from "@/lib/auth";
 import { userRepository } from "@/lib/repositories/user.repository";
 import EditProfileForm from "@/app/profile/edit/EditProfileForm";
 
-export const dynamic = "force-dynamic";
-
 export const metadata: Metadata = { title: "Edit Profile" };
 
 export default async function EditProfilePage() {

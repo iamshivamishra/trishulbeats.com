@@ -19,31 +19,38 @@ export async function GET() {
 
     const purchases = await purchaseRepository.findByBuyerId(session.user.id);
 
-    const downloads = await Promise.all(
-      purchases.map(async (purchase) => {
-        const beat = await beatRepository.findById(purchase.beatId.toString());
-        const license = await licenseRepository.findById(
-          purchase.licenseId.toString()
-        );
-        const beatId = purchase.beatId.toString();
-        const entitlements = resolvePurchaseEntitlements(purchase, license, beatId);
+    const beatIds = [...new Set(purchases.map((p) => p.beatId.toString()))];
+    const licenseIds = [...new Set(purchases.map((p) => p.licenseId.toString()))];
 
-        return {
-          purchaseId: purchase._id.toString(),
-          beatId,
-          beatTitle: beat?.title || "Unknown",
-          beatCoverUrl: beat?.coverUrl,
-          beatGenre: beat?.genre || "",
-          licenseType: purchase.licenseType,
-          licenseName: license?.name || purchase.licenseType,
-          includesWav: entitlements.wavAllowed,
-          includesStems: entitlements.stemsAllowed,
-          hasStemsFile: !!beat?.stemsUrl,
-          amount: purchase.amount,
-          purchasedAt: purchase.createdAt,
-        };
-      })
-    );
+    const [beats, licenses] = await Promise.all([
+      beatRepository.findByIds(beatIds),
+      licenseRepository.findByIds(licenseIds),
+    ]);
+
+    const beatMap = new Map(beats.map((b) => [b._id.toString(), b]));
+    const licenseMap = new Map(licenses.map((l) => [l._id.toString(), l]));
+
+    const downloads = purchases.map((purchase) => {
+      const beatId = purchase.beatId.toString();
+      const beat = beatMap.get(beatId);
+      const license = licenseMap.get(purchase.licenseId.toString());
+      const entitlements = resolvePurchaseEntitlements(purchase, license ?? null, beatId);
+
+      return {
+        purchaseId: purchase._id.toString(),
+        beatId,
+        beatTitle: beat?.title || "Unknown",
+        beatCoverUrl: beat?.coverUrl,
+        beatGenre: beat?.genre || "",
+        licenseType: purchase.licenseType,
+        licenseName: license?.name || purchase.licenseType,
+        includesWav: entitlements.wavAllowed,
+        includesStems: entitlements.stemsAllowed,
+        hasStemsFile: !!beat?.stemsUrl,
+        amount: purchase.amount,
+        purchasedAt: purchase.createdAt,
+      };
+    });
 
     return Response.json({ downloads });
   } catch (error) {

@@ -66,6 +66,52 @@ function computeBars(channelData: Float32Array, barCount: number): number[] {
   return bars.map((b) => Math.max(0.05, b / maxVal));
 }
 
+function drawWaveform(
+  canvas: HTMLCanvasElement,
+  bars: number[],
+  progressRatio: number,
+  hoveringAt: number | null,
+  barColor: string,
+  progressColor: string,
+) {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+
+  const width = rect.width;
+  const height = rect.height;
+  const progressX = progressRatio * width;
+
+  ctx.clearRect(0, 0, width, height);
+
+  bars.forEach((amplitude, i) => {
+    const x = i * (BAR_WIDTH + BAR_GAP);
+    const barHeight = Math.max(BAR_MIN_HEIGHT, amplitude * (height - 4));
+    const y = (height - barHeight) / 2;
+
+    ctx.fillStyle = x <= progressX ? progressColor : barColor;
+    ctx.beginPath();
+    ctx.roundRect(x, y, BAR_WIDTH, barHeight, 1);
+    ctx.fill();
+  });
+
+  if (hoveringAt !== null) {
+    ctx.fillStyle = "rgba(255,255,255,0.08)";
+    ctx.fillRect(0, 0, hoveringAt, height);
+  }
+}
+
+function formatTime(seconds: number): string {
+  const min = Math.floor(seconds / 60);
+  const sec = Math.floor(seconds % 60);
+  return `${min}:${sec.toString().padStart(2, "0")}`;
+}
+
 export default function Waveform({
   audioUrl,
   progress,
@@ -78,9 +124,17 @@ export default function Waveform({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const barsRef = useRef<number[]>([]);
+  const rafRef = useRef<number>(0);
   const [loaded, setLoaded] = useState(false);
   const [hovering, setHovering] = useState(false);
   const [hoverX, setHoverX] = useState(0);
+
+  // Store latest values in refs to avoid re-render-driven redraws
+  const progressRef = useRef(progress);
+  progressRef.current = progress;
+  const durationRef = useRef(duration);
+  durationRef.current = duration;
+  const hoverXRef = useRef<number | null>(null);
 
   const barCount = useCallback(() => {
     const width = containerRef.current?.clientWidth ?? 600;
@@ -100,54 +154,39 @@ export default function Waveform({
     });
   }, [audioUrl, barCount]);
 
+  // rAF-driven canvas redraw — decoupled from React state
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    let running = true;
 
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    const tick = () => {
+      if (!running) return;
+      const canvas = canvasRef.current;
+      if (canvas && barsRef.current.length > 0) {
+        const dur = durationRef.current;
+        const progressRatio = dur > 0 ? progressRef.current / dur : 0;
+        drawWaveform(canvas, barsRef.current, progressRatio, hoverXRef.current, barColor, progressColor);
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
 
-    const dpr = window.devicePixelRatio || 1;
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    ctx.scale(dpr, dpr);
+    rafRef.current = requestAnimationFrame(tick);
 
-    const width = rect.width;
-    const height = rect.height;
-    const bars = barsRef.current;
-    const progressRatio = duration > 0 ? progress / duration : 0;
-    const progressX = progressRatio * width;
-
-    ctx.clearRect(0, 0, width, height);
-
-    bars.forEach((amplitude, i) => {
-      const x = i * (BAR_WIDTH + BAR_GAP);
-      const barHeight = Math.max(BAR_MIN_HEIGHT, amplitude * (height - 4));
-      const y = (height - barHeight) / 2;
-
-      ctx.fillStyle = x <= progressX ? progressColor : barColor;
-      ctx.beginPath();
-      ctx.roundRect(x, y, BAR_WIDTH, barHeight, 1);
-      ctx.fill();
-    });
-
-    if (hovering && duration > 0) {
-      ctx.fillStyle = "rgba(255,255,255,0.08)";
-      ctx.fillRect(0, 0, hoverX, height);
-    }
-  }, [progress, duration, loaded, hovering, hoverX, barColor, progressColor]);
+    return () => {
+      running = false;
+      cancelAnimationFrame(rafRef.current);
+    };
+  }, [loaded, barColor, progressColor]);
 
   const handleInteraction = useCallback(
     (clientX: number) => {
       const canvas = canvasRef.current;
-      if (!canvas || duration <= 0) return;
+      if (!canvas || durationRef.current <= 0) return;
       const rect = canvas.getBoundingClientRect();
       const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
-      const time = (x / rect.width) * duration;
+      const time = (x / rect.width) * durationRef.current;
       onSeek(time);
     },
-    [duration, onSeek]
+    [onSeek]
   );
 
   const handleMouseMove = useCallback(
@@ -155,7 +194,9 @@ export default function Waveform({
       const canvas = canvasRef.current;
       if (!canvas) return;
       const rect = canvas.getBoundingClientRect();
-      setHoverX(e.clientX - rect.left);
+      const x = e.clientX - rect.left;
+      hoverXRef.current = x;
+      setHoverX(x);
     },
     []
   );
@@ -164,14 +205,13 @@ export default function Waveform({
     <div
       ref={containerRef}
       className={cn("relative cursor-pointer select-none", className)}
-      onMouseEnter={() => setHovering(true)}
-      onMouseLeave={() => setHovering(false)}
+      onMouseEnter={() => { setHovering(true); hoverXRef.current = 0; }}
+      onMouseLeave={() => { setHovering(false); hoverXRef.current = null; }}
       onMouseMove={handleMouseMove}
       onClick={(e) => handleInteraction(e.clientX)}
     >
       <canvas ref={canvasRef} className="h-full w-full" />
 
-      {/* Hover time tooltip */}
       {hovering && duration > 0 && (
         <div
           className="pointer-events-none absolute -top-7 -translate-x-1/2 rounded bg-popover px-1.5 py-0.5 text-xs text-popover-foreground shadow"
@@ -182,10 +222,4 @@ export default function Waveform({
       )}
     </div>
   );
-}
-
-function formatTime(seconds: number): string {
-  const min = Math.floor(seconds / 60);
-  const sec = Math.floor(seconds % 60);
-  return `${min}:${sec.toString().padStart(2, "0")}`;
 }

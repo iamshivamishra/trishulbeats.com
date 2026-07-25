@@ -63,11 +63,6 @@ export default function DashboardShell({ session, children }: DashboardShellProp
     return <>{children}</>;
   }
 
-  const browseLinks = [
-    { href: "/beats", label: "Browse Beats", icon: Music, show: true },
-    { href: "/beat-packs", label: "Beat Packs", icon: Layers, show: true },
-  ];
-
   const workspaceLinks = [
     { href: "/studio", label: "Overview", icon: LayoutDashboard, show: isProducer },
     { href: "/studio/beats", label: "My Beats", icon: Music, show: isProducer },
@@ -85,7 +80,7 @@ export default function DashboardShell({ session, children }: DashboardShellProp
   const isActive = (href: string) =>
     href === "/studio" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
 
-  const currentTitle = [...browseLinks, ...workspaceLinks, ...accountLinks]
+  const currentTitle = [...workspaceLinks, ...accountLinks]
     .find((link) => isActive(link.href))?.label || "Dashboard";
 
   const sidebarLinkClass = (href: string) =>
@@ -130,32 +125,6 @@ export default function DashboardShell({ session, children }: DashboardShellProp
                 </div>
               )}
             </div>
-          </div>
-
-          <div className="mb-6">
-            {!collapsed && (
-              <p className="mb-2 px-2 text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">
-                Browse
-              </p>
-            )}
-            <nav className="space-y-1.5">
-              {browseLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  title={collapsed ? link.label : undefined}
-                  className={sidebarLinkClass(link.href)}
-                >
-                  {isActive(link.href) && (
-                    <span className="absolute inset-y-1.5 left-0 w-1 rounded-r-full bg-primary" />
-                  )}
-                  <span className={cn("flex items-center", collapsed ? "" : "gap-2.5")}>
-                    <link.icon className={cn("h-4 w-4", isActive(link.href) ? "text-primary" : "")} />
-                    {!collapsed && <span className="font-medium">{link.label}</span>}
-                  </span>
-                </Link>
-              ))}
-            </nav>
           </div>
 
           {workspaceLinks.length > 0 && (
@@ -268,28 +237,6 @@ export default function DashboardShell({ session, children }: DashboardShellProp
                     <SheetTitle>Dashboard</SheetTitle>
                   </SheetHeader>
                   <div className="mt-6 space-y-6">
-                    <div>
-                      <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                        Browse
-                      </p>
-                      <nav className="space-y-1">
-                        {browseLinks.map((link) => (
-                          <Link
-                            key={link.href}
-                            href={link.href}
-                            className={cn(
-                              "focus-ring flex items-center gap-2 rounded-lg px-3 py-2 text-sm",
-                              isActive(link.href)
-                                ? "bg-primary/15 text-primary"
-                                : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                            )}
-                          >
-                            <link.icon className="h-4 w-4" />
-                            {link.label}
-                          </Link>
-                        ))}
-                      </nav>
-                    </div>
                     {workspaceLinks.length > 0 && (
                     <div>
                       <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">

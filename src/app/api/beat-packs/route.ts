@@ -3,9 +3,14 @@ import { auth } from "@/lib/auth";
 import { beatPackService } from "@/lib/services/beat-pack.service";
 import { beatPackFilterSchema, createBeatPackSchema } from "@/lib/validators/beat-pack";
 import { formatErrorResponse, UnauthorizedError, ForbiddenError } from "@/lib/errors";
+import { rateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 
 export async function GET(request: NextRequest) {
   try {
+    const ip = getClientIp(request);
+    const rl = await rateLimit(ip, { limit: 60, windowSec: 60, prefix: "api:beat-packs" });
+    if (!rl.success) return rateLimitResponse(rl.resetAt);
+
     const params = Object.fromEntries(request.nextUrl.searchParams);
     const filters = beatPackFilterSchema.parse(params);
     const result = await beatPackService.listPublished(filters);

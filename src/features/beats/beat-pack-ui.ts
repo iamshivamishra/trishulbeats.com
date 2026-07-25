@@ -8,8 +8,15 @@ export interface BeatPackTierPrice {
 export interface BeatPackTrack {
   id: string;
   title: string;
+  description?: string;
   genre: string;
   bpm?: number;
+  key?: string;
+  mood?: string;
+  tags?: string[];
+  priceBasic?: number;
+  pricePremium?: number;
+  priceUnlimited?: number;
   durationLabel: string;
   previewUrl?: string;
 }

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useAudioPlayer } from "@/components/AudioPlayerContext";
+import { useAudioActions } from "@/components/AudioPlayerContext";
 import type { BeatPackUi } from "@/features/beats/beat-pack-ui";
 
 interface Props {
@@ -24,7 +24,7 @@ export default function BeatPacksClient({ packs, hasMore }: Props) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [canLoadMore, setCanLoadMore] = useState(hasMore);
-  const { playBeat, currentBeat, isPlaying } = useAudioPlayer();
+  const { playBeat, currentBeat, isPlaying } = useAudioActions();
 
   const handlePreviewToggle = (pack: BeatPackUi) => {
     const track = pack.tracks[0];

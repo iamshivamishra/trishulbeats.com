@@ -11,9 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import Image from "next/image";
 import { Music, ShoppingBag, Calendar, ArrowRight, Pencil, ExternalLink, Layers } from "lucide-react";
-
-export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = { title: "Profile" };
 
@@ -24,14 +23,17 @@ export default async function ProfilePage() {
   const user = await userRepository.findById(session.user.id);
   if (!user) redirect("/login");
 
-  const purchases = await purchaseRepository.findByBuyerId(session.user.id);
+  const { data: purchases, total } = await purchaseRepository.findByBuyerIdPaginated(session.user.id, 1, 20);
 
-  const purchasedBeats = await Promise.all(
-    purchases.slice(0, 10).map(async (p) => {
-      const beat = await beatRepository.findById(p.beatId.toString());
-      return { purchase: p, beat };
-    })
-  );
+  const beatIds = purchases.map((p) => p.beatId.toString());
+  const beats = await beatRepository.findByIds(beatIds);
+  const beatMap = new Map(beats.map((b) => [b._id.toString(), b]));
+  const purchasedBeats = purchases.map((p) => ({
+    purchase: p,
+    beat: beatMap.get(p.beatId.toString()) ?? null,
+  }));
+
+  // Build pack purchase map from paginated purchases + any pack-sourced purchases
   const packPurchaseMap = new Map<string, {
     packId: string;
     purchasedAt: Date;
@@ -181,8 +183,20 @@ export default async function ProfilePage() {
                   className="flex items-center justify-between rounded-lg border border-border/30 bg-background p-3"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10">
-                      <Music className="h-5 w-5 text-primary" />
+                    <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-primary/10">
+                      {beat?.coverUrl ? (
+                        <Image
+                          src={beat.coverUrl}
+                          alt={beat.title}
+                          fill
+                          className="object-cover"
+                          sizes="40px"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center">
+                          <Music className="h-5 w-5 text-primary" />
+                        </div>
+                      )}
                     </div>
                     <div>
                       <p className="text-sm font-medium">
@@ -209,6 +223,11 @@ export default async function ProfilePage() {
                   </div>
                 </div>
               ))}
+              {total > 20 && (
+                <p className="pt-3 text-center text-xs text-muted-foreground">
+                  Showing 20 of {total} purchases
+                </p>
+              )}
             </div>
           ) : (
             <div className="py-8 text-center text-muted-foreground">
