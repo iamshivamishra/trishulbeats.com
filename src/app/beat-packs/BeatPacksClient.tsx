@@ -33,7 +33,7 @@ export default function BeatPacksClient({ packs, hasMore }: Props) {
       id: track.id,
       title: `${pack.title} — ${track.title}`,
       producerName: pack.producerName,
-      coverUrl: pack.coverUrl,
+      coverUrl: pack.imageUrls?.[0] || pack.coverUrl,
       previewUrl: track.previewUrl,
     });
   };
@@ -146,9 +146,9 @@ export default function BeatPacksClient({ packs, hasMore }: Props) {
             {filteredPacks.map((pack) => (
               <Card key={pack.id} className="rounded-2xl border-border/50 bg-card/80 shadow-sm">
                 <div className="relative aspect-video w-full overflow-hidden rounded-t-2xl border-b border-border/40 bg-muted/30">
-                  {pack.coverUrl ? (
+                  {(pack.imageUrls?.[0] || pack.coverUrl) ? (
                     <Image
-                      src={pack.coverUrl}
+                      src={pack.imageUrls?.[0] || pack.coverUrl!}
                       alt={pack.title}
                       fill
                       sizes="(max-width: 768px) 100vw, 33vw"

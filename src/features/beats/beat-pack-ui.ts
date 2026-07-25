@@ -24,8 +24,10 @@ export interface BeatPackTrack {
 export interface BeatPackUi {
   id: string;
   title: string;
+  metadata?: string;
   description: string;
   coverUrl?: string;
+  imageUrls?: string[];
   producerName: string;
   producerUsername: string;
   producerAvatarUrl?: string;
