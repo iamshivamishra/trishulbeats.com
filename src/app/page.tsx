@@ -277,7 +277,7 @@ export default async function HomePage() {
           ].map((feat) => (
             <div key={feat.title} className="rounded-xl border border-border/50 bg-card/50 p-6">
               <feat.icon className="mb-3 h-8 w-8 text-primary" />
-              <h3 className="text-lg font-semibold">{feat.title}</h3>
+              <h2 className="text-lg font-semibold">{feat.title}</h2>
               <p className="mt-1 text-sm text-muted-foreground">{feat.desc}</p>
             </div>
           ))}
@@ -296,11 +296,12 @@ export default async function HomePage() {
             </Button>
           </div>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-           {trendingWithPrices.map(({ beat, startingPrice }) => (
+           {trendingWithPrices.map(({ beat, startingPrice }, index) => (
   <BeatCard
     key={beat._id.toString()}
     beat={beat}
     startingPrice={startingPrice}
+    priority={index < 4}
   />
 ))}
           </div>
@@ -321,11 +322,12 @@ export default async function HomePage() {
             </Button>
           </div>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {recentWithPrices.map(({ beat, startingPrice }) => (
+            {recentWithPrices.map(({ beat, startingPrice }, index) => (
   <BeatCard
     key={beat._id.toString()}
     beat={beat}
     startingPrice={startingPrice}
+    priority={index < 4}
   />
 ))}
           </div>

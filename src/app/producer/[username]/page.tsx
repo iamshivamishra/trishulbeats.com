@@ -40,7 +40,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: `${displayName} (@${producer.username})`,
     description:
       producer.bio || `Check out beats by ${displayName} on Trishul Beats.`,
+    alternates: { canonical: `/producer/${username}` },
     openGraph: {
+      images: producer.avatarUrl ? [producer.avatarUrl] : [],
+    },
+    twitter: {
+      card: "summary_large_image" as const,
+      title: `${displayName} (@${producer.username})`,
+      description: producer.bio || `Check out beats by ${displayName} on Trishul Beats.`,
       images: producer.avatarUrl ? [producer.avatarUrl] : [],
     },
   };
@@ -105,8 +112,26 @@ export default async function ProducerProfilePage({ params }: Props) {
     ([, url]) => url && url.length > 0
   );
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+  const personJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ProfilePage",
+    mainEntity: {
+      "@type": "Person",
+      name: displayName,
+      url: `${appUrl}/producer/${producer.username}`,
+      image: producer.avatarUrl || undefined,
+      description: producer.bio || `Music producer on Trishul Beats.`,
+    },
+  };
+
   return (
     <div>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }}
+      />
       {/* Cover image */}
       <div className="relative h-48 w-full bg-gradient-to-br from-primary/30 via-primary/10 to-background sm:h-64 lg:h-72">
         {producer.coverImageUrl && (

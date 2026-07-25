@@ -15,6 +15,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
+  themeColor: "#0d0d0d",
 };
 
 export const metadata: Metadata = {
@@ -35,19 +36,18 @@ export const metadata: Metadata = {
     title: "Trishul Beats — Beat Marketplace",
     description: "Discover and license high-quality beats from talented producers.",
     locale: "en_IN",
+    images: [{ url: "/og-default.png", width: 1200, height: 630, alt: "Trishul Beats" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Trishul Beats — Beat Marketplace",
     description: "Discover and license high-quality beats from talented producers.",
+    images: ["/og-default.png"],
   },
   robots: {
     index: true,
     follow: true,
     googleBot: { index: true, follow: true, "max-image-preview": "large" },
-  },
-  alternates: {
-    canonical: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
   },
 };
 

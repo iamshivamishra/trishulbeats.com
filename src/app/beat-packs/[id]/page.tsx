@@ -6,6 +6,8 @@ import { beatPackService } from "@/lib/services/beat-pack.service";
 import { purchaseRepository } from "@/lib/repositories/purchase.repository";
 import type { BeatPackUi } from "@/features/beats/beat-pack-ui";
 
+export const revalidate = 60;
+
 interface Props {
   params: Promise<{ id: string }>;
 }
@@ -20,6 +22,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: `${pack.title} — Beat Pack`,
     description: pack.description,
+    alternates: { canonical: `/beat-packs/${id}` },
+    openGraph: {
+      title: `${pack.title} — Beat Pack`,
+      description: pack.description || `Beat pack by ${pack.producerName || "a producer"} on Trishul Beats.`,
+      images: pack.imageUrls?.[0] ? [pack.imageUrls[0]] : pack.coverUrl ? [pack.coverUrl] : [],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${pack.title} — Beat Pack`,
+      description: pack.description || `Beat pack on Trishul Beats.`,
+      images: pack.imageUrls?.[0] ? [pack.imageUrls[0]] : pack.coverUrl ? [pack.coverUrl] : [],
+    },
   };
 }
 
@@ -69,13 +83,54 @@ export default async function BeatPackDetailPage({ params }: Props) {
     updatedAtLabel: `Updated ${new Date(pack.updatedAt).toLocaleDateString()}`,
   };
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const packImage = pack.imageUrls?.[0] || pack.coverUrl || undefined;
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: pack.title,
+    description: pack.description || `Beat pack on Trishul Beats.`,
+    image: packImage,
+    url: `${appUrl}/beat-packs/${id}`,
+    brand: { "@type": "Brand", name: pack.producerName || "Trishul Beats" },
+    offers: {
+      "@type": "AggregateOffer",
+      priceCurrency: "INR",
+      lowPrice: pack.prices.basic,
+      highPrice: pack.prices.unlimited,
+      offerCount: 3,
+      availability: "https://schema.org/InStock",
+    },
+  };
+
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: appUrl },
+      { "@type": "ListItem", position: 2, name: "Beat Packs", item: `${appUrl}/beat-packs` },
+      { "@type": "ListItem", position: 3, name: pack.title, item: `${appUrl}/beat-packs/${id}` },
+    ],
+  };
+
   return (
-    <BeatPackDetailClient
-      pack={uiPack}
-      isLoggedIn={!!session?.user}
-      hasPurchasedAll={hasPurchasedAll}
-      ownedBeatCount={ownedBeatCount}
-    />
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+      <BeatPackDetailClient
+        pack={uiPack}
+        isLoggedIn={!!session?.user}
+        hasPurchasedAll={hasPurchasedAll}
+        ownedBeatCount={ownedBeatCount}
+      />
+    </>
   );
 }
 
