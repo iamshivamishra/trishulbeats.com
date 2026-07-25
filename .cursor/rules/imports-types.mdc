@@ -1,5 +1,5 @@
 ---
-description: Import conventions and TypeScript types
+description: Import conventions, path aliases, TypeScript types
 globs: src/**/*.{ts,tsx}
 alwaysApply: false
 ---
@@ -8,16 +8,7 @@ alwaysApply: false
 
 ## Path alias
 
-Always use `@/` for imports (maps to `./src/`):
-
-```typescript
-// ✅ GOOD
-import { beatService } from "@/lib/services/beat.service";
-import BeatCard from "@/components/BeatCard";
-
-// ❌ BAD
-import { beatService } from "../../../lib/services/beat.service";
-```
+Always use `@/` (maps to `./src/`). Never use relative `../../../` paths.
 
 ## Import order
 
@@ -27,9 +18,10 @@ import { beatService } from "../../../lib/services/beat.service";
 4. Types (`@/types`, type-only imports)
 5. Relative imports (`./SomeClient`)
 
-## Type definitions
+## Types
 
-- Domain interfaces live in `src/types/index.ts` with `I` prefix: `IBeat`, `IUser`, `IOrder`.
-- Zod-inferred types in validators: `CreateBeatInput`, `BeatFilterInput`.
-- UI types in feature files: `BeatPackUi` in `src/features/beats/beat-pack-ui.ts`.
-- Use `type` imports for type-only: `import type { Metadata } from "next"`.
+- Domain interfaces in `src/types/index.ts` with `I` prefix: `IBeat`, `IUser`.
+- Zod-inferred types in validators: `CreateBeatInput`.
+- UI types in feature files: `BeatPackUi`.
+- Use `import type` for type-only imports.
+- No `any` — use `unknown` and narrow with type guards.

@@ -1,5 +1,5 @@
 ---
-description: Testing conventions with Vitest
+description: Testing — Vitest, test types, coverage, happy paths and edge cases
 globs: **/*.test.ts
 alwaysApply: false
 ---
@@ -8,37 +8,44 @@ alwaysApply: false
 
 ## Stack
 
-- **Vitest** with Node environment.
-- Tests colocated next to source files: `*.test.ts`.
-- Path alias `@/` → `./src/` configured in `vitest.config.ts`.
+- **Vitest** with Node environment, `@/` path alias.
+- Tests colocated: `*.test.ts` next to source files.
+- Commands: `npm run test`, `npm run test:coverage`.
 
-## Test file naming
+## Test types to generate
 
-```
-src/lib/services/beat.service.ts       → src/lib/services/beat.service.test.ts
-src/lib/repositories/like.repository.ts → src/lib/repositories/like.repository.test.ts
-src/app/api/beats/route.ts            → src/app/api/beats/route.test.ts
-```
-
-## Running tests
-
-```bash
-npm run test          # Run all tests
-npm run test:coverage # With coverage report
-```
+| Type | What to test | Location |
+|------|-------------|----------|
+| **Unit** | Services, serializers, validators, utilities | `*.test.ts` beside source |
+| **Integration** | Repository + database interactions | `*.test.ts` beside repo |
+| **API** | Route handlers end-to-end | `route.test.ts` beside route |
+| **Component** | Complex client components with interactions | `*.test.tsx` beside component |
 
 ## Pattern
 
 ```typescript
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
 describe("beatService.create", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
   it("should create a beat with default licenses", async () => {
-    // arrange
-    // act
-    // assert
+    // Arrange — set up mocks and input
+    // Act — call the function
+    // Assert — verify result and side effects
+  });
+
+  it("should throw ForbiddenError when user is not a producer", async () => {
+    // Edge case
   });
 });
 ```
+
+## Always include
+
+- **Happy paths** — normal successful operations.
+- **Edge cases** — empty inputs, boundary values, missing optional fields.
+- **Error cases** — invalid input, unauthorized access, not found.
+- **Concurrency** — race conditions where applicable.
 
 Mock Mongoose models and external services with `vi.mock()`.

@@ -1,0 +1,47 @@
+---
+description: React best practices — Server Components first, minimal client state, performance
+globs: src/**/*.tsx
+alwaysApply: false
+---
+
+# React Best Practices
+
+## Server Components first
+
+- Default to Server Components — no `"use client"` unless needed.
+- Add `"use client"` only for: hooks, event handlers, browser APIs, third-party client libs.
+- Split pattern: server `page.tsx` → client `*Client.tsx`.
+
+## Minimize client-side work
+
+```typescript
+// ❌ BAD — unnecessary state
+const [data, setData] = useState(null);
+useEffect(() => { fetch(...).then(setData) }, []);
+
+// ✅ GOOD — server component fetches directly
+const data = await someService.getData();
+```
+
+## Performance rules
+
+- **Avoid unnecessary state** — derive values instead of storing them.
+- **Avoid unnecessary effects** — if it can be computed during render, do it.
+- **Memoize expensive work** — `useMemo` for heavy computations, `useCallback` for stable refs.
+- **Lazy load** — `dynamic()` for heavy components not needed on initial render.
+- **Minimize hydration** — keep client component trees small and leaf-level.
+
+## Component size
+
+- Split components over **~200 lines** into smaller, focused pieces.
+- Extract custom hooks for reusable stateful logic.
+- One component per file (co-locate small helpers if purely internal).
+
+## State management priority
+
+Prefer in this order:
+1. **Server State** — fetch on server, pass as props
+2. **URL State** — `searchParams`, query strings for filters/pagination
+3. **Component State** — `useState` for local UI state
+4. **Context** — `useContext` for cross-component state (cart, audio player)
+5. **Global Store** — avoid; no Redux/Zustand in this project

@@ -1,5 +1,5 @@
 ---
-description: Service and repository layer conventions
+description: Service and repository layer — business logic, persistence, transactions
 globs: src/lib/services/**/*.ts,src/lib/repositories/**/*.ts
 alwaysApply: false
 ---
@@ -8,12 +8,11 @@ alwaysApply: false
 
 ## Services (`src/lib/services/*.service.ts`)
 
-- Contain business logic, authorization checks, and orchestration.
-- Call repositories for persistence — never import Mongoose models directly.
-- Use `withTransaction()` from `@/lib/db` for multi-step writes.
-- Throw typed errors from `@/lib/errors`: `NotFoundError`, `ForbiddenError`, etc.
-- Use `logger` from `@/lib/logger` for structured logging.
-- Use `audit()` for important actions (purchases, status changes).
+- Contain business logic, authorization, orchestration.
+- Call repositories — never import Mongoose models directly.
+- Use `withTransaction()` for multi-step writes.
+- Throw typed errors: `NotFoundError`, `ForbiddenError`, etc.
+- Use `logger` for structured logging, `audit()` for important actions.
 
 ```typescript
 export const beatService = {
@@ -21,6 +20,7 @@ export const beatService = {
     return withTransaction(async (session) => {
       const beat = await beatRepository.create({ ...input, producerId }, { session });
       await licenseRepository.createDefaults(beat._id.toString(), producerId, { session });
+      audit("beat.created", { beatId: beat._id, producerId });
       return beat;
     });
   },
@@ -29,16 +29,22 @@ export const beatService = {
 
 ## Repositories (`src/lib/repositories/*.repository.ts`)
 
-- Handle persistence only — no business rules.
+- Persistence only — no business rules.
 - Always call `await connectDB()` before queries.
-- Accept optional `{ session }` parameter for transactions.
-- Return plain objects (`.lean()`) when possible for performance.
+- Accept optional `{ session }` for transactions.
+- Return `.lean()` for read queries.
+- Use `.select()` to project only needed fields.
 
 ```typescript
 export const beatRepository = {
   async findById(id: string) {
     await connectDB();
     return Beat.findById(id).lean<IBeat>();
+  },
+
+  async findByIds(ids: string[]) {
+    await connectDB();
+    return Beat.find({ _id: { $in: ids } }).lean<IBeat[]>();
   },
 };
 ```

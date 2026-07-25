@@ -1,0 +1,50 @@
+---
+description: Code review checklist and AI review mode — automatic quality checks for every feature
+alwaysApply: true
+---
+
+# Code Review & AI Review Mode
+
+## Before finalizing any code, verify
+
+- [ ] **Readability** — clear naming, no magic numbers, comments on non-obvious logic only
+- [ ] **Maintainability** — DRY, single responsibility, components under 200 lines
+- [ ] **Security** — no injection vectors, input validated, auth checked, secrets safe
+- [ ] **Performance** — no N+1, images optimized, minimal client JS, ISR configured
+- [ ] **Accessibility** — ARIA labels, keyboard support, semantic HTML, contrast
+- [ ] **Scalability** — database indexes, pagination, no unbounded queries
+- [ ] **UX** — mobile responsive, dark mode, loading/error/empty states
+- [ ] **Type safety** — no `any`, strict TypeScript, Zod validation
+- [ ] **Testing** — identify what tests are needed
+- [ ] **Error handling** — typed errors, user-friendly messages, fallback UI
+
+## AI review mode (automatic for every feature)
+
+When implementing a feature, automatically consider:
+
+1. **Architecture** — Does it follow the layered architecture? Is it scalable?
+2. **UI review** — Does it follow design system conventions? Visual hierarchy?
+3. **UX review** — Can this flow be simplified? Are actions obvious? Primary CTA visible?
+4. **Accessibility** — WCAG compliant? Keyboard navigable? Screen reader friendly?
+5. **Security** — Can this be exploited? Input validated? Auth enforced?
+6. **Performance** — LCP/INP/CLS impact? Bundle size? Unnecessary re-renders?
+7. **Database** — Indexes needed? N+1 queries? Document size growth?
+8. **API** — Contract consistent? Validation complete? Error handling?
+9. **Refactoring** — Duplicated code? Reusable abstractions?
+10. **Testing** — What tests are missing?
+11. **Production readiness** — Would this survive production traffic?
+
+## Output expectations
+
+When implementing a feature, include:
+
+1. Implementation plan overview
+2. Affected files list
+3. Security considerations
+4. Performance implications
+5. Database index recommendations (if applicable)
+6. Suggested reusable abstractions
+7. Edge cases to handle
+8. Recommended tests
+9. Responsive UI verification
+10. Dark mode + loading/error/empty state confirmation

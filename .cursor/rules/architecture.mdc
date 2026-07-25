@@ -1,11 +1,11 @@
 ---
-description: Layered architecture rules — services, repositories, serializers, models
+description: Clean Architecture — layered boundaries, DDD principles, feature-first organization
 alwaysApply: true
 ---
 
 # Architecture
 
-This app uses a strict layered architecture. Never bypass layers.
+Strict layered architecture with clear dependency boundaries.
 
 ```
 Page / API route  →  Service  →  Repository  →  Mongoose Model
@@ -15,11 +15,11 @@ Page / API route  →  Service  →  Repository  →  Mongoose Model
 
 ## Layer rules
 
-- **Pages & API routes** are orchestration only — no business logic, no direct Mongoose calls.
-- **Services** (`src/lib/services/*.service.ts`) contain business logic, validation, and transactions.
-- **Repositories** (`src/lib/repositories/*.repository.ts`) handle persistence only — no cross-domain rules.
-- **Serializers** (`src/lib/serializers/`) shape DTOs for the UI — reuse across pages and APIs.
-- **Validators** (`src/lib/validators/`) define Zod schemas — parse in API routes and services.
+- **Pages & API routes** — orchestration only. No business logic, no direct Mongoose calls.
+- **Services** (`src/lib/services/*.service.ts`) — business logic, authorization, transactions, domain rules.
+- **Repositories** (`src/lib/repositories/*.repository.ts`) — persistence only. No cross-domain business rules.
+- **Serializers** (`src/lib/serializers/`) — shape DTOs for the UI. Reuse across pages and APIs.
+- **Validators** (`src/lib/validators/`) — Zod schemas. Parse in API routes and services.
 
 ## Export pattern
 
@@ -29,15 +29,25 @@ Services and repositories export **plain objects**, not classes:
 // ✅ GOOD
 export const beatService = { async create(...) { ... } };
 
-// ❌ BAD
+// ❌ BAD — no classes
 export class BeatService { ... }
 ```
 
-## Feature code
+## Feature-first organization
 
-Keep shared feature code under `src/features/`:
-- `src/features/beats/` — beat-pack UI types, shared beat logic
-- `src/features/payments/` — payment-related shared code
-- `src/features/studio/` — producer dashboard components
+```
+src/features/beats/       — beat-pack UI types, shared beat logic
+src/features/payments/    — payment-related shared code
+src/features/studio/      — producer dashboard components
+src/components/ui/        — generic UI primitives (shadcn)
+src/components/layout/    — app shell components
+src/components/           — shared app-level components
+```
 
-Generic UI primitives go in `src/components/ui/`; app shell in `src/components/layout/`.
+## Dependency boundaries
+
+- Pages → services (never repositories or models directly)
+- Services → repositories (never models directly when a repository exists)
+- Repositories → models + `connectDB()`
+- Components → never import services or repositories
+- Feature code stays within its feature boundary

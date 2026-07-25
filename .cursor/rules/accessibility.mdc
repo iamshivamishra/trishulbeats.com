@@ -1,0 +1,56 @@
+---
+description: Accessibility — WCAG compliance, ARIA, keyboard navigation, screen readers
+globs: src/components/**/*.tsx,src/features/**/*.tsx,src/app/**/*.tsx
+alwaysApply: false
+---
+
+# Accessibility (WCAG 2.1 AA)
+
+## Semantic HTML
+
+```typescript
+// ✅ GOOD — semantic elements
+<nav aria-label="Main navigation">
+<main>
+<section aria-labelledby="trending-heading">
+<h2 id="trending-heading">Trending Beats</h2>
+
+// ❌ BAD — div soup
+<div className="nav">
+<div className="main">
+<div className="section">
+```
+
+## ARIA labels
+
+- Every interactive element without visible text needs `aria-label`.
+- Icon-only buttons: `<Button aria-label="Play beat">`.
+- Form inputs: pair with `<label>` or `aria-label`.
+- Dynamic content: use `aria-live` for toast/status updates.
+
+## Keyboard support
+
+- All interactive elements must be keyboard accessible.
+- Visible focus indicators on every focusable element (`focus-ring` utility).
+- Modal dialogs trap focus and close on `Escape`.
+- Custom components: proper `role`, `tabIndex`, arrow key navigation.
+
+## Screen readers
+
+- Images: descriptive `alt` text (not "image", not empty unless decorative).
+- Decorative images: `alt=""` and `aria-hidden="true"`.
+- Links: descriptive text (not "click here").
+- Status messages: `role="status"` or `aria-live="polite"`.
+
+## Color and contrast
+
+- Minimum 4.5:1 contrast ratio for normal text.
+- Minimum 3:1 for large text and UI components.
+- Never convey information with color alone — use icons/text too.
+
+## Reduced motion
+
+```typescript
+// ✅ Respect user preferences
+className="motion-safe:transition-transform motion-reduce:transition-none"
+```

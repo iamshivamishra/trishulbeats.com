@@ -1,0 +1,42 @@
+---
+description: Authentication & authorization — NextAuth v5, roles, sessions, CSRF
+globs: src/lib/auth.ts,src/app/api/**/*.ts,src/proxy.ts
+alwaysApply: false
+---
+
+# Authentication & Authorization
+
+## Stack
+
+- **NextAuth v5** (`next-auth@5.0.0-beta.31`) with JWT strategy, 7-day max age.
+- Providers: Google OAuth + Credentials (bcrypt).
+- Config in `src/lib/auth.ts` — exports `auth`, `signIn`, `signOut`, `handlers`.
+
+## Roles
+
+Three roles: `buyer` | `producer` | `admin`.
+
+## Auth checks
+
+```typescript
+const session = await auth();
+
+// Authentication
+if (!session?.user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
+// Authorization
+if (session.user.role !== "admin") throw new ForbiddenError("Admin access required");
+
+// Ownership
+if (resource.producerId.toString() !== session.user.id) throw new ForbiddenError();
+```
+
+## Review checklist
+
+- [ ] Every protected endpoint checks `auth()`.
+- [ ] Role-based access enforced at service layer, not just UI.
+- [ ] Token expiry and refresh handled.
+- [ ] CSRF protection on state-changing operations.
+- [ ] Session data doesn't leak sensitive fields.
+- [ ] Failed auth attempts are rate-limited.
+- [ ] Password reset tokens are single-use and time-limited.

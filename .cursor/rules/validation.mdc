@@ -1,5 +1,5 @@
 ---
-description: Zod validation conventions
+description: Zod validation — schemas, naming, usage patterns
 globs: src/lib/validators/**/*.ts
 alwaysApply: false
 ---
@@ -8,12 +8,9 @@ alwaysApply: false
 
 ## Location & naming
 
-All Zod schemas live in `src/lib/validators/{domain}.ts`.
+All schemas in `src/lib/validators/{domain}.ts`.
 
 ```typescript
-// src/lib/validators/beat.ts
-import { z } from "zod";
-
 export const createBeatSchema = z.object({
   title: z.string().min(1).max(100),
   genre: z.string().min(1),
@@ -23,10 +20,12 @@ export const createBeatSchema = z.object({
 export type CreateBeatInput = z.infer<typeof createBeatSchema>;
 ```
 
-## Rules
+- Schema: `{action}{Domain}Schema` — `createBeatSchema`, `beatFilterSchema`
+- Type: `{Action}{Domain}Input` — `CreateBeatInput`, `BeatFilterInput`
 
-- Name schemas as `{action}{Domain}Schema` (e.g., `createBeatSchema`, `beatFilterSchema`).
-- Export inferred types as `{Action}{Domain}Input`.
-- Parse in API routes before passing to services: `const input = createBeatSchema.parse(body);`.
+## Usage
+
+- Parse in API routes before services: `const input = schema.parse(body)`.
 - Use `z.coerce` for query params that arrive as strings.
-- Shared filter schemas (pagination, sorting) can be composed with `.merge()` or `.extend()`.
+- Compose schemas with `.merge()` or `.extend()`.
+- Use `formatZodError()` from `@/lib/errors` for user-friendly messages.

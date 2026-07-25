@@ -1,0 +1,46 @@
+---
+description: Form conventions — validation, states, keyboard navigation, accessibility
+globs: src/**/*Form*.tsx,src/app/(auth)/**/*.tsx,src/features/**/*.tsx
+alwaysApply: false
+---
+
+# Forms
+
+## Every form must include
+
+1. **Validation** — Zod schemas from `@/lib/validators/`, inline error messages.
+2. **Loading state** — disable submit button, show spinner/text, prevent double-submit.
+3. **Error state** — display server errors clearly, preserve user input.
+4. **Success state** — confirmation message, redirect, or toast.
+5. **Disabled state** — when form is submitting or conditions aren't met.
+
+## Keyboard & focus
+
+- `Tab` order follows visual layout.
+- `Enter` submits the form from any field.
+- Auto-focus first field on mount.
+- After error, focus moves to the first invalid field.
+- After success, focus moves to the confirmation or next action.
+
+## Inline validation
+
+```typescript
+// Validate on blur, not on every keystroke
+<input
+  onBlur={() => validateField("email")}
+  aria-invalid={!!errors.email}
+  aria-describedby={errors.email ? "email-error" : undefined}
+/>
+{errors.email && (
+  <p id="email-error" role="alert" className="text-sm text-destructive">
+    {errors.email}
+  </p>
+)}
+```
+
+## Accessibility
+
+- Every input has a visible `<label>` or `aria-label`.
+- Error messages use `role="alert"` and are linked via `aria-describedby`.
+- Required fields marked with `aria-required="true"`.
+- Submit buttons have descriptive text (not just "Submit").
