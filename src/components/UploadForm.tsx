@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   Loader2, Upload, Music, Image as ImageIcon, X,
-  FileArchive, HardDrive, CheckCircle2,
+  FileArchive, HardDrive, CheckCircle2, ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,12 +35,34 @@ interface PresignedUploadPayload {
   fields?: Record<string, string>;
 }
 
+type LicenseTier = "basic" | "premium" | "unlimited";
 
 const MAX_SIZES: Record<string, number> = {
-  preview: 50 * 1024 * 1024,        // 50 MB
-  master: 500 * 1024 * 1024,        // 500 MB
-  stems: 5 * 1024 * 1024 * 1024,    // 5 GB
-  artwork: 5 * 1024 * 1024,         // 5 MB
+  preview: 20 * 1024 * 1024,
+  master: 100 * 1024 * 1024,
+  stems: 500 * 1024 * 1024,
+  artwork: 5 * 1024 * 1024,
+};
+
+const LICENSE_INFO: Record<
+  LicenseTier,
+  { label: string; description: string; placeholder: string }
+> = {
+  basic: {
+    label: "Basic License",
+    description: "MP3 preview only, limited streams/sales, no stems included.",
+    placeholder: "e.g. 29.99",
+  },
+  premium: {
+    label: "Premium License",
+    description: "WAV master included, higher stream/sales cap, no stems.",
+    placeholder: "e.g. 59.99",
+  },
+  unlimited: {
+    label: "Unlimited License",
+    description: "WAV master + stems included, unlimited streams/sales.",
+    placeholder: "e.g. 199.99",
+  },
 };
 
 function formatSize(bytes: number): string {
@@ -64,6 +86,9 @@ export default function UploadForm() {
   const [priceBasic, setPriceBasic] = useState("");
   const [pricePremium, setPricePremium] = useState("");
   const [priceUnlimited, setPriceUnlimited] = useState("");
+
+  // Which license card is currently expanded (click to open/close)
+  const [openLicense, setOpenLicense] = useState<LicenseTier | null>(null);
 
   const [preview, setPreview] = useState<FileSlot>({ file: null, progress: 0, status: "idle" });
   const [master, setMaster] = useState<FileSlot>({ file: null, progress: 0, status: "idle" });
@@ -158,7 +183,6 @@ export default function UploadForm() {
     },
     []
   );
-
 
   const doUpload = async (publishStatus: "draft" | "published") => {
     if (!preview.file || !master.file) {
@@ -312,6 +336,62 @@ export default function UploadForm() {
     </div>
   );
 
+  // Renders one clickable license card. Clicking the header toggles the
+  // details (description + price input) open/closed.
+  const renderLicenseCard = (
+    tier: LicenseTier,
+    price: string,
+    setPrice: React.Dispatch<React.SetStateAction<string>>
+  ) => {
+    const info = LICENSE_INFO[tier];
+    const isOpen = openLicense === tier;
+
+    return (
+      <div
+        className={`rounded-xl border transition-colors ${
+          isOpen ? "border-primary/60 bg-accent/20" : "border-border/60 bg-background/60"
+        }`}
+      >
+        <button
+          type="button"
+          onClick={() => setOpenLicense(isOpen ? null : tier)}
+          className="flex w-full items-center justify-between gap-3 p-4 text-left"
+        >
+          <div>
+            <p className="text-sm font-medium">{info.label}</p>
+            <p className="text-xs text-muted-foreground">
+              {price ? `₹${price}` : "Default pricing"}
+            </p>
+          </div>
+          <ChevronDown
+            className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
+              isOpen ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+
+        {isOpen && (
+          <div className="space-y-3 border-t border-border/60 p-4 pt-3">
+            <p className="text-xs text-muted-foreground">{info.description}</p>
+            <div className="space-y-2">
+              <Label htmlFor={`price-${tier}`}>{info.label} Price (₹)</Label>
+              <Input
+                id={`price-${tier}`}
+                type="number"
+                min={0}
+                step="0.01"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                placeholder={info.placeholder}
+                autoFocus
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <Card className="rounded-2xl border-border/50 bg-card/80 shadow-sm">
       <CardHeader>
@@ -321,8 +401,8 @@ export default function UploadForm() {
         </CardTitle>
         <CardDescription>
           Upload your beat files. Preview MP3 and Master WAV are required.
-          Stems and artwork are optional. Set your own license prices below —
-          leave blank to use default pricing.
+          Stems and artwork are optional. Click a license below to set its
+          price — leave blank to use default pricing.
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
@@ -419,55 +499,21 @@ export default function UploadForm() {
             </div>
           </div>
 
-          {/* License Pricing */}
+          {/* License Pricing — click a card to expand its details */}
           <div className="space-y-1">
             <h3 className="flex items-center gap-2 text-sm font-semibold">
               License Pricing
             </h3>
             <p className="text-xs text-muted-foreground">
-              Leave blank to use default platform pricing for each tier.
+              Click a license to view its details and set a custom price.
+              Leave blank to use default platform pricing for that tier.
             </p>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="priceBasic">Basic License (₹)</Label>
-              <Input
-                id="priceBasic"
-                type="number"
-                min={0}
-                step="0.01"
-                value={priceBasic}
-                onChange={(e) => setPriceBasic(e.target.value)}
-                placeholder="e.g. 29.99"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="pricePremium">Premium License (₹)</Label>
-              <Input
-                id="pricePremium"
-                type="number"
-                min={0}
-                step="0.01"
-                value={pricePremium}
-                onChange={(e) => setPricePremium(e.target.value)}
-                placeholder="e.g. 59.99"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="priceUnlimited">Unlimited License (₹)</Label>
-              <Input
-                id="priceUnlimited"
-                type="number"
-                min={0}
-                step="0.01"
-                value={priceUnlimited}
-                onChange={(e) => setPriceUnlimited(e.target.value)}
-                placeholder="e.g. 199.99"
-              />
-            </div>
+          <div className="space-y-3">
+            {renderLicenseCard("basic", priceBasic, setPriceBasic)}
+            {renderLicenseCard("premium", pricePremium, setPricePremium)}
+            {renderLicenseCard("unlimited", priceUnlimited, setPriceUnlimited)}
           </div>
 
           {/* File uploads */}
@@ -477,33 +523,33 @@ export default function UploadForm() {
               Files
             </h3>
             <p className="text-xs text-muted-foreground">
-              Supported: MP3/ZIP (preview), WAV/ZIP (master), ZIP (stems), JPEG/PNG/WebP (artwork)
+              Supported: MP3 (preview), WAV (master), ZIP (stems), JPEG/PNG/WebP (artwork)
             </p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             {renderFileSlot(
               "Preview MP3",
-              "audio/mpeg,audio/mp3,.mp3,application/zip,.zip", // ZIP bhi accept
+              "audio/mpeg,audio/mp3,.mp3",
               preview,
               setPreview,
               previewRef,
               "preview",
               <Music className="h-8 w-8" />,
               true,
-              "Max 20 MB — MP3 or ZIP"
+              "Max 20 MB — tagged preview"
             )}
 
             {renderFileSlot(
               "Master WAV",
-              "audio/wav,audio/x-wav,.wav,application/zip,.zip", // ZIP bhi accept
+              "audio/wav,audio/x-wav,.wav",
               master,
               setMaster,
               masterRef,
               "master",
               <Music className="h-8 w-8" />,
               true,
-              "Max 100 MB — WAV or ZIP"
+              "Max 100 MB — untagged master"
             )}
 
             {renderFileSlot(

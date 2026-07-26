@@ -145,25 +145,37 @@ export default function BeatPacksClient({ packs, hasMore }: Props) {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {filteredPacks.map((pack) => (
               <Card key={pack.id} className="rounded-2xl border-border/50 bg-card/80 shadow-sm">
+                {/* Image Section Wrapped Separately */}
                 <div className="relative aspect-video w-full overflow-hidden rounded-t-2xl border-b border-border/40 bg-muted/30">
-                  {(pack.imageUrls?.[0] || pack.coverUrl) ? (
-                    <Image
-                      src={pack.imageUrls?.[0] || pack.coverUrl!}
-                      alt={pack.title}
-                      fill
-                      sizes="(max-width: 768px) 100vw, 33vw"
-                      className="object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center">
-                      <Layers className="h-8 w-8 text-muted-foreground/50" />
-                    </div>
-                  )}
+                  <Link
+                    href={`/beat-packs/${pack.id}`}
+                    className="block h-full w-full"
+                  >
+                    {(pack.imageUrls?.[0] || pack.coverUrl) ? (
+                      <Image
+                        src={pack.imageUrls?.[0] || pack.coverUrl!}
+                        alt={pack.title}
+                        fill
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                        className="object-cover transition-transform duration-300 hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <Layers className="h-8 w-8 text-muted-foreground/50" />
+                      </div>
+                    )}
+                  </Link>
+
+                  {/* Play/Pause Button as an overlay above the Link */}
                   {pack.tracks[0]?.previewUrl && (
                     <button
                       type="button"
-                      onClick={(e) => { e.preventDefault(); handlePreviewToggle(pack); }}
-                      className="absolute bottom-2 right-2 flex h-9 w-9 items-center justify-center rounded-full bg-background/80 backdrop-blur-sm transition hover:bg-background"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handlePreviewToggle(pack);
+                      }}
+                      className="absolute bottom-2 right-2 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-background/80 backdrop-blur-sm transition hover:bg-background"
                       aria-label={currentBeat?.id === pack.tracks[0]?.id && isPlaying ? "Pause preview" : "Play preview"}
                     >
                       {currentBeat?.id === pack.tracks[0]?.id && isPlaying ? (
@@ -174,6 +186,7 @@ export default function BeatPacksClient({ packs, hasMore }: Props) {
                     </button>
                   )}
                 </div>
+
                 <CardHeader className="space-y-3">
                   <div className="flex items-start justify-between gap-2">
                     <CardTitle className="text-lg">{pack.title}</CardTitle>

@@ -17,7 +17,9 @@ import { Input } from "@/components/ui/input";
 interface ShareDialogProps {
   title: string;
   url: string;
-  children?: React.ReactNode;
+  // Base UI's DialogTrigger uses a `render` prop, which needs a single
+  // valid React element (not arbitrary ReactNode) when provided.
+  children?: React.ReactElement;
 }
 
 const XIcon = () => (
@@ -79,7 +81,7 @@ const SOCIAL_OPTIONS: SocialOption[] = [
   {
     name: "Email",
     icon: <Mail className="h-4 w-4" />,
-    color: "bg-muted hover:bg-muted/80 text-foreground",
+    color: "bg-muted hover:bg-muted/80 text-foreground border border-border/50",
     getUrl: (msg, url) => `mailto:?subject=${encodeURIComponent(msg)}&body=${encodeURIComponent(`${msg}\n\n${url}`)}`,
   },
 ];
@@ -88,6 +90,23 @@ export default function ShareDialog({ title, url, children }: ShareDialogProps) 
   const [copied, setCopied] = useState(false);
   const defaultMessage = `Check out "${title}" on Trishul Beats! 🎵`;
   const [message, setMessage] = useState(defaultMessage);
+
+  const handleNativeShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: title,
+          text: message,
+          url: url,
+        });
+        return true;
+      } catch (error) {
+        // User cancelled share operation
+        return false;
+      }
+    }
+    return false;
+  };
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(url);
@@ -100,6 +119,13 @@ export default function ShareDialog({ title, url, children }: ShareDialogProps) 
     window.open(option.getUrl(message, url), "_blank", "noopener,noreferrer");
   };
 
+  const defaultTrigger = (
+    <Button variant="outline" size="sm">
+      <Share2 className="mr-1.5 h-3.5 w-3.5" />
+      Share
+    </Button>
+  );
+
   return (
     <Dialog
       onOpenChange={(open) => {
@@ -109,75 +135,83 @@ export default function ShareDialog({ title, url, children }: ShareDialogProps) 
         }
       }}
     >
-      <DialogTrigger
-        render={
-          children ? (
-            children as React.ReactElement
-          ) : (
-            <Button variant="outline" size="sm">
-              <Share2 className="mr-1.5 h-3.5 w-3.5" />
-              Share
-            </Button>
-          )
-        }
-      />
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Share</DialogTitle>
-          <DialogDescription>
+      {/* Base UI's DialogTrigger takes a `render` prop (not `asChild`) */}
+      <DialogTrigger render={children ?? defaultTrigger} />
+
+      <DialogContent className="w-[92vw] max-w-md max-h-[90vh] overflow-y-auto rounded-2xl p-4 sm:p-6">
+        <DialogHeader className="text-left space-y-1">
+          <DialogTitle className="text-lg font-semibold">Share</DialogTitle>
+          <DialogDescription className="text-xs sm:text-sm text-muted-foreground break-words">
             Share &ldquo;{title}&rdquo; with your friends and followers.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-4 pt-2">
           {/* Message input */}
           <div className="space-y-1.5">
             <label htmlFor="share-message" className="text-xs font-medium text-muted-foreground">
               Message
             </label>
+            {/* text-base (16px) keeps iOS Safari from auto-zooming on focus */}
             <Input
               id="share-message"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Add a message..."
+              className="text-base sm:text-sm h-10 sm:h-9"
             />
           </div>
 
-          {/* Social media grid */}
-          <div className="grid grid-cols-5 gap-2">
+          {/* Social media grid - stays 5-wide on phones too, with tighter, safer sizing */}
+          <div className="grid grid-cols-5 gap-1 xs:gap-1.5 sm:gap-2">
             {SOCIAL_OPTIONS.map((option) => (
               <button
                 key={option.name}
                 type="button"
                 onClick={() => handleSocialClick(option)}
-                className={`flex flex-col items-center gap-1.5 rounded-xl p-3 transition-all active:scale-95 ${option.color}`}
+                className={`flex min-w-0 flex-col items-center justify-center gap-1 sm:gap-1.5 rounded-xl p-2 sm:p-3 transition-all active:scale-95 ${option.color}`}
                 title={`Share on ${option.name}`}
               >
-                {option.icon}
-                <span className="text-[10px] font-medium leading-none">{option.name.split(" ")[0]}</span>
+                <span className="shrink-0 [&_svg]:h-4 [&_svg]:w-4">
+                  {option.icon}
+                </span>
+                <span className="w-full truncate text-center text-[9px] sm:text-[10px] font-medium leading-none">
+                  {option.name.split(" ")[0]}
+                </span>
               </button>
             ))}
           </div>
 
-          {/* Copy link */}
+          {/* Native Share button for Mobile Devices */}
+          {typeof window !== "undefined" && typeof navigator !== "undefined" && "share" in navigator && (
+            <Button
+              variant="outline"
+              onClick={handleNativeShare}
+              className="w-full text-xs h-9 justify-center gap-2 border-dashed"
+            >
+              <Share2 className="h-3.5 w-3.5" /> More options (Mobile Share)
+            </Button>
+          )}
+
+          {/* Copy link bar */}
           <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 p-1.5 pl-3">
-            <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+            <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground select-all">
               {url}
             </span>
             <Button
               variant={copied ? "default" : "secondary"}
               size="sm"
-              className="h-7 shrink-0 gap-1.5 text-xs"
+              className="h-8 shrink-0 gap-1.5 text-xs px-3"
               onClick={handleCopyLink}
             >
               {copied ? (
                 <>
-                  <Check className="h-3 w-3" />
+                  <Check className="h-3.5 w-3.5" />
                   Copied
                 </>
               ) : (
                 <>
-                  <Copy className="h-3 w-3" />
+                  <Copy className="h-3.5 w-3.5" />
                   Copy
                 </>
               )}
