@@ -4,9 +4,11 @@ import type { IBeatPack } from "@/types";
 const BeatPackSchema = new Schema<IBeatPack>(
   {
     title: { type: String, required: true, trim: true },
+    metadata: { type: String, trim: true, maxlength: 2000 },
     description: { type: String, trim: true, maxlength: 1000 },
     producerId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     coverUrl: { type: String, default: "" },
+    imageUrls: [{ type: String }],
     tags: [{ type: String, trim: true }],
     beatIds: [{ type: Schema.Types.ObjectId, ref: "Beat", required: true }],
     prices: {

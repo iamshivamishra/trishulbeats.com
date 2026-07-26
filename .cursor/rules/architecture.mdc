@@ -1,0 +1,53 @@
+---
+description: Clean Architecture — layered boundaries, DDD principles, feature-first organization
+alwaysApply: true
+---
+
+# Architecture
+
+Strict layered architecture with clear dependency boundaries.
+
+```
+Page / API route  →  Service  →  Repository  →  Mongoose Model
+                         ↓
+                    Serializer (DTO shaping)
+```
+
+## Layer rules
+
+- **Pages & API routes** — orchestration only. No business logic, no direct Mongoose calls.
+- **Services** (`src/lib/services/*.service.ts`) — business logic, authorization, transactions, domain rules.
+- **Repositories** (`src/lib/repositories/*.repository.ts`) — persistence only. No cross-domain business rules.
+- **Serializers** (`src/lib/serializers/`) — shape DTOs for the UI. Reuse across pages and APIs.
+- **Validators** (`src/lib/validators/`) — Zod schemas. Parse in API routes and services.
+
+## Export pattern
+
+Services and repositories export **plain objects**, not classes:
+
+```typescript
+// ✅ GOOD
+export const beatService = { async create(...) { ... } };
+
+// ❌ BAD — no classes
+export class BeatService { ... }
+```
+
+## Feature-first organization
+
+```
+src/features/beats/       — beat-pack UI types, shared beat logic
+src/features/payments/    — payment-related shared code
+src/features/studio/      — producer dashboard components
+src/components/ui/        — generic UI primitives (shadcn)
+src/components/layout/    — app shell components
+src/components/           — shared app-level components
+```
+
+## Dependency boundaries
+
+- Pages → services (never repositories or models directly)
+- Services → repositories (never models directly when a repository exists)
+- Repositories → models + `connectDB()`
+- Components → never import services or repositories
+- Feature code stays within its feature boundary

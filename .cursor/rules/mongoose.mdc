@@ -1,0 +1,46 @@
+---
+description: Mongoose model conventions — schema, typing, hot-reload guard, middleware
+globs: src/lib/models/**/*.ts
+alwaysApply: false
+---
+
+# Mongoose Models
+
+## Standard pattern
+
+```typescript
+import mongoose, { Schema, type Model } from "mongoose";
+import type { ISomething } from "@/types";
+
+const SomethingSchema = new Schema<ISomething>(
+  {
+    name: { type: String, required: true },
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+  },
+  { timestamps: true }
+);
+
+SomethingSchema.index({ userId: 1 });
+
+const Something: Model<ISomething> =
+  mongoose.models.Something || mongoose.model<ISomething>("Something", SomethingSchema);
+
+export default Something;
+```
+
+## Rules
+
+- Always `{ timestamps: true }`.
+- Type schemas with `I`-prefixed interfaces from `@/types/index.ts`.
+- Hot-reload guard: `mongoose.models.X || mongoose.model(...)`.
+- Default-export the model.
+- Add indexes on the schema.
+- Connection via `connectDB()` in repositories, not models.
+
+## Best practices
+
+- Use `.lean()` in repositories for read queries.
+- Use `.select()` to project only needed fields.
+- Use middleware (`pre`/`post`) sparingly — business logic belongs in services.
+- Avoid `.populate()` when a batch query + Map is more efficient.
+- Use virtuals for computed properties that don't need persistence.

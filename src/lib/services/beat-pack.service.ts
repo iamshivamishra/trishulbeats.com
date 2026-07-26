@@ -58,9 +58,11 @@ export const beatPackService = {
       const created = await beatPackRepository.create(
         {
           title: input.title,
+          metadata: input.metadata,
           description: input.description,
           producerId: producerId as unknown as IBeatPack["producerId"],
           coverUrl: input.coverUrl || "",
+          imageUrls: input.imageUrls || [],
           tags: input.tags,
           beatIds: input.beatIds as unknown as IBeatPack["beatIds"],
           prices: input.prices,

@@ -10,8 +10,10 @@ export const beatPackTierSchema = z.object({
 
 export const createBeatPackSchema = z.object({
   title: z.string().min(2).max(120).trim(),
+  metadata: z.string().max(2000).trim().optional(),
   description: z.string().max(1000).trim().optional(),
   coverUrl: z.string().url().optional(),
+  imageUrls: z.array(z.string().url()).max(10).default([]),
   tags: z.array(z.string().trim().min(1).max(30)).max(10).default([]),
   beatIds: z.array(z.string().min(1)).min(1, "At least one beat is required"),
   prices: beatPackTierSchema,
@@ -20,8 +22,10 @@ export const createBeatPackSchema = z.object({
 
 export const updateBeatPackSchema = z.object({
   title: z.string().min(2).max(120).trim().optional(),
+  metadata: z.string().max(2000).trim().optional(),
   description: z.string().max(1000).trim().optional(),
   coverUrl: z.string().url().optional(),
+  imageUrls: z.array(z.string().url()).max(10).optional(),
   tags: z.array(z.string().trim().min(1).max(30)).max(10).optional(),
   beatIds: z.array(z.string().min(1)).min(1).optional(),
   prices: beatPackTierSchema.optional(),

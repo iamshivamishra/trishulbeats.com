@@ -39,13 +39,14 @@ export default async function StudioBeatsPage({ searchParams }: Props) {
   const packs = packIds.length > 0 ? await beatPackRepository.findByIds(packIds) : [];
   const packMap = new Map(packs.map((p) => [p._id.toString(), p.title]));
 
-  const beatsWithLicenses = await Promise.all(
-    result.data.map(async (beat) => {
-      const cheapest = await licenseRepository.findCheapestForBeat(beat._id.toString());
-      const packTitle = beat.packId ? packMap.get(beat.packId.toString()) || null : null;
-      return { ...JSON.parse(JSON.stringify(beat)), startingPrice: cheapest?.price, packTitle };
-    })
-  );
+  const allBeatIds = result.data.map((b) => b._id.toString());
+  const cheapestMap = await licenseRepository.findCheapestForBeats(allBeatIds);
+
+  const beatsWithLicenses = result.data.map((beat) => {
+    const cheapest = cheapestMap[beat._id.toString()];
+    const packTitle = beat.packId ? packMap.get(beat.packId.toString()) || null : null;
+    return { ...JSON.parse(JSON.stringify(beat)), startingPrice: cheapest?.price, packTitle };
+  });
 
   return (
     <StudioBeatsClient

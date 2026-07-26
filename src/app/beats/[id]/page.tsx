@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -26,7 +27,11 @@ import LikeButton from "@/components/LikeButton";
 import { toPublicBeatForUi } from "@/lib/serializers/beat";
 import { storageService } from "@/lib/services/storage.service";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
+
+const getCachedBeat = cache(async (id: string) => {
+  return beatRepository.findById(id);
+});
 
 interface BeatPageProps {
   params: Promise<{ id: string }>;
@@ -34,7 +39,7 @@ interface BeatPageProps {
 
 export async function generateMetadata({ params }: BeatPageProps): Promise<Metadata> {
   const { id } = await params;
-  const beat = await beatRepository.findById(id);
+  const beat = await getCachedBeat(id);
   if (!beat || !beat.isPublished || beat.status !== "published") {
     return { title: "Beat Not Found" };
   }
@@ -52,14 +57,15 @@ export async function generateMetadata({ params }: BeatPageProps): Promise<Metad
     openGraph: {
       title: `${beat.title} — Trishul Beats`,
       description: `${beat.genre} beat at ${beat.bpm || "—"} BPM. License now.`,
-      images: beat.coverUrl ? [beat.coverUrl] : [],
+      images: beat.coverUrl ? [beat.coverUrl] : ["/og-default.png"],
       type: "music.song",
+      url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/beats/${id}`,
     },
     twitter: {
       card: "summary_large_image",
       title: `${beat.title} by ${producerName}`,
       description,
-      images: beat.coverUrl ? [beat.coverUrl] : [],
+      images: beat.coverUrl ? [beat.coverUrl] : ["/og-default.png"],
     },
     alternates: {
       canonical: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/beats/${id}`,
@@ -70,7 +76,7 @@ export async function generateMetadata({ params }: BeatPageProps): Promise<Metad
 export default async function BeatPage({ params }: BeatPageProps) {
   const { id } = await params;
   const session = await auth();
-  const beat = await beatRepository.findById(id);
+  const beat = await getCachedBeat(id);
   if (!beat) notFound();
   const isOwner = session?.user?.id === beat.producerId.toString();
   const canViewUnpublished = isOwner || session?.user?.role === "admin";
@@ -92,18 +98,22 @@ export default async function BeatPage({ params }: BeatPageProps) {
   const initialLiked =
     session?.user && canLike ? await likeRepository.isLiked(session.user.id, id) : false;
 
-  const relatedWithPrices = await Promise.all(
-  relatedBeats.map(async (b) => {
-    const [cheapest, relatedProducer] = await Promise.all([
-      licenseRepository.findCheapestForBeat(b._id.toString()),
-      userRepository.findById(b.producerId.toString()),
-    ]);
+  const relatedBeatIds = relatedBeats.map((b) => b._id.toString());
+  const relatedProducerIds = [...new Set(relatedBeats.map((b) => b.producerId.toString()))];
+  const [relatedCheapestMap, relatedProducers] = await Promise.all([
+    licenseRepository.findCheapestForBeats(relatedBeatIds),
+    userRepository.findByIds(relatedProducerIds),
+  ]);
+  const relatedProducerMap = new Map(relatedProducers.map((p) => [p._id.toString(), p]));
+
+  const relatedWithPrices = relatedBeats.map((b) => {
+    const relatedProducer = relatedProducerMap.get(b.producerId.toString()) ?? null;
+    const cheapest = relatedCheapestMap[b._id.toString()];
     return {
       beat: toPublicBeatForUi(b, relatedProducer),
       startingPrice: cheapest?.price,
     };
-  })
-);
+  });
 
   const producerInitials = (producer?.displayName || producer?.name || "?")
     .split(" ")
@@ -141,8 +151,10 @@ export default async function BeatPage({ params }: BeatPageProps) {
     genre: beat.genre,
     url: `${appUrl}/beats/${id}`,
     image: beat.coverUrl || undefined,
+    datePublished: beat.createdAt ? new Date(beat.createdAt).toISOString() : undefined,
+    duration: beat.duration ? `PT${Math.floor(beat.duration / 60)}M${beat.duration % 60}S` : undefined,
     byArtist: {
-      "@type": "MusicGroup",
+      "@type": "Person",
       name: producerName,
       url: producer?.username ? `${appUrl}/producer/${producer.username}` : undefined,
     },
@@ -156,14 +168,28 @@ export default async function BeatPage({ params }: BeatPageProps) {
       : undefined,
   };
 
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: appUrl },
+      { "@type": "ListItem", position: 2, name: "Browse Beats", item: `${appUrl}/beats` },
+      { "@type": "ListItem", position: 3, name: beat.title, item: `${appUrl}/beats/${id}` },
+    ],
+  };
+
   return (
-    <div className="page-shell px-4 sm:px-6 lg:px-8">
+    <div className="page-shell px-4 sm:px-6 lg:px-8 pb-20 lg:pb-0">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(beatJsonLd) }}
       />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       {/* Back */}
-      <Button asChild variant="ghost" size="sm" className="mb-6 sm:mb-8">
+      <Button asChild variant="ghost" size="sm" className="mb-3 sm:mb-8">
         <Link href="/beats">
           <ArrowLeft className="mr-1 h-4 w-4" />
           Back to Beats
@@ -171,15 +197,15 @@ export default async function BeatPage({ params }: BeatPageProps) {
       </Button>
 
       {/* Hero: Artwork + Info + Player */}
-      <div className="grid grid-cols-1 gap-6 sm:gap-8 lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_420px]">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:gap-8 lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_420px]">
         {/* ====================== LEFT COLUMN ====================== */}
-        <div className="space-y-4 sm:space-y-5 min-w-0">
+        <div className="space-y-3 sm:space-y-5 min-w-0">
           {/* Top section: artwork + title/meta side by side on larger screens */}
           <Card className="border-border/50 bg-card/60">
-            <CardContent className="p-4 sm:p-5 md:p-6">
-              <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:gap-6">
-                {/* Artwork */}
-                <div className="relative aspect-square w-40 max-w-full shrink-0 overflow-hidden rounded-xl xs:w-48 sm:mx-0 sm:w-48 md:w-56 lg:w-64">
+            <CardContent className="p-3 sm:p-5 md:p-6">
+              <div className="flex flex-row items-start gap-3 sm:gap-6">
+                {/* Artwork — compact on mobile */}
+                <div className="relative aspect-square w-24 shrink-0 overflow-hidden rounded-lg sm:w-48 sm:rounded-xl md:w-56 lg:w-64">
                   {beat.coverUrl ? (
                     <Image
                       src={beat.coverUrl}
@@ -195,16 +221,16 @@ export default async function BeatPage({ params }: BeatPageProps) {
                     </div>
                   )}
                   {hasPurchased && (
-                    <Badge className="absolute right-2 top-2 bg-green-600 text-xs sm:right-3 sm:top-3 sm:text-sm">
+                    <Badge className="absolute right-1.5 top-1.5 bg-green-600 text-[10px] sm:right-3 sm:top-3 sm:text-sm">
                       Purchased
                     </Badge>
                   )}
                 </div>
 
                 {/* Title + Meta */}
-                <div className="flex w-full min-w-0 flex-1 flex-col justify-between space-y-3 text-center sm:space-y-4 sm:text-left">
+                <div className="flex w-full min-w-0 flex-1 flex-col justify-between space-y-2 sm:space-y-4 text-left">
                   <div>
-                    <h1 className="break-words text-xl font-bold tracking-tight sm:text-2xl md:text-3xl">
+                    <h1 className="break-words text-base font-bold tracking-tight sm:text-2xl md:text-3xl">
                       {beat.title}
                     </h1>
                     {producer && (
@@ -225,7 +251,7 @@ export default async function BeatPage({ params }: BeatPageProps) {
                   </div>
 
                   {/* Stats row */}
-                  <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground sm:justify-start sm:gap-x-4 sm:gap-y-2 sm:text-sm">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground sm:gap-x-4 sm:gap-y-2 sm:text-sm">
                     <span className="flex items-center gap-1">
                       <BarChart3 className="h-3.5 w-3.5 shrink-0" />
                       {beat.plays.toLocaleString()} plays
@@ -249,10 +275,17 @@ export default async function BeatPage({ params }: BeatPageProps) {
                     />
                   </div>
 
-                  {/* Meta badges */}
-                  {/* Meta stats grid */}
-                  <div className="mt-2">
-                    <h2 className="mb-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:text-left">
+                  {/* Compact mobile-only stats */}
+                  <div className="flex flex-wrap gap-1.5 sm:hidden">
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{beat.genre}</Badge>
+                    {beat.bpm && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{beat.bpm} BPM</Badge>}
+                    {beat.key && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{beat.key}</Badge>}
+                    {beat.mood && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{beat.mood}</Badge>}
+                  </div>
+
+                  {/* Meta stats grid — hidden on small mobile to save space */}
+                  <div className="mt-2 hidden sm:block">
+                    <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Stats
                     </h2>
                     <div className="grid grid-cols-2 gap-x-4 gap-y-4 sm:grid-cols-3">
@@ -308,7 +341,7 @@ export default async function BeatPage({ params }: BeatPageProps) {
 
           {/* Audio Player with Waveform */}
           <Card className="border-border/50 bg-card/60">
-            <CardContent className="p-3 sm:p-4 md:p-5 overflow-x-hidden">
+            <CardContent className="p-2 sm:p-4 md:p-5 overflow-x-hidden">
               <AudioPlayer
                 src={audioSrc}
                 title={beat.title}
@@ -322,8 +355,8 @@ export default async function BeatPage({ params }: BeatPageProps) {
           {/* Tags */}
           {beat.tags.length > 0 && (
             <Card className="border-border/50 bg-card/60">
-              <CardContent className="p-4 sm:p-5">
-                <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              <CardContent className="p-3 sm:p-5">
+                <h2 className="mb-2 text-xs sm:text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                   Tags
                 </h2>
                 <div className="flex flex-wrap gap-1.5">
@@ -343,18 +376,16 @@ export default async function BeatPage({ params }: BeatPageProps) {
           )}
 
           {/* Description */}
-          {beat.description && (
-            <Card className="border-border/50 bg-card/60">
-              <CardContent className="p-4 sm:p-5">
-                <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                  Description
-                </h2>
-                <p className="whitespace-pre-line break-words text-sm leading-relaxed text-foreground/80">
-                  {beat.description}
-                </p>
-              </CardContent>
-            </Card>
-          )}
+          <Card className="border-border/50 bg-card/60">
+            <CardContent className="p-3 sm:p-5">
+              <h2 className="mb-2 text-xs sm:text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                Description
+              </h2>
+              <p className="whitespace-pre-line break-words text-sm leading-relaxed text-foreground/80">
+                {beat.description || `"${beat.title}" is a ${beat.genre.toLowerCase()} beat${beat.bpm ? ` at ${beat.bpm} BPM` : ""}${beat.key ? ` in the key of ${beat.key}` : ""}${beat.mood ? ` with a ${beat.mood.toLowerCase()} mood` : ""}. Produced by ${producerName}${beat.tags.length > 0 ? `, featuring elements of ${beat.tags.slice(0, 3).join(", ")}` : ""}. Available for licensing on Trishul Beats with basic, premium, and unlimited license options.`}
+              </p>
+            </CardContent>
+          </Card>
 
           {/* Download section (purchased users) */}
           {hasPurchased && <DownloadPanel beatId={id} />}
@@ -455,8 +486,8 @@ export default async function BeatPage({ params }: BeatPageProps) {
           )}
         </div>
 
-        {/* ====================== RIGHT COLUMN ====================== */}
-        <div className="lg:sticky lg:top-24 lg:self-start">
+        {/* ====================== RIGHT COLUMN (hidden on mobile, sticky sidebar on desktop) ====================== */}
+        <div className="hidden lg:block lg:sticky lg:top-24 lg:self-start">
           {isPackOnly && !hasPurchased ? (
             <Card className="border-amber-500/30 bg-amber-500/5">
               <CardContent className="space-y-3 p-5">

@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Choose Your Role",
+  robots: { index: false, follow: true },
 };
 
 export default async function OnboardingPage() {

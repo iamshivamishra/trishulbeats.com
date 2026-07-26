@@ -1,0 +1,27 @@
+---
+description: Import conventions, path aliases, TypeScript types
+globs: src/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Imports & Types
+
+## Path alias
+
+Always use `@/` (maps to `./src/`). Never use relative `../../../` paths.
+
+## Import order
+
+1. External packages (`react`, `next`, `mongoose`, `zod`, `lucide-react`)
+2. Internal libraries (`@/lib/...`)
+3. Components (`@/components/...`, `@/features/...`)
+4. Types (`@/types`, type-only imports)
+5. Relative imports (`./SomeClient`)
+
+## Types
+
+- Domain interfaces in `src/types/index.ts` with `I` prefix: `IBeat`, `IUser`.
+- Zod-inferred types in validators: `CreateBeatInput`.
+- UI types in feature files: `BeatPackUi`.
+- Use `import type` for type-only imports.
+- No `any` — use `unknown` and narrow with type guards.

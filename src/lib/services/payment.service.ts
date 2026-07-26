@@ -151,10 +151,8 @@ export const paymentService = {
       throw new ConflictError("This beat pack contains unpublished beats");
     }
 
-    const alreadyOwned = await Promise.all(
-      beatIds.map((beatId) => purchaseRepository.hasPurchased(buyerId, beatId))
-    );
-    if (alreadyOwned.every(Boolean)) {
+    const alreadyOwnedSet = await purchaseRepository.hasPurchasedBatch(buyerId, beatIds);
+    if (beatIds.every((id) => alreadyOwnedSet.has(id))) {
       throw new ConflictError("You already own all beats in this pack");
     }
 
@@ -223,17 +221,16 @@ export const paymentService = {
       throw new ConflictError("Your cart is empty");
     }
 
-    // Validate none are already purchased
+    // Validate none are already purchased (batch query)
+    const cartBeatIds = cartItems.map((item) => item.beatId);
+    const alreadyOwnedCart = await purchaseRepository.hasPurchasedBatch(buyerId, cartBeatIds);
     for (const item of cartItems) {
-      const already = await purchaseRepository.hasPurchased(buyerId, item.beatId);
-      if (already) {
+      if (alreadyOwnedCart.has(item.beatId)) {
         throw new ConflictError(
           `You already own "${item.beatTitle}". Remove it from your cart.`
         );
       }
     }
-
-    const cartBeatIds = cartItems.map((item) => item.beatId);
     const existingPendingOrder = await orderRepository.findPendingByBuyerAndBeatIds(
       buyerId,
       cartBeatIds
@@ -316,10 +313,11 @@ export const paymentService = {
       throw new ConflictError("Your cart is empty");
     }
 
-    // Validate individual beats not already purchased
+    // Validate individual beats not already purchased (batch query)
+    const combinedBeatIds = cartItems.map((item) => item.beatId);
+    const alreadyOwnedCombined = await purchaseRepository.hasPurchasedBatch(buyerId, combinedBeatIds);
     for (const item of cartItems) {
-      const already = await purchaseRepository.hasPurchased(buyerId, item.beatId);
-      if (already) {
+      if (alreadyOwnedCombined.has(item.beatId)) {
         throw new ConflictError(`You already own "${item.beatTitle}". Remove it from your cart.`);
       }
     }
@@ -338,25 +336,40 @@ export const paymentService = {
     }
 
     // Add pack items (expand each pack into its individual beats)
-    for (const packItem of packItems) {
-      const pack = await beatPackRepository.findById(packItem.packId);
-      if (!pack || !pack.isPublished || pack.status !== "published") continue;
+    // Prefetch all packs in one batch
+    const packIds = packItems.map((p) => p.packId);
+    const packs = await Promise.all(packIds.map((id) => beatPackRepository.findById(id)));
+    const validPackEntries = packItems
+      .map((packItem, i) => ({ packItem, pack: packs[i] }))
+      .filter(({ pack }) => pack && pack.isPublished && pack.status === "published");
 
-      const beatIds = pack.beatIds.map((id) => id.toString());
-      const beats = await beatRepository.findByIds(beatIds);
-      const licenses = await Promise.all(
-        beatIds.map(async (beatId) => {
-          const options = await licenseRepository.findByBeatId(beatId);
-          return options.find((lic) => lic.type === packItem.tier && lic.isActive);
-        })
-      );
+    // Collect all beat IDs across packs and prefetch beats + licenses in batch
+    const allPackBeatIds = validPackEntries.flatMap(({ pack }) =>
+      pack!.beatIds.map((id) => id.toString())
+    );
+    const [allPackBeats, allPackLicenses] = await Promise.all([
+      beatRepository.findByIds(allPackBeatIds),
+      licenseRepository.findByBeatIds(allPackBeatIds),
+    ]);
+    const packBeatMap = new Map(allPackBeats.map((b) => [b._id.toString(), b]));
+    const packLicensesByBeat = new Map<string, typeof allPackLicenses>();
+    for (const lic of allPackLicenses) {
+      const key = lic.beatId.toString();
+      if (!packLicensesByBeat.has(key)) packLicensesByBeat.set(key, []);
+      packLicensesByBeat.get(key)!.push(lic);
+    }
 
-      const packTotal = pack.prices[packItem.tier];
+    for (const { packItem, pack } of validPackEntries) {
+      const beatIds = pack!.beatIds.map((id) => id.toString());
+      const packTotal = pack!.prices[packItem.tier];
       const perBeatAmounts = allocateAmounts(packTotal, beatIds.length);
 
-      for (let idx = 0; idx < beats.length; idx++) {
-        const beat = beats[idx];
-        const license = licenses[idx];
+      for (let idx = 0; idx < beatIds.length; idx++) {
+        const beatId = beatIds[idx];
+        const beat = packBeatMap.get(beatId);
+        if (!beat) continue;
+        const licOptions = packLicensesByBeat.get(beatId) ?? [];
+        const license = licOptions.find((lic) => lic.type === packItem.tier && lic.isActive);
         if (!license) continue;
 
         orderItems.push({
@@ -366,7 +379,7 @@ export const paymentService = {
           price: perBeatAmounts[idx],
           beatTitle: beat.title,
           sourceType: "pack",
-          sourcePackId: pack._id as unknown as IOrderItem["sourcePackId"],
+          sourcePackId: pack!._id as unknown as IOrderItem["sourcePackId"],
         });
       }
     }
@@ -518,16 +531,24 @@ export const paymentService = {
         throw new ConflictError("This order has already been processed");
       }
 
+      // Prefetch all beats and licenses in batch to avoid N+1
+      const allItemBeatIds = paidOrder.items.map((item) => item.beatId.toString());
+      const allItemLicenseIds = paidOrder.items.map((item) => item.licenseId.toString());
+      const [allItemBeats, allItemLicenses] = await Promise.all([
+        beatRepository.findByIds(allItemBeatIds),
+        licenseRepository.findByIds(allItemLicenseIds),
+      ]);
+      const beatMap = new Map(allItemBeats.map((b) => [b._id.toString(), b]));
+      const licenseMap = new Map(allItemLicenses.map((l) => [l._id.toString(), l]));
+
       const purchases: IPurchase[] = [];
       let createdCount = 0;
       let reusedCount = 0;
 
       for (const item of paidOrder.items) {
         const beatId = item.beatId.toString();
-        const [beat, license] = await Promise.all([
-          beatRepository.findById(beatId, false, { session }),
-          licenseRepository.findById(item.licenseId.toString(), { session }),
-        ]);
+        const beat = beatMap.get(beatId) ?? null;
+        const license = licenseMap.get(item.licenseId.toString()) ?? null;
 
         if (!beat) {
           throw new NotFoundError("Beat");

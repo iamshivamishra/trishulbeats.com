@@ -7,6 +7,7 @@ import {
   useRef,
   useCallback,
   useEffect,
+  useMemo,
 } from "react";
 
 export interface PlayableBeat {
@@ -17,12 +18,11 @@ export interface PlayableBeat {
   previewUrl: string;
 }
 
-interface AudioPlayerContextType {
+/* ── Actions context (stable — identity-stable callbacks via refs) ── */
+
+interface AudioActionsContextType {
   currentBeat: PlayableBeat | null;
   isPlaying: boolean;
-  progress: number;
-  duration: number;
-  currentTime: number;
   volume: number;
   playBeat: (beat: PlayableBeat) => void;
   togglePlay: () => void;
@@ -31,7 +31,20 @@ interface AudioPlayerContextType {
   closePlayer: () => void;
 }
 
-const AudioPlayerContext = createContext<AudioPlayerContextType | null>(null);
+/* ── Progress context (high-frequency — 60 fps timeupdate) ── */
+
+interface AudioProgressContextType {
+  progress: number;
+  duration: number;
+  currentTime: number;
+}
+
+const AudioActionsContext = createContext<AudioActionsContextType | null>(null);
+const AudioProgressContext = createContext<AudioProgressContextType | null>(null);
+
+/* ── Legacy combined type for backward-compat export ── */
+
+type AudioPlayerContextType = AudioActionsContextType & AudioProgressContextType;
 
 export function AudioPlayerProvider({ children }: { children: React.ReactNode }) {
   const [currentBeat, setCurrentBeat] = useState<PlayableBeat | null>(null);
@@ -40,6 +53,14 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   const [duration, setDuration] = useState(0);
   const [volume, setVolumeState] = useState(1);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Keep refs for stable callbacks
+  const currentBeatRef = useRef(currentBeat);
+  currentBeatRef.current = currentBeat;
+  const isPlayingRef = useRef(isPlaying);
+  isPlayingRef.current = isPlaying;
+  const durationRef = useRef(duration);
+  durationRef.current = duration;
 
   useEffect(() => {
     const audio = new Audio();
@@ -66,8 +87,8 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     const audio = audioRef.current;
     if (!audio) return;
 
-    if (currentBeat?.id === beat.id) {
-      if (isPlaying) {
+    if (currentBeatRef.current?.id === beat.id) {
+      if (isPlayingRef.current) {
         audio.pause();
         setIsPlaying(false);
       } else {
@@ -82,27 +103,28 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     audio.currentTime = 0;
     audio.play().catch(() => setIsPlaying(false));
     setIsPlaying(true);
-  }, [currentBeat, isPlaying]);
+  }, []);
 
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
-    if (!audio || !currentBeat) return;
-    if (isPlaying) {
+    if (!audio || !currentBeatRef.current) return;
+    if (isPlayingRef.current) {
       audio.pause();
       setIsPlaying(false);
     } else {
       audio.play();
       setIsPlaying(true);
     }
-  }, [isPlaying, currentBeat]);
+  }, []);
 
   const seek = useCallback((percent: number) => {
     const audio = audioRef.current;
-    if (!audio || !duration) return;
-    const time = (percent / 100) * duration;
+    const dur = durationRef.current;
+    if (!audio || !dur) return;
+    const time = (percent / 100) * dur;
     audio.currentTime = time;
     setCurrentTime(time);
-  }, [duration]);
+  }, []);
 
   const setVolume = useCallback((v: number) => {
     const audio = audioRef.current;
@@ -124,29 +146,60 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
 
   const progress = duration ? (currentTime / duration) * 100 : 0;
 
+  const actionsValue = useMemo<AudioActionsContextType>(
+    () => ({
+      currentBeat,
+      isPlaying,
+      volume,
+      playBeat,
+      togglePlay,
+      seek,
+      setVolume,
+      closePlayer,
+    }),
+    [currentBeat, isPlaying, volume, playBeat, togglePlay, seek, setVolume, closePlayer]
+  );
+
+  const progressValue = useMemo<AudioProgressContextType>(
+    () => ({ progress, duration, currentTime }),
+    [progress, duration, currentTime]
+  );
+
   return (
-    <AudioPlayerContext.Provider
-      value={{
-        currentBeat,
-        isPlaying,
-        progress,
-        duration,
-        currentTime,
-        volume,
-        playBeat,
-        togglePlay,
-        seek,
-        setVolume,
-        closePlayer,
-      }}
-    >
-      {children}
-    </AudioPlayerContext.Provider>
+    <AudioActionsContext.Provider value={actionsValue}>
+      <AudioProgressContext.Provider value={progressValue}>
+        {children}
+      </AudioProgressContext.Provider>
+    </AudioActionsContext.Provider>
   );
 }
 
-export function useAudioPlayer() {
-  const ctx = useContext(AudioPlayerContext);
-  if (!ctx) throw new Error("useAudioPlayer must be used within AudioPlayerProvider");
+/**
+ * Subscribe to actions only (stable, no re-renders during playback).
+ * Use in BeatCard, PackBeatUploader, BeatPacksClient, etc.
+ */
+export function useAudioActions() {
+  const ctx = useContext(AudioActionsContext);
+  if (!ctx) throw new Error("useAudioActions must be used within AudioPlayerProvider");
   return ctx;
+}
+
+/**
+ * Subscribe to high-frequency progress updates.
+ * Use only in BottomPlayer, Waveform, TrackProgressBar.
+ */
+export function useAudioProgress() {
+  const ctx = useContext(AudioProgressContext);
+  if (!ctx) throw new Error("useAudioProgress must be used within AudioPlayerProvider");
+  return ctx;
+}
+
+/**
+ * Legacy combined hook — subscribers get ALL re-renders.
+ * Prefer useAudioActions() or useAudioProgress() for new code.
+ */
+export function useAudioPlayer(): AudioPlayerContextType {
+  const actions = useAudioActions();
+  const progress = useAudioProgress();
+  return { ...actions, ...progress };
 }

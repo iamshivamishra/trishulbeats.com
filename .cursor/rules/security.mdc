@@ -1,0 +1,53 @@
+---
+description: Security — injection, XSS, CSRF, rate limiting, secrets, input validation
+globs: src/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Security
+
+## Always check for
+
+### Injection
+
+```typescript
+// ❌ BAD — direct user input in query
+Beat.find({ title: req.query.title });
+
+// ✅ GOOD — Zod-parsed, typed input
+const { title } = searchSchema.parse(params);
+Beat.find({ title: { $regex: escapeRegex(title), $options: "i" } });
+```
+
+- Never interpolate user input into database queries.
+- Always parse with Zod before using in queries.
+- Escape regex special characters.
+
+### XSS
+
+- React auto-escapes JSX — never use `dangerouslySetInnerHTML` with user input.
+- Sanitize any content rendered from the database that could contain HTML.
+- Use `Content-Security-Policy` headers.
+
+### CSRF
+
+- State-changing operations require authentication.
+- Razorpay webhooks: verify HMAC signature with `RAZORPAY_WEBHOOK_SECRET`.
+
+### Rate limiting
+
+- All public POST/PATCH/DELETE endpoints.
+- Auth endpoints (login, signup, password reset).
+- Use `getClientIp` + `rateLimit` from `@/lib/security/rate-limit`.
+
+### Secrets & environment
+
+- Never commit `.env` files.
+- Never log secrets or tokens.
+- Validate `NEXT_PUBLIC_*` vars don't contain server secrets.
+- PII: minimize storage, encrypt at rest, audit access.
+
+### Secure headers
+
+- `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`.
+- Cookie settings: `httpOnly`, `secure`, `sameSite`.

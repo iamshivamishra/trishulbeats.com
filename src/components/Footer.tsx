@@ -27,6 +27,7 @@ export default function Footer() {
             <h4 className="mb-3 text-sm font-semibold">Browse</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li><Link href="/beats" className="focus-ring rounded-sm hover:text-foreground transition-colors">All Beats</Link></li>
+              <li><Link href="/beat-packs" className="focus-ring rounded-sm hover:text-foreground transition-colors">Beat Packs</Link></li>
               <li><Link href="/beats?genre=Hip+Hop" className="focus-ring rounded-sm hover:text-foreground transition-colors">Hip Hop</Link></li>
               <li><Link href="/beats?genre=Trap" className="focus-ring rounded-sm hover:text-foreground transition-colors">Trap</Link></li>
               <li><Link href="/beats?genre=R%26B" className="focus-ring rounded-sm hover:text-foreground transition-colors">R&B</Link></li>

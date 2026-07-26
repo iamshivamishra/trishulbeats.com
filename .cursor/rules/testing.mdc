@@ -1,0 +1,51 @@
+---
+description: Testing — Vitest, test types, coverage, happy paths and edge cases
+globs: **/*.test.ts
+alwaysApply: false
+---
+
+# Testing
+
+## Stack
+
+- **Vitest** with Node environment, `@/` path alias.
+- Tests colocated: `*.test.ts` next to source files.
+- Commands: `npm run test`, `npm run test:coverage`.
+
+## Test types to generate
+
+| Type | What to test | Location |
+|------|-------------|----------|
+| **Unit** | Services, serializers, validators, utilities | `*.test.ts` beside source |
+| **Integration** | Repository + database interactions | `*.test.ts` beside repo |
+| **API** | Route handlers end-to-end | `route.test.ts` beside route |
+| **Component** | Complex client components with interactions | `*.test.tsx` beside component |
+
+## Pattern
+
+```typescript
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+describe("beatService.create", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("should create a beat with default licenses", async () => {
+    // Arrange — set up mocks and input
+    // Act — call the function
+    // Assert — verify result and side effects
+  });
+
+  it("should throw ForbiddenError when user is not a producer", async () => {
+    // Edge case
+  });
+});
+```
+
+## Always include
+
+- **Happy paths** — normal successful operations.
+- **Edge cases** — empty inputs, boundary values, missing optional fields.
+- **Error cases** — invalid input, unauthorized access, not found.
+- **Concurrency** — race conditions where applicable.
+
+Mock Mongoose models and external services with `vi.mock()`.

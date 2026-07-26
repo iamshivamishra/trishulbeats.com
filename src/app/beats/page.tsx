@@ -7,13 +7,43 @@ import BeatsGridClient from "./BeatsGridClient";
 
 export const revalidate = 60;
 
-export const metadata: Metadata = {
-  title: "Browse Beats",
-  description: "Browse and preview high-quality beats across all genres.",
-};
-
 interface BeatsPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export async function generateMetadata({ searchParams }: BeatsPageProps): Promise<Metadata> {
+  const rawParams = await searchParams;
+  const genre = typeof rawParams.genre === "string" ? rawParams.genre : undefined;
+  const mood = typeof rawParams.mood === "string" ? rawParams.mood : undefined;
+  const search = typeof rawParams.search === "string" ? rawParams.search : undefined;
+  const page = typeof rawParams.page === "string" ? rawParams.page : undefined;
+
+  const parts: string[] = [];
+  if (genre) parts.push(genre);
+  if (mood) parts.push(mood);
+
+  const titleSuffix = parts.length > 0 ? parts.join(" · ") + " Beats" : "Browse Beats";
+  const title = page && page !== "1" ? `${titleSuffix} — Page ${page}` : titleSuffix;
+
+  const descParts = ["Browse and preview high-quality beats"];
+  if (genre) descParts.push(`in the ${genre} genre`);
+  if (mood) descParts.push(`with a ${mood} mood`);
+  descParts.push("on Trishul Beats.");
+  const description = descParts.join(" ");
+
+  // Only the base /beats URL should be canonical; filtered views point back to it
+  const hasFilters = genre || mood || search || (page && page !== "1");
+
+  return {
+    title,
+    description,
+    alternates: { canonical: "/beats" },
+    ...(hasFilters && { robots: { index: false, follow: true } }),
+    openGraph: {
+      title: `${titleSuffix} — Trishul Beats`,
+      description,
+    },
+  };
 }
 
 export default async function BeatsPage({ searchParams }: BeatsPageProps) {

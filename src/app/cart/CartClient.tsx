@@ -33,32 +33,16 @@ function CartItemRow({
   onRemove,
   onUpdateLicense,
   removing,
+  licenses,
+  loadingLicenses,
 }: {
   item: CartItemPopulated;
   onRemove: () => void;
   onUpdateLicense: (licenseId: string) => void;
   removing: boolean;
+  licenses: ILicense[];
+  loadingLicenses: boolean;
 }) {
-  const [licenses, setLicenses] = useState<ILicense[]>([]);
-  const [loadingLicenses, setLoadingLicenses] = useState(false);
-
-  useEffect(() => {
-    const fetchLicenses = async () => {
-      setLoadingLicenses(true);
-      try {
-        const res = await fetch(`/api/beats/${item.beatId}/licenses`);
-        if (res.ok) {
-          const data = await res.json();
-          setLicenses(data.licenses);
-        }
-      } catch {
-        /* ignore */
-      } finally {
-        setLoadingLicenses(false);
-      }
-    };
-    fetchLicenses();
-  }, [item.beatId]);
 
   return (
     <div className="flex gap-4 py-4">
@@ -157,6 +141,9 @@ export default function CartClient() {
   const [checkingOut, setCheckingOut] = useState(false);
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
 
+  const [licensesMap, setLicensesMap] = useState<Record<string, ILicense[]>>({});
+  const [loadingLicenses, setLoadingLicenses] = useState(false);
+
   const isGuest = !session?.user;
   const packTotal = packItems.reduce((sum, item) => sum + item.price, 0);
   const overallTotal = total + packTotal;
@@ -181,6 +168,39 @@ export default function CartClient() {
     };
     fetchPackItems();
   }, [isGuest]);
+
+  // Batch-fetch licenses for all cart items at once
+  useEffect(() => {
+    if (items.length === 0) {
+      setLicensesMap({});
+      return;
+    }
+
+    const fetchAllLicenses = async () => {
+      setLoadingLicenses(true);
+      const beatIds = items.map((i) => i.beatId);
+      const results: Record<string, ILicense[]> = {};
+
+      await Promise.all(
+        beatIds.map(async (beatId) => {
+          try {
+            const res = await fetch(`/api/beats/${beatId}/licenses`);
+            if (res.ok) {
+              const data = await res.json();
+              results[beatId] = data.licenses;
+            }
+          } catch {
+            /* ignore */
+          }
+        })
+      );
+
+      setLicensesMap(results);
+      setLoadingLicenses(false);
+    };
+
+    fetchAllLicenses();
+  }, [items]);
 
   const handleRemove = async (beatId: string) => {
     setRemovingId(beatId);
@@ -417,6 +437,8 @@ export default function CartClient() {
                     handleUpdateLicense(item.beatId, licenseId)
                   }
                   removing={removingId === item.beatId}
+                  licenses={licensesMap[item.beatId] || []}
+                  loadingLicenses={loadingLicenses}
                 />
               ))}
             </CardContent>

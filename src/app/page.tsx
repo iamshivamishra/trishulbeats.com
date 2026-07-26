@@ -16,6 +16,12 @@ import { userRepository } from "@/lib/repositories/user.repository";
 
 export const revalidate = 120;
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
+
 const GENRE_CARDS = [
   { name: "Pop", emoji: "🎵", color: "hsl(280, 80%, 55%)" },
   { name: "Rock", emoji: "🎸", color: "hsl(10, 80%, 55%)" },
@@ -74,47 +80,78 @@ const STEPS = [
 ];
 
 async function getBeatsWithPrices(beats: Awaited<ReturnType<typeof beatRepository.findRecent>>) {
-  return Promise.all(
-    beats.map(async (beat) => {
-      const [cheapest, producer] = await Promise.all([
-        licenseRepository.findCheapestForBeat(beat._id.toString()),
-        userRepository.findById(beat.producerId.toString()),
-      ]);
-      return {
-        beat: toPublicBeatForUi(beat, producer),
-        startingPrice: cheapest?.price,
-      };
-    })
-  );
+  if (beats.length === 0) return [];
+
+  const beatIds = beats.map((b) => b._id.toString());
+  const uniqueProducerIds = [...new Set(beats.map((b) => b.producerId.toString()))];
+
+  const [cheapestMap, producers] = await Promise.all([
+    licenseRepository.findCheapestForBeats(beatIds),
+    userRepository.findByIds(uniqueProducerIds),
+  ]);
+
+  const producerMap = new Map(producers.map((p) => [p._id.toString(), p]));
+
+  return beats.map((beat) => {
+    const producer = producerMap.get(beat.producerId.toString()) ?? null;
+    const cheapest = cheapestMap[beat._id.toString()];
+    return {
+      beat: toPublicBeatForUi(beat, producer),
+      startingPrice: cheapest?.price,
+    };
+  });
 }
 
 export default async function HomePage() {
-  const [recentBeats, trendingBeats] = await Promise.all([
+  const [recentBeats, trendingBeats, packResult] = await Promise.all([
     beatRepository.findRecent(8),
     beatRepository.findTrending(4),
+    beatPackRepository.listPublished(1, 3),
   ]);
 
-  const recentWithPrices = await getBeatsWithPrices(recentBeats);
-  const trendingWithPrices = await getBeatsWithPrices(trendingBeats);
+  const [recentWithPrices, trendingWithPrices] = await Promise.all([
+    getBeatsWithPrices(recentBeats),
+    getBeatsWithPrices(trendingBeats),
+  ]);
+  const packProducerIds = [...new Set(packResult.data.map((p) => p.producerId.toString()))];
+  const packProducers = await userRepository.findByIds(packProducerIds);
+  const packProducerMap = new Map(packProducers.map((p) => [p._id.toString(), p]));
 
-  const packResult = await beatPackRepository.listPublished(1, 3);
-  const featuredPacks = await Promise.all(
-    packResult.data.map(async (pack) => {
-      const producer = await userRepository.findById(pack.producerId.toString());
-      const minPrice = Math.min(pack.prices.basic, pack.prices.premium, pack.prices.unlimited);
-      return {
-        id: pack._id.toString(),
-        title: pack.title,
-        coverUrl: pack.coverUrl,
-        beatCount: pack.beatIds.length,
-        producerName: producer?.displayName || producer?.name || "Unknown",
-        startingPrice: minPrice,
-      };
-    })
-  );
+  const featuredPacks = packResult.data.map((pack) => {
+    const producer = packProducerMap.get(pack.producerId.toString());
+    const minPrice = Math.min(pack.prices.basic, pack.prices.premium, pack.prices.unlimited);
+    return {
+      id: pack._id.toString(),
+      title: pack.title,
+      coverUrl: pack.coverUrl,
+      beatCount: pack.beatIds.length,
+      producerName: producer?.displayName || producer?.name || "Unknown",
+      startingPrice: minPrice,
+    };
+  });
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+  const trendingItemList = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "Trending Beats on Trishul Beats",
+    itemListOrder: "https://schema.org/ItemListOrderDescending",
+    numberOfItems: trendingWithPrices.length,
+    itemListElement: trendingWithPrices.slice(0, 8).map((item, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      url: `${appUrl}/beats/${item.beat._id}`,
+      name: item.beat.title,
+    })),
+  };
 
   return (
     <div>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(trendingItemList) }}
+      />
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-border/30">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,oklch(0.58_0.22_280_/_0.15),transparent_70%)]" />
@@ -234,7 +271,7 @@ export default async function HomePage() {
                 </Link>
               </Button>
               <Button asChild variant="outline" size="lg">
-                
+                <Link href="/beat-packs">Explore Beat Packs</Link>
               </Button>
             </div>
           </div>
@@ -269,7 +306,7 @@ export default async function HomePage() {
           ].map((feat) => (
             <div key={feat.title} className="rounded-xl border border-border/50 bg-card/50 p-6">
               <feat.icon className="mb-3 h-8 w-8 text-primary" />
-              <h3 className="text-lg font-semibold">{feat.title}</h3>
+              <h2 className="text-lg font-semibold">{feat.title}</h2>
               <p className="mt-1 text-sm text-muted-foreground">{feat.desc}</p>
             </div>
           ))}
@@ -288,13 +325,14 @@ export default async function HomePage() {
             </Button>
           </div>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-           {trendingWithPrices.map(({ beat, startingPrice }) => (
-  <BeatCard
-    key={beat._id.toString()}
-    beat={beat}
-    startingPrice={startingPrice}
-  />
-))}
+            {trendingWithPrices.map(({ beat, startingPrice }, index) => (
+              <BeatCard
+                key={beat._id.toString()}
+                beat={beat}
+                startingPrice={startingPrice}
+                priority={index < 4}
+              />
+            ))}
           </div>
         </section>
       )}
@@ -304,7 +342,7 @@ export default async function HomePage() {
         <section className="app-container pb-16">
           <div className="mb-6 flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-2xl font-bold">
-              <span aria-hidden>🆕</span> Recently Added
+              Recently Added
             </h2>
             <Button asChild variant="ghost" size="sm">
               <Link href="/beats?sort=newest">
@@ -313,13 +351,14 @@ export default async function HomePage() {
             </Button>
           </div>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {recentWithPrices.map(({ beat, startingPrice }) => (
-  <BeatCard
-    key={beat._id.toString()}
-    beat={beat}
-    startingPrice={startingPrice}
-  />
-))}
+            {recentWithPrices.map(({ beat, startingPrice }, index) => (
+              <BeatCard
+                key={beat._id.toString()}
+                beat={beat}
+                startingPrice={startingPrice}
+                priority={index < 4}
+              />
+            ))}
           </div>
         </section>
       )}

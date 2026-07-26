@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
+import Script from "next/script";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
+import { auth } from "@/lib/auth";
 import Providers from "@/components/Providers";
 import AppShell from "@/components/AppShell";
 import ErrorReporter from "@/components/ErrorReporter";
@@ -13,6 +15,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
+  themeColor: "#0d0d0d",
 };
 
 export const metadata: Metadata = {
@@ -33,19 +36,18 @@ export const metadata: Metadata = {
     title: "Trishul Beats — Beat Marketplace",
     description: "Discover and license high-quality beats from talented producers.",
     locale: "en_IN",
+    images: [{ url: "/og-default.png", width: 1200, height: 630, alt: "Trishul Beats" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Trishul Beats — Beat Marketplace",
     description: "Discover and license high-quality beats from talented producers.",
+    images: ["/og-default.png"],
   },
   robots: {
     index: true,
     follow: true,
     googleBot: { index: true, follow: true, "max-image-preview": "large" },
-  },
-  alternates: {
-    canonical: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
   },
 };
 
@@ -54,6 +56,7 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const session = await auth();
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
   const jsonLd = {
@@ -80,22 +83,20 @@ export default async function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
-        {process.env.NEXT_PUBLIC_GA_ID && (
-          <>
-            <script
-              async
-              src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_ID}`}
-            />
-            <script
-              dangerouslySetInnerHTML={{
-                __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${process.env.NEXT_PUBLIC_GA_ID}');`,
-              }}
-            />
-          </>
-        )}
       </head>
       <body className="min-h-screen bg-background text-foreground">
-        <Providers>
+        {process.env.NEXT_PUBLIC_GA_ID && (
+          <>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_ID}`}
+              strategy="afterInteractive"
+            />
+            <Script id="ga-init" strategy="afterInteractive">
+              {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${process.env.NEXT_PUBLIC_GA_ID}');`}
+            </Script>
+          </>
+        )}
+        <Providers session={session}>
           <AppShell>{children}</AppShell>
           <Toaster richColors position="top-right" />
           <ErrorReporter />

@@ -1,0 +1,53 @@
+---
+description: Performance — Core Web Vitals, bundle size, images, caching, streaming
+globs: src/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Performance
+
+## Core Web Vitals targets
+
+| Metric | Target | How |
+|--------|--------|-----|
+| **LCP** | < 2.5s | `priority` on hero images, font preload, ISR |
+| **INP** | < 200ms | Minimal client JS, debounce handlers, `useTransition` |
+| **CLS** | < 0.1 | Fixed image dimensions (`width`/`height` or `fill`), font `swap` |
+
+## Images
+
+```typescript
+// ✅ GOOD — optimized
+<Image src={url} alt={title} fill sizes="(max-width: 640px) 100vw, 256px" priority={isAboveFold} />
+
+// ❌ BAD — unoptimized
+<img src={url} />
+```
+
+- Always use `next/image`.
+- Always provide `sizes` prop for responsive images.
+- `priority={true}` for first 4 visible images (LCP candidates).
+- Use `fill` + `object-cover` for aspect-ratio containers.
+
+## Bundle size
+
+- Dynamic import heavy components: `const Heavy = dynamic(() => import("./Heavy"))`.
+- Keep `"use client"` boundaries as leaf-level as possible.
+- Audit with `next build` — check `.next/analyze` for large chunks.
+
+## Caching & ISR
+
+- Use `revalidate` on all data-fetching pages (60s for lists, 300s for profiles).
+- Cache expensive computations with React `cache()`.
+- API responses: set `Cache-Control` headers where appropriate.
+
+## Streaming
+
+- Provide `loading.tsx` for every route group.
+- Use `<Suspense>` around slow server components.
+- Prefer skeleton loading over blocking renders.
+
+## Font optimization
+
+- `next/font/google` with `display: "swap"` (Geist font configured in layout).
+- Single font family — no additional font downloads.

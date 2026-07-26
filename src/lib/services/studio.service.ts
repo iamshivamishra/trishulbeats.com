@@ -1,6 +1,17 @@
-import { beatRepository } from "@/lib/repositories/beat.repository";
+import mongoose from "mongoose";
+import { connectDB } from "@/lib/db";
+import Beat from "@/lib/models/Beat";
 import { purchaseRepository } from "@/lib/repositories/purchase.repository";
 import { beatService } from "@/lib/services/beat.service";
+
+async function getTotalPlaysByProducer(producerId: string): Promise<number> {
+  await connectDB();
+  const result = await Beat.aggregate([
+    { $match: { producerId: new mongoose.Types.ObjectId(producerId) } },
+    { $group: { _id: null, totalPlays: { $sum: "$plays" } } },
+  ]);
+  return result[0]?.totalPlays ?? 0;
+}
 
 export const studioService = {
   async getAnalytics(producerId: string) {
@@ -10,20 +21,20 @@ export const studioService = {
       stats,
       monthlyData,
       topBeats,
-      producerBeats,
+      totalPlays,
     ] = await Promise.all([
       purchaseRepository.getEarningsByProducer(producerId),
       purchaseRepository.countByProducer(producerId),
       beatService.getProducerStats(producerId),
       purchaseRepository.getMonthlyRevenue(producerId, 12),
       purchaseRepository.getTopBeats(producerId, 5),
-      beatRepository.findByProducerId(producerId, true),
+      getTotalPlaysByProducer(producerId),
     ]);
 
     return {
       totalEarnings,
       totalSales,
-      totalPlays: producerBeats.reduce((sum, beat) => sum + beat.plays, 0),
+      totalPlays,
       beats: stats,
       monthlyData,
       topBeats,

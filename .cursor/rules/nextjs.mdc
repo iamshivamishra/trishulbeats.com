@@ -1,0 +1,54 @@
+---
+description: Next.js 16 App Router — pages, layouts, metadata, route protection, rendering
+globs: src/app/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Next.js 16
+
+This project uses **Next.js 16** with App Router. Read `node_modules/next/dist/docs/` before writing route code — APIs may differ from training data.
+
+## Params are Promises
+
+```typescript
+// ✅ Next.js 16 — params is a Promise
+const { id } = await params;
+
+// ❌ Old pattern — will break
+const { id } = params;
+```
+
+## Page structure
+
+```typescript
+export const revalidate = 60; // ISR — use static by default, dynamic only when needed
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  // Always include: title, description, canonical, OG, twitter, JSON-LD
+}
+
+export default async function Page({ params }: Props) {
+  // Server Component — fetch via services, pass props to *Client.tsx
+}
+```
+
+## Rendering strategy
+
+1. **Static** (default) — prefer ISR with `revalidate`
+2. **Dynamic** — only when user-specific data can't be split to client
+3. **Streaming** — provide `loading.tsx` for every route group
+
+## Route protection
+
+- `src/proxy.ts` (Next.js 16 proxy) — not legacy `middleware.ts`
+- Dashboard: `auth()` + `redirect("/login")` in layout
+- Admin: `notFound()` for non-admin users
+- Private pages: `robots: { index: false }`
+
+## Use when appropriate
+
+- Route Groups for shared layouts
+- Parallel Routes for dashboard panels
+- Intercepting Routes for modals
+- Server Actions for mutations
+- Metadata API for SEO (never manual `<meta>` tags)

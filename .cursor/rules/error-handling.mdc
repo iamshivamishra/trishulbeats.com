@@ -1,0 +1,53 @@
+---
+description: Error handling — typed errors, user-friendly messages, retry, fallback UI
+globs: src/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Error Handling
+
+## Typed error hierarchy
+
+```typescript
+// src/lib/errors.ts
+AppError
+├── ValidationError    // 400 — invalid input
+├── UnauthorizedError  // 401 — not authenticated
+├── ForbiddenError     // 403 — not authorized
+├── NotFoundError      // 404 — resource missing
+└── ConflictError      // 409 — duplicate/conflict
+```
+
+## Service layer
+
+```typescript
+// ✅ GOOD — typed errors
+if (!beat) throw new NotFoundError("Beat not found");
+if (beat.producerId !== userId) throw new ForbiddenError();
+
+// ❌ BAD — generic errors
+throw new Error("Something went wrong");
+```
+
+## API layer
+
+Always `formatErrorResponse(error)` in catch — consistent JSON shape.
+
+## Client layer
+
+- `ApiError` in `@/lib/api/http.ts` — parses `{ error }` from failed responses.
+- Display user-friendly messages — never show raw error objects or stack traces.
+- Provide retry actions for transient failures (network, timeout).
+
+## UI error boundaries
+
+- Route-level `error.tsx` for page crashes.
+- `global-error.tsx` for root layout errors.
+- Inline error states for form submissions and data fetching.
+
+## Every feature must have
+
+- [ ] User-friendly error messages
+- [ ] Retry strategy for transient failures
+- [ ] Structured logging of errors
+- [ ] Fallback UI (not blank screen)

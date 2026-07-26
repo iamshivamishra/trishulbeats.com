@@ -1,0 +1,72 @@
+---
+description: Design system — visual hierarchy, responsive, dark mode, empty states, animations
+globs: src/components/**/*.tsx,src/features/**/*.tsx,src/app/**/*.tsx
+alwaysApply: false
+---
+
+# UI Design System
+
+## Design tokens
+
+- **Colors** — CSS custom properties in `globals.css` (oklch). Never hardcode hex/rgb.
+- **Spacing** — Tailwind scale. Maintain consistent spacing within sections.
+- **Typography** — Geist font via `next/font`. Use Tailwind text scale consistently.
+- **Radius** — use `rounded-md`, `rounded-lg`, `rounded-xl` consistently per component type.
+- **Icons** — `lucide-react` only. Keep icon sizing consistent: `h-4 w-4`, `h-5 w-5`.
+
+## Visual hierarchy
+
+Every page must have clear:
+- **Primary focus** — one main heading, one primary CTA
+- **Content density** — appropriate whitespace, not cramped or too sparse
+- **Scanability** — users should understand the page in 3 seconds
+
+## Responsive design (mobile-first)
+
+Review every screen for: **mobile → tablet → laptop → desktop → ultra-wide**
+
+```typescript
+// ✅ Mobile-first breakpoints
+className="text-sm sm:text-base lg:text-lg"
+className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
+className="px-4 sm:px-6 lg:px-8"
+```
+
+- No horizontal scrolling on any breakpoint.
+- Touch targets minimum 44×44px on mobile.
+- Test sticky elements don't overlap on small screens.
+
+## Dark mode
+
+- Every component must support light and dark mode.
+- Use Tailwind `dark:` variant or CSS custom properties — never hardcoded colors.
+- Test contrast ratios in both modes.
+
+## Empty states
+
+Never leave blank screens. Every data-driven view needs:
+- **Empty** — helpful message + CTA to add content
+- **Error** — user-friendly message + retry action
+- **Loading** — skeleton (preferred) or spinner
+- **No results** — search/filter feedback + suggestion
+- **Offline** — graceful degradation message
+
+## Skeleton loading
+
+Prefer skeletons over spinners. Provide `loading.tsx` for route groups.
+
+## Animations
+
+- Subtle transitions only (`transition-colors`, `transition-opacity`).
+- No decorative animations.
+- Respect `prefers-reduced-motion` — use Tailwind `motion-safe:` / `motion-reduce:`.
+
+## Component naming
+
+| Type | Pattern | Location |
+|------|---------|----------|
+| Shared | `PascalCase.tsx` | `src/components/` |
+| Client wrappers | `*Client.tsx` | Colocated with page |
+| Forms | `*Form.tsx` | Colocated or `src/features/` |
+| UI primitives | `kebab-case.tsx` | `src/components/ui/` |
+| Layout | `PascalCase.tsx` | `src/components/layout/` |

@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Play, Pause, AudioWaveform, ShoppingCart, Music, MoreVertical, Heart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { useAudioPlayer } from "@/components/AudioPlayerContext";
+import { useAudioActions } from "@/components/AudioPlayerContext";
 import type { IBeat } from "@/types";
 
 type BeatCardBeat = Pick<
@@ -27,14 +27,16 @@ interface BeatCardProps {
   beat: BeatCardBeat;
   startingPrice?: number;
   isPurchased?: boolean;
+  priority?: boolean;
 }
 
 export default function BeatCard({
   beat,
   startingPrice,
   isPurchased,
+  priority,
 }: BeatCardProps) {
-  const { playBeat, currentBeat, isPlaying } = useAudioPlayer();
+  const { playBeat, currentBeat, isPlaying } = useAudioActions();
 
   const beatId = beat._id.toString();
   const isPackOnly = beat.saleMode === "pack_only";
@@ -79,6 +81,7 @@ export default function BeatCard({
             fill
             sizes="(max-width:640px)50vw,(max-width:1024px)33vw,20vw"
             className="object-cover transition-transform duration-500 group-hover:scale-105"
+            priority={priority}
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-muted">

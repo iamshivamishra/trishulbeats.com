@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useAudioPlayer } from "@/components/AudioPlayerContext";
+import { useAudioActions } from "@/components/AudioPlayerContext";
 import type { BeatPackUi } from "@/features/beats/beat-pack-ui";
 
 interface Props {
@@ -24,7 +24,7 @@ export default function BeatPacksClient({ packs, hasMore }: Props) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [canLoadMore, setCanLoadMore] = useState(hasMore);
-  const { playBeat, currentBeat, isPlaying } = useAudioPlayer();
+  const { playBeat, currentBeat, isPlaying } = useAudioActions();
 
   const handlePreviewToggle = (pack: BeatPackUi) => {
     const track = pack.tracks[0];
@@ -33,7 +33,7 @@ export default function BeatPacksClient({ packs, hasMore }: Props) {
       id: track.id,
       title: `${pack.title} — ${track.title}`,
       producerName: pack.producerName,
-      coverUrl: pack.coverUrl,
+      coverUrl: pack.imageUrls?.[0] || pack.coverUrl,
       previewUrl: track.previewUrl,
     });
   };
@@ -146,9 +146,9 @@ export default function BeatPacksClient({ packs, hasMore }: Props) {
             {filteredPacks.map((pack) => (
               <Card key={pack.id} className="rounded-2xl border-border/50 bg-card/80 shadow-sm">
                 <div className="relative aspect-video w-full overflow-hidden rounded-t-2xl border-b border-border/40 bg-muted/30">
-                  {pack.coverUrl ? (
+                  {(pack.imageUrls?.[0] || pack.coverUrl) ? (
                     <Image
-                      src={pack.coverUrl}
+                      src={pack.imageUrls?.[0] || pack.coverUrl!}
                       alt={pack.title}
                       fill
                       sizes="(max-width: 768px) 100vw, 33vw"

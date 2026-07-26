@@ -75,9 +75,11 @@ export type BeatPackStatus = "draft" | "published" | "archived";
 export interface IBeatPack {
   _id: string | Types.ObjectId;
   title: string;
+  metadata?: string;
   description?: string;
   producerId: string | Types.ObjectId;
   coverUrl?: string;
+  imageUrls: string[];
   tags: string[];
   beatIds: Array<string | Types.ObjectId>;
   prices: {
