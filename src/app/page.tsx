@@ -270,6 +270,9 @@ export default async function HomePage() {
                   Browse Beats <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
+              <Button asChild variant="outline" size="lg">
+                <Link href="/beat-packs">Explore Beat Packs</Link>
+              </Button>
             </div>
           </div>
         </div>
@@ -322,14 +325,14 @@ export default async function HomePage() {
             </Button>
           </div>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-           {trendingWithPrices.map(({ beat, startingPrice }, index) => (
-  <BeatCard
-    key={beat._id.toString()}
-    beat={beat}
-    startingPrice={startingPrice}
-    priority={index < 4}
-  />
-))}
+            {trendingWithPrices.map(({ beat, startingPrice }, index) => (
+              <BeatCard
+                key={beat._id.toString()}
+                beat={beat}
+                startingPrice={startingPrice}
+                priority={index < 4}
+              />
+            ))}
           </div>
         </section>
       )}
@@ -349,13 +352,13 @@ export default async function HomePage() {
           </div>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {recentWithPrices.map(({ beat, startingPrice }, index) => (
-  <BeatCard
-    key={beat._id.toString()}
-    beat={beat}
-    startingPrice={startingPrice}
-    priority={index < 4}
-  />
-))}
+              <BeatCard
+                key={beat._id.toString()}
+                beat={beat}
+                startingPrice={startingPrice}
+                priority={index < 4}
+              />
+            ))}
           </div>
         </section>
       )}
