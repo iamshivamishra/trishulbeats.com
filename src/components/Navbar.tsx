@@ -13,7 +13,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import { useCart } from "@/components/CartProvider";
 
 const NAV_LINKS = [
-  { href: "/beats", label: "Browse" },
+  // { href: "/beats", label: "Browse" },
   { href: "/beat-packs", label: "Beat Packs" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },

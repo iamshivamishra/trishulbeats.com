@@ -19,7 +19,7 @@ export default function Footer() {
               Trishul Beats
             </Link>
             <p className="mt-3 text-sm leading-6 text-muted-foreground">
-              A premium beat marketplace for artists and producers. License tracks instantly and launch faster.
+              Trishul Beats is an independent music production project run by Indian music producer and composer Rajan Kumar Mishra.
             </p>
           </div>
 

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import {
   Check, ChevronLeft, ChevronRight, CirclePause, CirclePlay, Crown, Infinity, Layers,
-  Loader2, Music, Shield, ShoppingCart, Sparkles, Zap,
+  Loader2, Music, Shield, ShoppingCart, Sparkles, X, Zap,
 } from "lucide-react";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +32,24 @@ interface Props {
   ownedBeatCount: number;
 }
 
+// Extra "What You Get" flags per license tier — Content ID / Exclusive Rights
+// is only granted on Unlimited, while streaming-platform distribution is
+// included across all tiers.
+const TIER_EXTRA_FEATURES: Record<
+  string,
+  { contentId: boolean; streaming: boolean; stems: boolean; wav: boolean }
+> = {
+  basic: { contentId: false, streaming: true, stems: false, wav: false },
+  premium: { contentId: false, streaming: true, stems: false, wav: true },
+  unlimited: { contentId: false, streaming: true, stems: true, wav: true },
+};
+
+function getTierExtraFeatures(tier: string) {
+  return (
+    TIER_EXTRA_FEATURES[tier] ?? { contentId: false, streaming: true, stems: false, wav: false }
+  );
+}
+
 export default function BeatPackDetailClient({
   pack,
   isLoggedIn,
@@ -47,6 +65,7 @@ export default function BeatPackDetailClient({
 
   const [stickyDialogOpen, setStickyDialogOpen] = useState(false);
   const [carouselIndex, setCarouselIndex] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const touchStartX = useRef(0);
   const touchDeltaX = useRef(0);
 
@@ -82,6 +101,11 @@ export default function BeatPackDetailClient({
     const found = pack.prices.find((price) => price.tier === selectedTier);
     return found?.price ?? pack.prices[0]?.price ?? 0;
   }, [pack.prices, selectedTier]);
+
+  const selectedExtraFeatures = useMemo(
+    () => getTierExtraFeatures(selectedTier),
+    [selectedTier]
+  );
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -292,13 +316,43 @@ export default function BeatPackDetailClient({
                               <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-green-500/10">
                                 <Check className="h-3 w-3 text-green-500" />
                               </div>
-                              <span>Single checkout for the full collection</span>
+                              <span>MP3 File</span>
                             </li>
                             <li className="flex items-center gap-2.5">
                               <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-green-500/10">
                                 <Check className="h-3 w-3 text-green-500" />
                               </div>
-                              <span>Instant download after purchase</span>
+                              <span>WAV File</span>
+                            </li>
+                            <li className="flex items-center gap-2.5">
+                              <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${selectedExtraFeatures.stems ? "bg-green-500/10" : "bg-red-500/10"}`}>
+                                {selectedExtraFeatures.stems ? (
+                                  <Check className="h-3 w-3 text-green-500" />
+                                ) : (
+                                  <X className="h-3 w-3 text-red-500" />
+                                )}
+                              </div>
+                              <span>Stems</span>
+                            </li>
+                            <li className="flex items-center gap-2.5">
+                              <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${selectedExtraFeatures.contentId ? "bg-green-500/10" : "bg-red-500/10"}`}>
+                                {selectedExtraFeatures.contentId ? (
+                                  <Check className="h-3 w-3 text-green-500" />
+                                ) : (
+                                  <X className="h-3 w-3 text-red-500" />
+                                )}
+                              </div>
+                              <span>Content ID / Exclusive Rights</span>
+                            </li>
+                            <li className="flex items-center gap-2.5">
+                              <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${selectedExtraFeatures.streaming ? "bg-green-500/10" : "bg-red-500/10"}`}>
+                                {selectedExtraFeatures.streaming ? (
+                                  <Check className="h-3 w-3 text-green-500" />
+                                ) : (
+                                  <X className="h-3 w-3 text-red-500" />
+                                )}
+                              </div>
+                              <span>Spotify, Apple Music, YT Music</span>
                             </li>
                           </ul>
                         </div>
@@ -387,10 +441,11 @@ export default function BeatPackDetailClient({
             {allImages.length > 0 ? (
               <div className="relative">
                 <div
-                  className="relative aspect-[2/1] sm:aspect-video w-full overflow-hidden border-b border-border/40 bg-muted/30"
+                  className="relative aspect-[2/1] sm:aspect-video w-full overflow-hidden border-b border-border/40 bg-muted/30 cursor-zoom-in"
                   onTouchStart={handleTouchStart}
                   onTouchMove={handleTouchMove}
                   onTouchEnd={handleTouchEnd}
+                  onClick={() => setLightboxOpen(true)}
                 >
                   <div
                     className="flex h-full transition-transform duration-300 ease-out"
@@ -416,7 +471,7 @@ export default function BeatPackDetailClient({
                       {carouselIndex > 0 && (
                         <button
                           type="button"
-                          onClick={goToPrev}
+                          onClick={(e) => { e.stopPropagation(); goToPrev(); }}
                           className="absolute left-2 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition hover:bg-black/70 sm:h-9 sm:w-9"
                           aria-label="Previous image"
                         >
@@ -426,7 +481,7 @@ export default function BeatPackDetailClient({
                       {carouselIndex < allImages.length - 1 && (
                         <button
                           type="button"
-                          onClick={goToNext}
+                          onClick={(e) => { e.stopPropagation(); goToNext(); }}
                           className="absolute right-2 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition hover:bg-black/70 sm:h-9 sm:w-9"
                           aria-label="Next image"
                         >
@@ -463,9 +518,12 @@ export default function BeatPackDetailClient({
               </div>
             )}
             <div className="px-3 py-3 sm:px-5 sm:py-4">
-              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                <h1 className="text-base font-semibold tracking-tight sm:text-2xl">{pack.title}</h1>
-                <Badge className="text-[11px]">{pack.beatCount} beats</Badge>
+              <div className="flex flex-wrap items-center justify-between gap-1.5 sm:gap-2">
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                  <h1 className="text-base font-semibold tracking-tight sm:text-2xl">{pack.title}</h1>
+                  <Badge className="text-[11px]">{pack.beatCount} beats</Badge>
+                </div>
+                <ShareDialog title={pack.title} url={pageUrl} />
               </div>
               {pack.metadata && (
                 <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-foreground/80">{pack.metadata}</p>
@@ -505,11 +563,56 @@ export default function BeatPackDetailClient({
                       )}
                     </div>
                   )}
-                  <ShareDialog title={pack.title} url={pageUrl} />
                 </div>
               </div>
             </div>
           </Card>
+
+          <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
+            <DialogContent className="max-w-4xl w-[95vw] p-0 gap-0 overflow-hidden border-none bg-black/95">
+              <DialogHeader className="sr-only">
+                <DialogTitle>{pack.title} — image {carouselIndex + 1}</DialogTitle>
+              </DialogHeader>
+              <div className="relative flex h-[80vh] w-full items-center justify-center">
+                {allImages.length > 0 && (
+                  <Image
+                    src={allImages[carouselIndex]}
+                    alt={`${pack.title} — image ${carouselIndex + 1}`}
+                    fill
+                    sizes="95vw"
+                    className="object-contain"
+                  />
+                )}
+                {allImages.length > 1 && (
+                  <>
+                    {carouselIndex > 0 && (
+                      <button
+                        type="button"
+                        onClick={goToPrev}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition hover:bg-black/70"
+                        aria-label="Previous image"
+                      >
+                        <ChevronLeft className="h-5 w-5" />
+                      </button>
+                    )}
+                    {carouselIndex < allImages.length - 1 && (
+                      <button
+                        type="button"
+                        onClick={goToNext}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition hover:bg-black/70"
+                        aria-label="Next image"
+                      >
+                        <ChevronRight className="h-5 w-5" />
+                      </button>
+                    )}
+                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-black/50 px-3 py-1 text-xs text-white">
+                      {carouselIndex + 1} / {allImages.length}
+                    </div>
+                  </>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
 
           <Card className="rounded-xl sm:rounded-2xl border-border/50 bg-card/80 shadow-sm">
             <CardHeader className="px-3 py-2.5 sm:px-6 sm:py-4">
@@ -615,6 +718,65 @@ export default function BeatPackDetailClient({
                       );
                     })}
                   </div>
+
+                  {/* What's included */}
+                  <div className="rounded-xl border border-border/40 bg-muted/20 p-4">
+                    <p className="mb-3 flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                      <Sparkles className="h-3.5 w-3.5" />
+                      What You Get
+                    </p>
+                    <ul className="space-y-2 text-sm">
+                      <li className="flex items-center gap-2.5">
+                        <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-green-500/10">
+                          <Check className="h-3 w-3 text-green-500" />
+                        </div>
+                        <span>Access to all {pack.beatCount} beats in this pack</span>
+                      </li>
+                      <li className="flex items-center gap-2.5">
+                        <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-green-500/10">
+                          <Check className="h-3 w-3 text-green-500" />
+                        </div>
+                        <span>MP3 File</span>
+                      </li>
+                      <li className="flex items-center gap-2.5">
+                        <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-green-500/10">
+                          <Check className="h-3 w-3 text-green-500" />
+                        </div>
+                        <span>WAV File</span>
+                      </li>
+                      <li className="flex items-center gap-2.5">
+                        <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${selectedExtraFeatures.stems ? "bg-green-500/10" : "bg-red-500/10"}`}>
+                          {selectedExtraFeatures.stems ? (
+                            <Check className="h-3 w-3 text-green-500" />
+                          ) : (
+                            <X className="h-3 w-3 text-red-500" />
+                          )}
+                        </div>
+                        <span>Stems</span>
+                      </li>
+                      <li className="flex items-center gap-2.5">
+                        <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${selectedExtraFeatures.contentId ? "bg-green-500/10" : "bg-red-500/10"}`}>
+                          {selectedExtraFeatures.contentId ? (
+                            <Check className="h-3 w-3 text-green-500" />
+                          ) : (
+                            <X className="h-3 w-3 text-red-500" />
+                          )}
+                        </div>
+                        <span>Content ID / Exclusive Rights</span>
+                      </li>
+                      <li className="flex items-center gap-2.5">
+                        <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${selectedExtraFeatures.streaming ? "bg-green-500/10" : "bg-red-500/10"}`}>
+                          {selectedExtraFeatures.streaming ? (
+                            <Check className="h-3 w-3 text-green-500" />
+                          ) : (
+                            <X className="h-3 w-3 text-red-500" />
+                          )}
+                        </div>
+                        <span>Spotify, Apple Music, YT Music</span>
+                      </li>
+                    </ul>
+                  </div>
+
                   <div className="space-y-2">
                     {isLoggedIn ? (
                       <>
@@ -642,4 +804,3 @@ export default function BeatPackDetailClient({
     </div>
   );
 }
-
