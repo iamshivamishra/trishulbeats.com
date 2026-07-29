@@ -234,7 +234,8 @@ export default async function ProfilePage() {
               <ShoppingBag className="mx-auto mb-2 h-8 w-8" />
               <p>No purchases yet.</p>
               <Button asChild variant="link" className="mt-2">
-                <Link href="/beats">Browse Beats</Link>
+                {/* <Link href="/beats">Browse Beats</Link> */}
+                <Link href="/beat-packs">Browse Beat Packs</Link>
               </Button>
             </div>
           )}

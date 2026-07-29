@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Reveal } from "./Reveal";
 
 export default function ContactClient() {
   const [name, setName] = useState("");
@@ -45,114 +46,152 @@ export default function ContactClient() {
 
   return (
     <div className="page-shell max-w-5xl">
-      <div className="page-header text-center">
-        <h1 className="text-3xl font-semibold sm:text-4xl">Contact Us</h1>
-        <p className="mt-3 text-muted-foreground">
-          Have questions or feedback? We&apos;d love to hear from you.
-        </p>
+      {/* Hero */}
+      <div className="page-header relative overflow-hidden text-center">
+        <div
+          className="pointer-events-none absolute left-1/2 top-0 -z-10 h-72 w-72 -translate-x-1/2 rounded-full bg-primary/10 blur-3xl"
+          aria-hidden="true"
+        />
+        <Reveal>
+          <span className="inline-block rounded-full border border-border/60 bg-card/60 px-3 py-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Get in Touch
+          </span>
+        </Reveal>
+        <Reveal delay={80}>
+          <h1 className="mt-4 text-3xl font-semibold sm:text-4xl">Contact Us</h1>
+        </Reveal>
+        <Reveal delay={160}>
+          <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
+            Have questions or feedback? We&apos;d love to hear from you.
+          </p>
+        </Reveal>
       </div>
 
       <div className="grid gap-8 lg:grid-cols-[1fr_300px]">
-        <Card className="border-border/60 bg-card/80 shadow-sm">
-          <CardHeader>
-            <CardTitle>Send a Message</CardTitle>
-            <CardDescription>Fill out the form and we&apos;ll get back to you soon.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {sent ? (
-              <div className="flex flex-col items-center py-8 text-center">
-                <CheckCircle2 className="mb-4 h-12 w-12 text-green-500" />
-                <h3 className="text-lg font-semibold">Message sent!</h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Thanks for reaching out. We&apos;ll get back to you soon.
-                </p>
-                <Button
-                  variant="outline"
-                  className="mt-6"
-                  onClick={() => {
-                    setSent(false);
-                    setName("");
-                    setEmail("");
-                    setSubject("");
-                    setMessage("");
-                  }}
+        <Reveal delay={100}>
+          <Card className="border-border/60 bg-card/80 shadow-sm transition-shadow duration-300 hover:shadow-md">
+            <CardHeader>
+              <CardTitle>Send a Message</CardTitle>
+              <CardDescription>Fill out the form and we&apos;ll get back to you soon.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {sent ? (
+                <div
+                  className="flex animate-in fade-in zoom-in-95 flex-col items-center py-8 text-center duration-500"
+                  role="status"
+                  aria-live="polite"
                 >
-                  Send Another Message
-                </Button>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-                <div className="grid gap-4 sm:grid-cols-2">
+                  <span className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10">
+                    <CheckCircle2 className="h-9 w-9 text-green-500" />
+                  </span>
+                  <h3 className="text-lg font-semibold">Message sent!</h3>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Thanks for reaching out. We&apos;ll get back to you soon.
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="mt-6 transition-transform duration-200 hover:-translate-y-0.5"
+                    onClick={() => {
+                      setSent(false);
+                      setName("");
+                      setEmail("");
+                      setSubject("");
+                      setMessage("");
+                    }}
+                  >
+                    Send Another Message
+                  </Button>
+                </div>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="contact-name">Name</Label>
+                      <Input
+                        id="contact-name"
+                        placeholder="Your name"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        required
+                        minLength={2}
+                        className="transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-primary/50"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="contact-email">Email</Label>
+                      <Input
+                        id="contact-email"
+                        type="email"
+                        placeholder="you@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        className="transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-primary/50"
+                      />
+                    </div>
+                  </div>
                   <div className="space-y-2">
-                    <Label htmlFor="contact-name">Name</Label>
+                    <Label htmlFor="contact-subject">Subject</Label>
                     <Input
-                      id="contact-name"
-                      placeholder="Your name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
+                      id="contact-subject"
+                      placeholder="What's this about?"
+                      value={subject}
+                      onChange={(e) => setSubject(e.target.value)}
                       required
                       minLength={2}
+                      className="transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-primary/50"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="contact-email">Email</Label>
-                    <Input
-                      id="contact-email"
-                      type="email"
-                      placeholder="you@example.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                    <Label htmlFor="contact-message">Message</Label>
+                    <Textarea
+                      id="contact-message"
+                      placeholder="Your message..."
+                      rows={5}
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
                       required
+                      minLength={10}
+                      className="resize-none transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-primary/50"
                     />
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="contact-subject">Subject</Label>
-                  <Input
-                    id="contact-subject"
-                    placeholder="What's this about?"
-                    value={subject}
-                    onChange={(e) => setSubject(e.target.value)}
-                    required
-                    minLength={2}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="contact-message">Message</Label>
-                  <Textarea
-                    id="contact-message"
-                    placeholder="Your message..."
-                    rows={5}
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    required
-                    minLength={10}
-                  />
-                </div>
-                <Button type="submit" className="w-full sm:w-auto" disabled={loading}>
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Send Message
-                </Button>
-              </form>
-            )}
-          </CardContent>
-        </Card>
+                  <Button
+                    type="submit"
+                    className="w-full transition-transform duration-200 hover:-translate-y-0.5 disabled:translate-y-0 sm:w-auto"
+                    disabled={loading}
+                  >
+                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Send Message
+                  </Button>
+                </form>
+              )}
+            </CardContent>
+          </Card>
+        </Reveal>
 
         <div className="space-y-4">
-          <Card className="border-border/60 bg-card/80 shadow-sm">
-            <CardContent className="p-5">
-              <Mail className="mb-2 h-5 w-5 text-primary" />
-              <h3 className="text-sm font-semibold">Email</h3>
-              <p className="mt-1 text-sm text-muted-foreground">contact@trishulbeats.com</p>
-            </CardContent>
-          </Card>
-          <Card className="border-border/60 bg-card/80 shadow-sm">
-            <CardContent className="p-5">
-              <MapPin className="mb-2 h-5 w-5 text-primary" />
-              <h3 className="text-sm font-semibold">Location</h3>
-              <p className="mt-1 text-sm text-muted-foreground">India</p>
-            </CardContent>
-          </Card>
+          <Reveal delay={180}>
+            <Card className="group border-border/60 bg-card/80 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5">
+              <CardContent className="p-5">
+                <div className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform duration-300 group-hover:scale-110">
+                  <Mail className="h-5 w-5" />
+                </div>
+                <h3 className="text-sm font-semibold">Email</h3>
+                <p className="mt-1 text-sm text-muted-foreground">contact@trishulbeats.com</p>
+              </CardContent>
+            </Card>
+          </Reveal>
+          <Reveal delay={260}>
+            <Card className="group border-border/60 bg-card/80 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5">
+              <CardContent className="p-5">
+                <div className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform duration-300 group-hover:scale-110">
+                  <MapPin className="h-5 w-5" />
+                </div>
+                <h3 className="text-sm font-semibold">Location</h3>
+                <p className="mt-1 text-sm text-muted-foreground">India</p>
+              </CardContent>
+            </Card>
+          </Reveal>
         </div>
       </div>
     </div>

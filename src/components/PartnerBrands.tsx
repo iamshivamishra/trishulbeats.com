@@ -9,12 +9,12 @@ interface Partner {
 const PARTNERS: Partner[] = [
   {
     name: "News24",
-    url: "https://www.news24online.com",
+    url: "",
     logoUrl: "https://upload.wikimedia.org/wikipedia/commons/6/66/News24_Logo.jpg",
   },
   {
     name: "JioCinema",
-    url: "https://www.jiocinema.com",
+    url: "",
     logoUrl: "https://m.media-amazon.com/images/I/31LNEBVsjUL.png",
   },
 ];
@@ -37,7 +37,7 @@ export default function PartnerBrands() {
             href={partner.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="group relative flex items-center justify-center overflow-hidden rounded-2xl border border-border/60 bg-white p-8 shadow-sm transition-all hover:-translate-y-1 hover:border-border hover:shadow-xl"
+            className="group relative flex items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-8 shadow-sm backdrop-blur-sm transition-all hover:-translate-y-1 hover:border-white/20 hover:bg-white/10 hover:shadow-xl"
           >
             {/* Badi Image Container */}
             <div className="relative h-40 w-full max-w-xs overflow-hidden">

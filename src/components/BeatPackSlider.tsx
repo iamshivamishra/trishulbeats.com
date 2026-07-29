@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Layers } from "lucide-react";
@@ -14,32 +14,70 @@ export interface BeatPackSliderItem {
   startingPrice: number;
 }
 
-const DRAG_THRESHOLD = 6; // px — isse kam movement = click, isse zyada = drag
+const DRAG_THRESHOLD = 6; // px threshold for click vs drag detection
 
 export default function BeatPackSlider({ packs }: { packs: BeatPackSliderItem[] }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  
+  // Hover & Drag States
+  const [isHovered, setIsHovered] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  
   const isPointerDown = useRef(false);
   const isDraggingRef = useRef(false);
   const startX = useRef(0);
   const startScrollLeft = useRef(0);
-  const [dragActive, setDragActive] = useState(false);
+  
+  // FIXED: -1.2 means default scroll is Left to Right
+  const speed = useRef(-1.2);
+
+  // Seamless Loop ke liye Items Repeat
+  const displayPacks = packs.length > 0 ? [...packs, ...packs, ...packs, ...packs] : [];
+
+  // RequestAnimationFrame Loop for Continuous Scrolling
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || displayPacks.length === 0) return;
+
+    let animationFrameId: number;
+
+    const loop = () => {
+      // Hover ya active drag ke waqt animation paused rahegi
+      if (!isHovered && !isPointerDown.current) {
+        el.scrollLeft += speed.current;
+
+        // Infinite Seamless Loop Reset Logic (Left to Right & Vice Versa)
+        const maxScroll = el.scrollWidth / 2;
+        if (el.scrollLeft <= 0) {
+          el.scrollLeft += maxScroll;
+        } else if (el.scrollLeft >= maxScroll) {
+          el.scrollLeft -= maxScroll;
+        }
+      }
+      animationFrameId = requestAnimationFrame(loop);
+    };
+
+    animationFrameId = requestAnimationFrame(loop);
+
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [isHovered, displayPacks.length]);
 
   if (packs.length === 0) return null;
 
-
+  // Pointer & Drag Event Handlers
   const onPointerDown = (e: React.PointerEvent) => {
-  const el = scrollRef.current;
-  if (!el) return;
-  if (e.pointerType === "mouse" && e.button !== 0) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
 
-  isPointerDown.current = true;
-  isDraggingRef.current = false;
-  startX.current = e.clientX;
-  startScrollLeft.current = el.scrollLeft;
+    isPointerDown.current = true;
+    isDraggingRef.current = false;
+    startX.current = e.clientX;
+    startScrollLeft.current = el.scrollLeft;
 
-  window.addEventListener("pointermove", onWindowPointerMove);
-  window.addEventListener("pointerup", onWindowPointerUp);
-};
+    window.addEventListener("pointermove", onWindowPointerMove);
+    window.addEventListener("pointerup", onWindowPointerUp);
+  };
 
   const onWindowPointerMove = (e: PointerEvent) => {
     const el = scrollRef.current;
@@ -52,6 +90,15 @@ export default function BeatPackSlider({ packs }: { packs: BeatPackSliderItem[] 
     }
 
     if (isDraggingRef.current) {
+      // FIXED Drag logic for Left to Right preference:
+      // dx > 0 (Mouse Right taraf ghasita) -> Speed -1.2 (Left to Right)
+      // dx < 0 (Mouse Left taraf ghasita) -> Speed +1.2 (Right to Left)
+      if (dx > 0) {
+        speed.current = -1.2; // Left to Right
+      } else if (dx < 0) {
+        speed.current = 1.2;  // Right to Left
+      }
+
       el.scrollLeft = startScrollLeft.current - dx;
     }
   };
@@ -61,14 +108,13 @@ export default function BeatPackSlider({ packs }: { packs: BeatPackSliderItem[] 
     setDragActive(false);
     window.removeEventListener("pointermove", onWindowPointerMove);
     window.removeEventListener("pointerup", onWindowPointerUp);
-    // isDraggingRef ko turant reset nahi karte — click handler ise check karega
+
     setTimeout(() => {
       isDraggingRef.current = false;
     }, 0);
   };
 
   const onLinkClickCapture = (e: React.MouseEvent) => {
-    // Agar actual drag hua tha, to navigation cancel karo
     if (isDraggingRef.current) {
       e.preventDefault();
       e.stopPropagation();
@@ -92,18 +138,23 @@ export default function BeatPackSlider({ packs }: { packs: BeatPackSliderItem[] 
       <div
         ref={scrollRef}
         onPointerDown={onPointerDown}
-        className={`no-scrollbar flex gap-4 overflow-x-auto snap-x snap-mandatory pb-2 ${
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => {
+          setIsHovered(false);
+          isPointerDown.current = false;
+          setDragActive(false);
+        }}
+        className={`no-scrollbar flex gap-4 overflow-x-auto pb-2 ${
           dragActive ? "cursor-grabbing select-none" : "cursor-grab"
         }`}
-        style={{ scrollBehavior: dragActive ? "auto" : "smooth" }}
       >
-        {packs.map((pack) => (
+        {displayPacks.map((pack, index) => (
           <Link
-            key={pack.id}
+            key={`${pack.id}-${index}`}
             href={`/beat-packs/${pack.id}`}
             draggable={false}
             onClickCapture={onLinkClickCapture}
-            className="group w-[75%] flex-shrink-0 snap-start sm:w-[45%] lg:w-[32%]"
+            className="group w-[75%] flex-shrink-0 sm:w-[45%] lg:w-[32%]"
           >
             <div className="overflow-hidden rounded-xl border border-border/50 bg-card/80 transition hover:border-border hover:shadow-md">
               <div className="relative aspect-video w-full bg-muted/30">
