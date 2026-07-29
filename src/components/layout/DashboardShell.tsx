@@ -8,6 +8,7 @@ import type { Session } from "next-auth";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
+  Home,   // ← add this import
   Music,
   Layers,
   Upload,
@@ -63,13 +64,16 @@ export default function DashboardShell({ session, children }: DashboardShellProp
     return <>{children}</>;
   }
 
-  const workspaceLinks = [
-    { href: "/studio", label: "Overview", icon: LayoutDashboard, show: isProducer },
-    { href: "/studio/beats", label: "My Beats", icon: Music, show: isProducer },
-    { href: "/studio/beat-packs", label: "My Packs", icon: Layers, show: isProducer },
-    { href: "/studio/sales", label: "Sales", icon: BarChart3, show: isProducer },
-    { href: "/upload", label: "Upload", icon: Upload, show: isProducer },
-  ].filter((item) => item.show);
+ const workspaceLinks = [
+  { href: "/", label: "Home", icon: Home, show: true },   // ← icon: LayoutDashboard se Home kiya
+  { href: "/studio", label: "Overview", icon: LayoutDashboard, show: isProducer },
+  { href: "/studio/beats", label: "My Beats", icon: Music, show: isProducer },
+  { href: "/studio/beat-packs", label: "My Packs", icon: Layers, show: isProducer },
+  { href: "/studio/sales", label: "Sales", icon: BarChart3, show: isProducer },
+  { href: "/upload", label: "Upload", icon: Upload, show: isProducer },
+].filter((item) => item.show);
+
+
 
   const accountLinks = [
     { href: "/profile", label: "Profile", icon: User, show: true },

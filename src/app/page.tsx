@@ -13,6 +13,10 @@ import { beatPackRepository } from "@/lib/repositories/beat-pack.repository";
 import { licenseRepository } from "@/lib/repositories/license.repository";
 import { toPublicBeatForUi } from "@/lib/serializers/beat";
 import { userRepository } from "@/lib/repositories/user.repository";
+import BeatPackSlider from "@/components/BeatPackSlider";
+import YoutubeBeats from "@/components/YoutubeBeats";
+import SpotifyShowcase from "@/components/SpotifyShowcase";
+import PartnerBrands from "@/components/PartnerBrands";
 
 export const revalidate = 120;
 
@@ -152,6 +156,17 @@ export default async function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(trendingItemList) }}
       />
+
+       <BeatPackSlider packs={featuredPacks} />
+
+
+{/* YouTube Beats — auto-moving marquee */}
+<YoutubeBeats />
+
+
+{/* Spotify — hero image + floating notes */}
+<SpotifyShowcase />
+
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-border/30">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,oklch(0.58_0.22_280_/_0.15),transparent_70%)]" />
@@ -250,7 +265,7 @@ export default async function HomePage() {
           </svg>
           <div className="doodle-pulse absolute left-[14%] top-[76%] h-1.5 w-1.5 rounded-full bg-primary/20 sm:h-2 sm:w-2" />
         </div>
-        <div className="app-container relative py-24 sm:py-32">
+        {/* <div className="app-container relative py-24 sm:py-32">
           <div className="mx-auto max-w-2xl text-center">
             <Badge variant="secondary" className="mb-4">
               Beat Marketplace
@@ -275,11 +290,11 @@ export default async function HomePage() {
               </Button>
             </div>
           </div>
-        </div>
+        </div> */}
       </section>
 
       {/* Stats */}
-      <section className="border-b border-border/30 bg-card/30">
+      {/* <section className="border-b border-border/30 bg-card/30">
         <div className="app-container grid grid-cols-2 gap-4 py-8 sm:grid-cols-4">
           {[
             { label: "Beats", value: "1K+", icon: Music },
@@ -294,7 +309,7 @@ export default async function HomePage() {
             </div>
           ))}
         </div>
-      </section>
+      </section> */}
 
       {/* Features */}
       <section className="app-container py-16">
@@ -314,7 +329,7 @@ export default async function HomePage() {
       </section>
 
       {/* Trending Beats */}
-      {trendingWithPrices.length > 0 && (
+      {/* {trendingWithPrices.length > 0 && (
         <section className="app-container pb-16">
           <div className="mb-6 flex items-center justify-between">
             <h2 className="text-2xl font-semibold">Trending Beats</h2>
@@ -335,10 +350,10 @@ export default async function HomePage() {
             ))}
           </div>
         </section>
-      )}
+      )} */}
 
       {/* Recent Beats */}
-      {recentWithPrices.length > 0 && (
+      {/* {recentWithPrices.length > 0 && (
         <section className="app-container pb-16">
           <div className="mb-6 flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-2xl font-bold">
@@ -361,10 +376,10 @@ export default async function HomePage() {
             ))}
           </div>
         </section>
-      )}
+      )} */}
 
       {/* Featured Beat Packs */}
-      {featuredPacks.length > 0 && (
+      {/* {featuredPacks.length > 0 && (
         <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
           <div className="mb-8 flex items-end justify-between">
             <div>
@@ -410,10 +425,10 @@ export default async function HomePage() {
             ))}
           </div>
         </section>
-      )}
+      )} */}
 
       {/* Browse by Genre */}
-      <section className="app-container pb-16">
+      {/* <section className="app-container pb-16">
         <div className="mb-6 flex items-center justify-between">
           <h2 className="flex items-center gap-2 text-2xl font-bold">
             <span aria-hidden>🎸</span> Browse by Genre
@@ -437,10 +452,10 @@ export default async function HomePage() {
             </Link>
           ))}
         </div>
-      </section>
+      </section> */}
 
       {/* What Users Say */}
-      <section className="border-t border-border/30 bg-card/20">
+      {/* <section className="border-t border-border/30 bg-card/20">
         <div className="app-container py-16">
           <h2 className="mb-8 text-center text-2xl font-bold">
             <span aria-hidden>💬</span> What Users Say
@@ -474,7 +489,7 @@ export default async function HomePage() {
             ))}
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* How It Works */}
       <section className="app-container py-16">
@@ -495,8 +510,10 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <PartnerBrands />
+
       {/* CTA */}
-      <section className="border-t border-border/30 bg-card/30">
+      {/* <section className="border-t border-border/30 bg-card/30">
         <div className="app-container py-16 text-center">
           <h2 className="text-3xl font-semibold">Ready to find your sound?</h2>
           <p className="mx-auto mt-3 max-w-md text-muted-foreground">
@@ -511,7 +528,7 @@ export default async function HomePage() {
             </Button>
           </div>
         </div>
-      </section>
+      </section> */}
     </div>
   );
 }
