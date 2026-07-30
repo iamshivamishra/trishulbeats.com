@@ -16,6 +16,7 @@ export interface PlayableBeat {
   producerName: string;
   coverUrl?: string;
   previewUrl: string;
+  packId?: string;
 }
 
 /* ── Actions context (stable — identity-stable callbacks via refs) ── */

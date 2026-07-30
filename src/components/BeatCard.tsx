@@ -19,6 +19,7 @@ type BeatCardBeat = Pick<
   | "likesCount"
   | "tags"
   | "saleMode"
+  | "packId"
   | "producerName"
   | "producerUsername"
 >;
@@ -56,6 +57,7 @@ export default function BeatCard({
       producerName: beat.producerName ?? "",
       coverUrl: beat.coverUrl,
       previewUrl: beat.audioTaggedUrl,
+      ...(beat.packId ? { packId: beat.packId.toString() } : {}),
     });
   };
 
