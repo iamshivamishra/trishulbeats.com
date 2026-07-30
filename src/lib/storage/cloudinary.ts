@@ -29,6 +29,15 @@ function inferResourceType(contentTypeOrExtension: string): CloudinaryResourceTy
   ) {
     return "image";
   }
+  // ZIP/archive files (stems) go through "video" endpoint — Cloudinary's "raw"
+  // endpoint has limited CORS support for browser-side uploads
+  if (
+    contentTypeOrExtension === "application/zip" ||
+    contentTypeOrExtension === "application/x-zip-compressed" ||
+    contentTypeOrExtension.toLowerCase() === ".zip"
+  ) {
+    return "video";
+  }
   return "raw";
 }
 
