@@ -131,6 +131,7 @@ export default function BeatPackDetailClient({
       producerName: pack.producerName,
       coverUrl: allImages[0] || pack.coverUrl,
       previewUrl: track.previewUrl,
+      packId: pack.id,
     });
   };
 
@@ -528,9 +529,6 @@ export default function BeatPackDetailClient({
               {pack.metadata && (
                 <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-foreground/80">{pack.metadata}</p>
               )}
-              {pack.description && (
-                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{pack.description}</p>
-              )}
 
               <div className="mt-3 flex items-center justify-between gap-3 border-t border-border/40 pt-3">
                 <Link
@@ -659,6 +657,17 @@ export default function BeatPackDetailClient({
               ))}
             </CardContent>
           </Card>
+
+          {pack.description && (
+            <Card className="rounded-xl sm:rounded-2xl border-border/50 bg-card/80 shadow-sm">
+              <CardHeader className="px-3 py-2.5 sm:px-6 sm:py-4">
+                <CardTitle className="text-sm sm:text-lg">Description</CardTitle>
+              </CardHeader>
+              <CardContent className="px-3 pb-3 sm:px-6 sm:pb-6">
+                <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{pack.description}</p>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Buy card is rendered above via order-first on mobile */}

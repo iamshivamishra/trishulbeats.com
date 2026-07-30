@@ -3,6 +3,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   Play,
@@ -16,6 +17,7 @@ import {
   Volume2,
   VolumeX,
   ShoppingCart,
+  Package,
   Music,
 } from "lucide-react";
 import { useAudioPlayer } from "@/components/AudioPlayerContext";
@@ -35,9 +37,12 @@ export default function BottomPlayer() {
     setVolume,
   } = useAudioPlayer();
 
+  const pathname = usePathname();
   const [isMuted, setIsMuted] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [isRepeat, setIsRepeat] = useState(false);
+
+  const isOnPackPage = currentBeat?.packId && pathname === `/beat-packs/${currentBeat.packId}`;
 
   if (!currentBeat) return null;
 
@@ -181,15 +186,28 @@ export default function BottomPlayer() {
           />
         </div>
 
-        {/* Buy button */}
-        <Link
-          href={`/beats/${currentBeat.id}`}
-          aria-label="Buy"
-          className="flex shrink-0 items-center gap-2 rounded-full bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:brightness-110 sm:px-4"
-        >
-          <ShoppingCart className="h-4 w-4" />
-          <span className="hidden sm:inline">Buy</span>
-        </Link>
+        {/* Buy button — hidden when already on the target page */}
+        {!isOnPackPage && (
+          currentBeat.packId ? (
+            <Link
+              href={`/beat-packs/${currentBeat.packId}`}
+              aria-label="Buy Pack"
+              className="flex shrink-0 items-center gap-2 rounded-full bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:brightness-110 sm:px-4"
+            >
+              <Package className="h-4 w-4" />
+              <span className="hidden sm:inline">Buy Pack</span>
+            </Link>
+          ) : (
+            <Link
+              href={`/beats/${currentBeat.id}`}
+              aria-label="Buy"
+              className="flex shrink-0 items-center gap-2 rounded-full bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:brightness-110 sm:px-4"
+            >
+              <ShoppingCart className="h-4 w-4" />
+              <span className="hidden sm:inline">Buy</span>
+            </Link>
+          )
+        )}
       </div>
     </div>
   );
