@@ -35,6 +35,7 @@ export default function BeatPacksClient({ packs, hasMore }: Props) {
       producerName: pack.producerName,
       coverUrl: pack.imageUrls?.[0] || pack.coverUrl,
       previewUrl: track.previewUrl,
+      packId: pack.id,
     });
   };
 
