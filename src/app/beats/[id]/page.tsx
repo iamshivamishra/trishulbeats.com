@@ -233,21 +233,6 @@ export default async function BeatPage({ params }: BeatPageProps) {
                     <h1 className="break-words text-base font-bold tracking-tight sm:text-2xl md:text-3xl">
                       {beat.title}
                     </h1>
-                    {producer && (
-                      <p className="mt-1 text-sm text-muted-foreground sm:text-base">
-                        by{" "}
-                        <Link
-                          href={
-                            producer.username
-                              ? `/producer/${producer.username}`
-                              : "#"
-                          }
-                          className="font-medium text-primary hover:underline"
-                        >
-                          {producer.displayName || producer.name}
-                        </Link>
-                      </p>
-                    )}
                   </div>
 
                   {/* Stats row */}
