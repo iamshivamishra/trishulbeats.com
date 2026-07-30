@@ -38,6 +38,11 @@ function resourceTypeFor(contentType: string): "image" | "video" | "raw" {
   if (contentType.startsWith("image/")) {
     return "image";
   }
+  // ZIP/archive files (stems) use "video" — Cloudinary's "raw" endpoint
+  // has limited CORS support for browser-side uploads
+  if (contentType === "application/zip" || contentType === "application/x-zip-compressed") {
+    return "video";
+  }
   return "raw";
 }
 

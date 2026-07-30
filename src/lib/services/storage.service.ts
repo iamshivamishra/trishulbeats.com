@@ -26,7 +26,9 @@ function resourceTypeForCategory(
   category: FileCategory
 ): "image" | "video" | "raw" {
   if (["artwork", "avatar", "cover"].includes(category)) return "image";
-  if (["preview", "master"].includes(category)) return "video";
+  // stems (ZIP) also uses "video" — Cloudinary's "raw" endpoint has limited
+  // CORS support for browser-side uploads
+  if (["preview", "master", "stems"].includes(category)) return "video";
   return "raw";
 }
 
