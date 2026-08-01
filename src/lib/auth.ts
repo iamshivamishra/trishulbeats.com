@@ -165,14 +165,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       const { pathname } = request.nextUrl;
       const isLoggedIn = !!session?.user;
 
-      // Redirect logged-in users away from auth pages
+      const isProducer =
+        session?.user?.role === "producer" || session?.user?.role === "admin";
+
+      // Redirect logged-in users away from auth pages to their dashboard
       const authRoutes = ["/login", "/signup"];
       if (authRoutes.some((r) => pathname.startsWith(r)) && isLoggedIn) {
-        return Response.redirect(new URL("/dashboard", request.nextUrl));
+        const dest = isProducer ? "/studio" : "/profile";
+        return Response.redirect(new URL(dest, request.nextUrl));
       }
 
       // Protected routes require login
-      const protectedRoutes = ["/profile", "/dashboard", "/upload", "/onboarding"];
+      const protectedRoutes = ["/profile", "/studio", "/upload", "/onboarding"];
       if (protectedRoutes.some((r) => pathname.startsWith(r)) && !isLoggedIn) {
         return Response.redirect(new URL("/login", request.nextUrl));
       }
@@ -186,12 +190,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
 
       // Producer + Admin only
-      const producerRoutes = ["/upload"];
+      const producerRoutes = ["/studio", "/upload"];
       if (producerRoutes.some((r) => pathname.startsWith(r))) {
-        if (
-          !isLoggedIn ||
-          (session.user.role !== "producer" && session.user.role !== "admin")
-        ) {
+        if (!isLoggedIn || !isProducer) {
           return Response.redirect(new URL("/", request.nextUrl));
         }
       }

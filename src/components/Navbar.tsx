@@ -26,6 +26,8 @@ export default function Navbar() {
   const { data: session } = useSession();
   const { totalCount: cartCount } = useCart();
   const user = session?.user;
+  const isProducer = user?.role === "producer" || user?.role === "admin";
+  const dashboardHref = isProducer ? "/studio" : "/profile";
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
   return (
@@ -78,7 +80,7 @@ export default function Navbar() {
           {user ? (
             <div className="flex items-center gap-2">
               <Button asChild variant="outline" size="sm" className="gap-1.5">
-                <Link href="/dashboard">
+                <Link href={dashboardHref}>
                   <LayoutDashboard className="h-4 w-4" />
                   Dashboard
                 </Link>
@@ -166,7 +168,7 @@ export default function Navbar() {
               {user ? (
                 <>
                   <Link
-                    href="/dashboard"
+                    href={dashboardHref}
                     onClick={() => setMobileOpen(false)}
                     className="rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent"
                   >

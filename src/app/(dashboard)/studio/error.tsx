@@ -30,7 +30,7 @@ export default function StudioError({
             Try Again
           </Button>
           <Button asChild variant="outline" className="mt-3">
-            <Link href="/dashboard">Go to Dashboard</Link>
+            <Link href="/profile">Go to Dashboard</Link>
           </Button>
         </CardContent>
       </Card>

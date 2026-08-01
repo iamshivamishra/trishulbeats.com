@@ -14,7 +14,6 @@ export default function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   const { currentBeat } = useAudioPlayer();
   const isDashboardRoute =
-    pathname === "/dashboard" ||
     pathname.startsWith("/studio") ||
     pathname.startsWith("/upload") ||
     pathname.startsWith("/profile") ||

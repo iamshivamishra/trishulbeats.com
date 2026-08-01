@@ -88,8 +88,10 @@ export default function DashboardShell({ session, children }: DashboardShellProp
     { href: "/settings", label: "Settings", icon: Settings, show: false },
   ].filter((item) => item.show);
 
-  const isActive = (href: string) =>
-    href === "/studio" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
+  const isActive = (href: string) => {
+    if (href === "/" || href === "/studio" || href === "/profile") return pathname === href;
+    return pathname === href || pathname.startsWith(`${href}/`);
+  };
 
   const currentTitle = [...workspaceLinks, ...libraryLinks, ...accountLinks]
     .find((link) => isActive(link.href))?.label || "Dashboard";
