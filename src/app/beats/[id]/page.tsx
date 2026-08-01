@@ -373,7 +373,7 @@ export default async function BeatPage({ params }: BeatPageProps) {
           </Card>
 
           {/* Download section (purchased users) */}
-          {/* {hasPurchased && <DownloadPanel beatId={id} />} */}
+          {hasPurchased && <DownloadPanel beatId={id} />}
 
           <Separator />
 
