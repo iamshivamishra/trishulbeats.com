@@ -69,6 +69,13 @@ export default function BeatPackDetailClient({
   const touchStartX = useRef(0);
   const touchDeltaX = useRef(0);
 
+  // Lightbox swipe/drag refs
+  const lightboxTouchStartX = useRef(0);
+  const lightboxTouchDeltaX = useRef(0);
+  const lightboxMouseDown = useRef(false);
+  const lightboxMouseStartX = useRef(0);
+  const lightboxMouseDeltaX = useRef(0);
+
   const allImages = useMemo(() => {
     const imgs = [...(pack.imageUrls ?? [])];
     if (imgs.length === 0 && pack.coverUrl) imgs.push(pack.coverUrl);
@@ -91,6 +98,42 @@ export default function BeatPackDetailClient({
     if (touchDeltaX.current > 50) goToPrev();
     else if (touchDeltaX.current < -50) goToNext();
     touchDeltaX.current = 0;
+  }, [goToPrev, goToNext]);
+
+  // ====== Lightbox touch swipe ======
+  const handleLightboxTouchStart = useCallback((e: React.TouchEvent) => {
+    lightboxTouchStartX.current = e.touches[0].clientX;
+    lightboxTouchDeltaX.current = 0;
+  }, []);
+
+  const handleLightboxTouchMove = useCallback((e: React.TouchEvent) => {
+    lightboxTouchDeltaX.current = e.touches[0].clientX - lightboxTouchStartX.current;
+  }, []);
+
+  const handleLightboxTouchEnd = useCallback(() => {
+    if (lightboxTouchDeltaX.current > 50) goToPrev();
+    else if (lightboxTouchDeltaX.current < -50) goToNext();
+    lightboxTouchDeltaX.current = 0;
+  }, [goToPrev, goToNext]);
+
+  // ====== Lightbox mouse drag (desktop) ======
+  const handleLightboxMouseDown = useCallback((e: React.MouseEvent) => {
+    lightboxMouseDown.current = true;
+    lightboxMouseStartX.current = e.clientX;
+    lightboxMouseDeltaX.current = 0;
+  }, []);
+
+  const handleLightboxMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!lightboxMouseDown.current) return;
+    lightboxMouseDeltaX.current = e.clientX - lightboxMouseStartX.current;
+  }, []);
+
+  const handleLightboxMouseUp = useCallback(() => {
+    if (!lightboxMouseDown.current) return;
+    lightboxMouseDown.current = false;
+    if (lightboxMouseDeltaX.current > 50) goToPrev();
+    else if (lightboxMouseDeltaX.current < -50) goToNext();
+    lightboxMouseDeltaX.current = 0;
   }, [goToPrev, goToNext]);
 
   useEffect(() => {
@@ -131,7 +174,6 @@ export default function BeatPackDetailClient({
       producerName: pack.producerName,
       coverUrl: allImages[0] || pack.coverUrl,
       previewUrl: track.previewUrl,
-      packId: pack.id,
     });
   };
 
@@ -529,21 +571,46 @@ export default function BeatPackDetailClient({
               {pack.metadata && (
                 <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-foreground/80">{pack.metadata}</p>
               )}
+              {pack.description && (
+                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{pack.description}</p>
+              )}
 
-              {pack.tags.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-1 border-t border-border/40 pt-3">
-                  {pack.tags.slice(0, 3).map((tag) => (
-                    <Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0">
-                      {tag}
-                    </Badge>
-                  ))}
-                  {pack.tags.length > 3 && (
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                      +{pack.tags.length - 3}
-                    </Badge>
+              <div className="mt-3 flex items-center justify-between gap-3 border-t border-border/40 pt-3">
+                <Link
+                  href={pack.producerUsername ? `/producer/${pack.producerUsername}` : "#"}
+                  className="inline-flex items-center gap-2 rounded-lg transition hover:bg-accent px-1.5 py-1 -mx-1.5"
+                >
+                  <div className="relative h-7 w-7 overflow-hidden rounded-full bg-muted ring-1 ring-border/40">
+                    {pack.producerAvatarUrl ? (
+                      <Image src={pack.producerAvatarUrl} alt={pack.producerName} fill className="object-cover" sizes="28px" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-muted-foreground">
+                        {pack.producerName.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  {pack.producerName &&
+                    !pack.producerName.toLowerCase().includes("unknown") && (
+                      <span className="text-sm font-medium">{pack.producerName}</span>
+                    )}
+                </Link>
+                <div className="flex items-center gap-1.5">
+                  {pack.tags.length > 0 && (
+                    <div className="mr-1 hidden flex-wrap gap-1 sm:flex">
+                      {pack.tags.slice(0, 3).map((tag) => (
+                        <Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0">
+                          {tag}
+                        </Badge>
+                      ))}
+                      {pack.tags.length > 3 && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                          +{pack.tags.length - 3}
+                        </Badge>
+                      )}
+                    </div>
                   )}
                 </div>
-              )}
+              </div>
             </div>
           </Card>
 
@@ -552,14 +619,24 @@ export default function BeatPackDetailClient({
               <DialogHeader className="sr-only">
                 <DialogTitle>{pack.title} — image {carouselIndex + 1}</DialogTitle>
               </DialogHeader>
-              <div className="relative flex h-[80vh] w-full items-center justify-center">
+              <div
+                className="relative flex h-[80vh] w-full cursor-grab select-none items-center justify-center active:cursor-grabbing"
+                onTouchStart={handleLightboxTouchStart}
+                onTouchMove={handleLightboxTouchMove}
+                onTouchEnd={handleLightboxTouchEnd}
+                onMouseDown={handleLightboxMouseDown}
+                onMouseMove={handleLightboxMouseMove}
+                onMouseUp={handleLightboxMouseUp}
+                onMouseLeave={handleLightboxMouseUp}
+              >
                 {allImages.length > 0 && (
                   <Image
                     src={allImages[carouselIndex]}
                     alt={`${pack.title} — image ${carouselIndex + 1}`}
                     fill
                     sizes="95vw"
-                    className="object-contain"
+                    draggable={false}
+                    className="pointer-events-none object-contain"
                   />
                 )}
                 {allImages.length > 1 && (
@@ -638,17 +715,6 @@ export default function BeatPackDetailClient({
               ))}
             </CardContent>
           </Card>
-
-          {pack.description && (
-            <Card className="rounded-xl sm:rounded-2xl border-border/50 bg-card/80 shadow-sm">
-              <CardHeader className="px-3 py-2.5 sm:px-6 sm:py-4">
-                <CardTitle className="text-sm sm:text-lg">Description</CardTitle>
-              </CardHeader>
-              <CardContent className="px-3 pb-3 sm:px-6 sm:pb-6">
-                <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{pack.description}</p>
-              </CardContent>
-            </Card>
-          )}
         </div>
 
         {/* Buy card is rendered above via order-first on mobile */}
@@ -665,12 +731,12 @@ export default function BeatPackDetailClient({
               </p>
             </div>
             <Dialog open={stickyDialogOpen} onOpenChange={setStickyDialogOpen}>
-              <DialogTrigger
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-md hover:bg-primary/90 transition-all cursor-pointer"
-              >
-                <Zap className="h-4 w-4" />
-                Buy
-              </DialogTrigger>
+                 <DialogTrigger
+  className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-md hover:bg-primary/90 transition-all cursor-pointer"
+>
+  <Zap className="h-4 w-4" />
+  Buy Now
+</DialogTrigger>
               <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden max-h-[85vh] overflow-y-auto">
                 <DialogHeader className="bg-gradient-to-r from-primary/5 via-transparent to-primary/5 px-6 py-5">
                   <DialogTitle className="text-xl">Choose Your Tier</DialogTitle>
@@ -728,12 +794,16 @@ export default function BeatPackDetailClient({
                         </div>
                         <span>MP3 File</span>
                       </li>
-                      <li className="flex items-center gap-2.5">
-                        <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-green-500/10">
-                          <Check className="h-3 w-3 text-green-500" />
-                        </div>
-                        <span>WAV File</span>
-                      </li>
+                          <li className="flex items-center gap-2.5">
+  <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${selectedExtraFeatures.wav ? "bg-green-500/10" : "bg-red-500/10"}`}>
+    {selectedExtraFeatures.wav ? (
+      <Check className="h-3 w-3 text-green-500" />
+    ) : (
+      <X className="h-3 w-3 text-red-500" />
+    )}
+  </div>
+  <span>WAV File</span>
+</li>
                       <li className="flex items-center gap-2.5">
                         <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${selectedExtraFeatures.stems ? "bg-green-500/10" : "bg-red-500/10"}`}>
                           {selectedExtraFeatures.stems ? (
