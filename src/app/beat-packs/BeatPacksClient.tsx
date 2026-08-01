@@ -35,7 +35,6 @@ export default function BeatPacksClient({ packs, hasMore }: Props) {
       producerName: pack.producerName,
       coverUrl: pack.imageUrls?.[0] || pack.coverUrl,
       previewUrl: track.previewUrl,
-      packId: pack.id,
     });
   };
 
@@ -84,10 +83,10 @@ export default function BeatPacksClient({ packs, hasMore }: Props) {
           </p>
         </div>
         <Button asChild variant="outline">
-          {/* <Link href="/beats">
+          <Link href="/beats">
             Browse Single Beats
             <ArrowRight className="ml-1.5 h-4 w-4" />
-          </Link> */}
+          </Link>
         </Button>
       </div>
 
