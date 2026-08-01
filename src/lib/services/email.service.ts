@@ -1,7 +1,16 @@
 import { Resend } from "resend";
 import { logger } from "@/lib/logger";
 
-const resend = new Resend(process.env.RESEND_API_KEY!);
+let _resend: Resend | null = null;
+function getResend(): Resend {
+  if (!_resend) {
+    if (!process.env.RESEND_API_KEY) {
+      throw new Error("RESEND_API_KEY environment variable is not set");
+    }
+    _resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return _resend;
+}
 
 function escapeHtml(str: string): string {
   return str
@@ -24,7 +33,7 @@ export const emailService = {
     const resetUrl = `${APP_URL}/reset-password?token=${token}`;
 
     try {
-      await resend.emails.send({
+      await getResend().emails.send({
         from: FROM_EMAIL,
         to,
         subject: "Reset your Trishul Beats password",
@@ -59,7 +68,7 @@ export const emailService = {
     const adminEmail = process.env.CONTACT_EMAIL || "contact@trishulbeats.com";
 
     try {
-      await resend.emails.send({
+      await getResend().emails.send({
         from: FROM_EMAIL,
         to: adminEmail,
         replyTo: email,
