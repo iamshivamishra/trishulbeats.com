@@ -722,6 +722,10 @@ export const paymentService = {
           if (!existing) {
             throw new ConflictError("Cannot upgrade: no existing purchase found");
           }
+          const verifyTierRank: Record<string, number> = { basic: 0, premium: 1, unlimited: 2 };
+          if ((verifyTierRank[existing.licenseType] ?? 0) >= (verifyTierRank[item.licenseType] ?? 0)) {
+            throw new ConflictError(`Already at ${existing.licenseType} or higher. Cannot downgrade.`);
+          }
           const upgraded = await purchaseRepository.upgradeTier(
             buyerId,
             beatId,

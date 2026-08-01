@@ -111,6 +111,9 @@ describe("paymentService", () => {
       _id: "order_existing",
       razorpayOrderId: "razorpay_existing",
       totalAmount: 499,
+      items: [
+        { beatId: "beat_1", licenseId: "license_1", licenseType: "basic", price: 499, beatTitle: "Test Beat" },
+      ],
     } as never);
 
     const result = await paymentService.createOrder(
