@@ -49,7 +49,7 @@ export default async function BeatPacksPage() {
       description: pack.description || "",
       coverUrl: pack.coverUrl,
       imageUrls: pack.imageUrls || [],
-      producerName: producer?.displayName || producer?.name || "Unknown Producer",
+      producerName: producer?.displayName || producer?.name || "",
       producerUsername: producer?.username || "",
       tags: pack.tags || [],
       beatCount: pack.beatIds.length,

@@ -403,8 +403,11 @@ export default function CartClient() {
                   <div>
                     <p className="font-semibold">{item.packTitle}</p>
                     <p className="text-xs text-muted-foreground">
-                      Beat Pack • {item.beatCount} beats • by {item.producerName}
-                    </p>
+  Beat Pack • {item.beatCount} beats
+  {item.producerName &&
+    !item.producerName.toLowerCase().includes("unknown") &&
+    ` • by ${item.producerName}`}
+</p>
                     <Badge variant="outline" className="mt-1 text-xs capitalize">
                       {item.tier} tier
                     </Badge>

@@ -230,8 +230,11 @@ export default function BeatPackSlider({ packs }: { packs: BeatPackSliderItem[] 
                   {pack.title}
                 </h3>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {pack.beatCount} beats • by {pack.producerName}
-                </p>
+  {pack.beatCount} beats
+  {pack.producerName &&
+    pack.producerName.toLowerCase() !== "unknown" &&
+    ` • by ${pack.producerName}`}
+</p>
                 <p className="mt-2 text-sm font-bold text-primary">
                   Starting at ₹{pack.startingPrice.toLocaleString("en-IN")}
                 </p>

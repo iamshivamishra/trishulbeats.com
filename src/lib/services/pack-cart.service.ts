@@ -1,3 +1,4 @@
+
 import { packCartRepository } from "@/lib/repositories/pack-cart.repository";
 import { beatPackRepository } from "@/lib/repositories/beat-pack.repository";
 import { purchaseRepository } from "@/lib/repositories/purchase.repository";
@@ -29,7 +30,7 @@ export const packCartService = {
         tier: item.tier,
         price: pack.prices[item.tier],
         beatCount: pack.beatIds.length,
-        producerName: producer?.displayName || producer?.name || "Unknown",
+        producerName: producer?.displayName || producer?.name || "",
       });
     }
     return populated;

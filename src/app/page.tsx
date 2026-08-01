@@ -128,7 +128,7 @@ export default async function HomePage() {
       title: pack.title,
       coverUrl: pack.coverUrl,
       beatCount: pack.beatIds.length,
-      producerName: producer?.displayName || producer?.name || "Unknown",
+      producerName: producer?.displayName || producer?.name || "",
       startingPrice: minPrice,
     };
   });

@@ -1,7 +1,9 @@
+
 import { connectDB } from "@/lib/db";
 import User from "@/lib/models/User";
 import type { IUser } from "@/types";
 import type { ClientSession } from "mongoose";
+import mongoose from "mongoose";
 
 interface RepoOptions {
   session?: ClientSession;
@@ -17,7 +19,7 @@ export const userRepository = {
 
   async findById(id: string, includePassword = false): Promise<IUser | null> {
     await connectDB();
-    const query = User.findById(id);
+    const query = User.findById(new mongoose.Types.ObjectId(id));
     if (includePassword) query.select("+password");
     return query.lean<IUser>();
   },
