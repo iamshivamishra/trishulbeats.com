@@ -79,9 +79,12 @@ export default function BottomPlayer() {
             <p className="truncate text-xs font-medium text-white sm:text-sm">
               {currentBeat.title}
             </p>
-            <p className="truncate text-[11px] text-zinc-400 sm:text-xs">
-              {currentBeat.producerName}
-            </p>
+             {currentBeat.producerName &&
+  !currentBeat.producerName.toLowerCase().includes("unknown") && (
+    <p className="truncate text-[11px] text-zinc-400 sm:text-xs">
+      {currentBeat.producerName}
+    </p>
+  )}
           </div>
         </div>
 
@@ -95,9 +98,9 @@ export default function BottomPlayer() {
               <Share2 className="h-4 w-4" />
             </button>
           </ShareDialog>
-          <Link href={`/beats/${currentBeat.id}`} aria-label="Download" className="hover:text-white">
+          {/* <Link href={`/beats/${currentBeat.id}`} aria-label="Download" className="hover:text-white">
             <Download className="h-4 w-4" />
-          </Link>
+          </Link> */}
           <button
             onClick={() => setIsLiked(!isLiked)}
             aria-label={isLiked ? "Unlike" : "Like"}
@@ -188,7 +191,7 @@ export default function BottomPlayer() {
           className="flex shrink-0 items-center gap-2 rounded-full bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:brightness-110 sm:px-4"
         >
           <ShoppingCart className="h-4 w-4" />
-          <span className="hidden sm:inline">Buy</span>
+          <span className="hidden sm:inline">Buy now</span>
         </Link>
       </div>
     </div>

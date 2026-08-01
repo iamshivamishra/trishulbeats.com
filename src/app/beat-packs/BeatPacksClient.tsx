@@ -83,10 +83,10 @@ export default function BeatPacksClient({ packs, hasMore }: Props) {
           </p>
         </div>
         <Button asChild variant="outline">
-          {/* <Link href="/beats">
+          <Link href="/beats">
             Browse Single Beats
             <ArrowRight className="ml-1.5 h-4 w-4" />
-          </Link> */}
+          </Link>
         </Button>
       </div>
 

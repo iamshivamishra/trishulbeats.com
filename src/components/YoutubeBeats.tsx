@@ -9,13 +9,13 @@ interface YoutubeBeatItem {
 }
 
 const YOUTUBE_BEATS: YoutubeBeatItem[] = [
-  { id: "LBpYDDPtzJ8", title: "Beat Video 1" },
-  { id: "hDDfAaIilZA", title: "Beat Video 2" },
-  { id: "92jdkMnYkfs", title: "Beat Video 3" },
-  { id: "NokYYrE8b3k", title: "Beat Video 4" },
-  { id: "I5S_ae0SyPA", title: "Beat Video 5" },
-  { id: "LbOBSJ3ygag", title: "Beat Video 6" },
-  { id: "dnDEdN7YwUo", title: "Beat Video 7" },
+  { id: "LBpYDDPtzJ8", title: "" },
+  { id: "hDDfAaIilZA", title: "" },
+  { id: "92jdkMnYkfs", title: "" },
+  { id: "NokYYrE8b3k", title: "" },
+  { id: "I5S_ae0SyPA", title: "" },
+  { id: "LbOBSJ3ygag", title: "" },
+  { id: "dnDEdN7YwUo", title: "" },
 ];
 
 // Seamless loop ke liye list repeat ki gayi hai

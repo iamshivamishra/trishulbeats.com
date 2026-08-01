@@ -29,7 +29,7 @@ export const packCartService = {
         tier: item.tier,
         price: pack.prices[item.tier],
         beatCount: pack.beatIds.length,
-        producerName: producer?.displayName || producer?.name || "Unknown",
+        producerName: producer?.displayName || producer?.name || "",
       });
     }
     return populated;
