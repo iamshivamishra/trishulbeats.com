@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { NextRequest } from "next/server";
 import { connectDB } from "@/lib/db";
 import { orderRepository } from "@/lib/repositories/order.repository";
+import { paymentService } from "@/lib/services/payment.service";
 import { logger } from "@/lib/logger";
 import { audit } from "@/lib/audit";
 
@@ -58,8 +59,6 @@ export async function POST(request: NextRequest) {
 
   switch (eventType) {
     case "payment.captured": {
-      // Payment captured - this is handled by the client-side verify flow.
-      // This serves as a safety net for cases where the client fails to verify.
       const payment = event.payload.payment?.entity;
       if (!payment) break;
 
@@ -77,10 +76,22 @@ export async function POST(request: NextRequest) {
         break;
       }
 
-      logger.info("Webhook: payment.captured for pending order", {
-        orderId: order._id,
-        paymentId: payment.id,
-      });
+      if (order.status === "pending") {
+        try {
+          await paymentService.fulfillFromWebhook(payment.order_id, payment.id);
+          logger.info("Webhook: order fulfilled", {
+            orderId: order._id,
+            paymentId: payment.id,
+          });
+        } catch (err) {
+          logger.error("Webhook: fulfillment failed", {
+            orderId: order._id,
+            paymentId: payment.id,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+
       audit({
         action: "webhook.payment_captured",
         userId: order.buyerId.toString(),

@@ -52,6 +52,19 @@ export const purchaseRepository = {
       .lean<IPurchase[]>();
   },
 
+  async findByBuyerAndBeatIds(
+    buyerId: string,
+    beatIds: string[],
+    options: RepoOptions = {}
+  ): Promise<IPurchase[]> {
+    await connectDB();
+    if (beatIds.length === 0) return [];
+    return Purchase.find({ buyerId, beatId: { $in: beatIds } })
+      .sort({ createdAt: -1 })
+      .session(options.session ?? null)
+      .lean<IPurchase[]>();
+  },
+
   async findByBuyerAndOrderId(
     buyerId: string,
     orderId: string,
@@ -66,8 +79,43 @@ export const purchaseRepository = {
 
   async create(data: Partial<IPurchase>, options: RepoOptions = {}): Promise<IPurchase> {
     await connectDB();
-    const purchase = await Purchase.create([data], { session: options.session });
-    return purchase[0].toObject() as IPurchase;
+    if (options.session) {
+      const purchase = await Purchase.create([data], { session: options.session });
+      return purchase[0].toObject() as IPurchase;
+    }
+    const purchase = await Purchase.create(data);
+    return purchase.toObject() as IPurchase;
+  },
+
+  async upgradeTier(
+    buyerId: string,
+    beatId: string,
+    upgradeData: {
+      licenseId: string;
+      licenseType: string;
+      includesWav: boolean;
+      includesStems: boolean;
+      upgradedFrom: string;
+      orderId: string;
+      paymentId: string;
+      upgradeAmount: number;
+    },
+    options: RepoOptions = {}
+  ): Promise<IPurchase | null> {
+    await connectDB();
+    return Purchase.findOneAndUpdate(
+      { buyerId, beatId },
+      {
+        licenseId: upgradeData.licenseId,
+        licenseType: upgradeData.licenseType,
+        includesWav: upgradeData.includesWav,
+        includesStems: upgradeData.includesStems,
+        upgradedFrom: upgradeData.upgradedFrom,
+        upgradedAt: new Date(),
+        $inc: { amount: upgradeData.upgradeAmount },
+      },
+      { new: true, session: options.session ?? null }
+    ).lean<IPurchase>();
   },
 
   async getPurchasedBeatIds(buyerId: string): Promise<string[]> {

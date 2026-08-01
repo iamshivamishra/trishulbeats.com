@@ -1,12 +1,14 @@
 import { z } from "zod";
 
+const objectId = z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid ID format");
+
 export const createOrderSchema = z.object({
-  beatId: z.string().min(1, "Beat ID is required"),
-  licenseId: z.string().min(1, "License ID is required"),
+  beatId: objectId,
+  licenseId: objectId,
 });
 
 export const createPackOrderSchema = z.object({
-  packId: z.string().min(1, "Pack ID is required"),
+  packId: objectId,
   tier: z.enum(["basic", "premium", "unlimited"]),
 });
 
@@ -25,6 +27,11 @@ export const verifyPaymentSchema = z.object({
   signature: z.string().min(1, "Signature is required"),
 });
 
+export const createUpgradeOrderSchema = z.object({
+  packId: objectId,
+  targetTier: z.enum(["premium", "unlimited"]),
+});
+
 export const failOrderSchema = z.object({
   orderId: z.string().min(1, "Order ID is required"),
   reason: z.string().max(500).default("Payment cancelled by user"),
@@ -35,4 +42,5 @@ export type CreatePackOrderInput = z.infer<typeof createPackOrderSchema>;
 export type CheckoutCartInput = z.infer<typeof checkoutCartSchema>;
 export type CheckoutCombinedInput = z.infer<typeof checkoutCombinedSchema>;
 export type VerifyPaymentInput = z.infer<typeof verifyPaymentSchema>;
+export type CreateUpgradeOrderInput = z.infer<typeof createUpgradeOrderSchema>;
 export type FailOrderInput = z.infer<typeof failOrderSchema>;

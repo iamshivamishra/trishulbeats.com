@@ -21,11 +21,15 @@ export function verifySignature(
   signature: string
 ): boolean {
   const body = `${orderId}|${paymentId}`;
-  const expectedSignature = crypto
+  const expected = crypto
     .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET!)
     .update(body)
     .digest("hex");
-  return expectedSignature === signature;
+  if (expected.length !== signature.length) return false;
+  return crypto.timingSafeEqual(
+    Buffer.from(expected, "utf-8"),
+    Buffer.from(signature, "utf-8")
+  );
 }
 
 interface RazorpayPaymentLike {

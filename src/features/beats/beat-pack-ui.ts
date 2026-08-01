@@ -39,6 +39,12 @@ export interface BeatPackUi {
   updatedAtLabel: string;
 }
 
+export interface PurchasedTierInfo {
+  tier: "basic" | "premium" | "unlimited";
+  includesWav: boolean;
+  includesStems: boolean;
+}
+
 export interface ProducerBeatOption {
   id: string;
   title: string;

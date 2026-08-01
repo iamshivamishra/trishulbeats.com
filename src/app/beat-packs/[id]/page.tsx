@@ -4,9 +4,9 @@ import BeatPackDetailClient from "@/app/beat-packs/[id]/BeatPackDetailClient";
 import { auth } from "@/lib/auth";
 import { beatPackService } from "@/lib/services/beat-pack.service";
 import { purchaseRepository } from "@/lib/repositories/purchase.repository";
-import type { BeatPackUi } from "@/features/beats/beat-pack-ui";
+import type { BeatPackUi, PurchasedTierInfo } from "@/features/beats/beat-pack-ui";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -45,11 +45,33 @@ export default async function BeatPackDetailPage({ params }: Props) {
     notFound();
   }
   const session = await auth();
-  const ownershipFlags = session?.user
-    ? await Promise.all(
-        pack.beatIds.map((beatId) => purchaseRepository.hasPurchased(session.user.id, beatId.toString()))
-      )
-    : [];
+
+  let ownershipFlags: boolean[] = [];
+  let purchasedTier: PurchasedTierInfo | null = null;
+
+  if (session?.user) {
+    const beatIdStrs = pack.beatIds.map((id) => id.toString());
+    ownershipFlags = await Promise.all(
+      beatIdStrs.map((beatId) => purchaseRepository.hasPurchased(session.user.id, beatId))
+    );
+
+    const ownedAny = ownershipFlags.some(Boolean);
+    if (ownedAny) {
+      const purchases = await purchaseRepository.findByBuyerAndBeatIds(
+        session.user.id,
+        beatIdStrs.filter((_, i) => ownershipFlags[i])
+      );
+      const firstPurchase = purchases[0];
+      if (firstPurchase) {
+        purchasedTier = {
+          tier: firstPurchase.licenseType as "basic" | "premium" | "unlimited",
+          includesWav: firstPurchase.includesWav ?? false,
+          includesStems: firstPurchase.includesStems ?? false,
+        };
+      }
+    }
+  }
+
   const hasPurchasedAll = ownershipFlags.length > 0 && ownershipFlags.every(Boolean);
   const ownedBeatCount = ownershipFlags.filter(Boolean).length;
 
@@ -130,6 +152,7 @@ export default async function BeatPackDetailPage({ params }: Props) {
         isLoggedIn={!!session?.user}
         hasPurchasedAll={hasPurchasedAll}
         ownedBeatCount={ownedBeatCount}
+        purchasedTier={purchasedTier}
       />
     </>
   );

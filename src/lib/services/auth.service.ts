@@ -48,9 +48,16 @@ export const authService = {
   },
 
   async setRole(userId: string, role: UserRole): Promise<IUser> {
+    const currentUser = await userRepository.findById(userId);
+    if (!currentUser) throw new NotFoundError("User");
+
+    if (currentUser.role !== "buyer") {
+      throw new ConflictError("Role has already been set during onboarding");
+    }
+
     let username: string | undefined;
     if (role === "producer") {
-      const user = await userRepository.findById(userId);
+      const user = currentUser;
       if (user) {
         username = generateUsername(user.name);
         const taken = await userRepository.usernameExists(username, userId);

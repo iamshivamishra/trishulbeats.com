@@ -98,6 +98,15 @@ describe("paymentService", () => {
 
   it("reuses an existing pending single-beat order instead of creating duplicate", async () => {
     vi.mocked(purchaseRepository.hasPurchased).mockResolvedValueOnce(false);
+    vi.mocked(licenseRepository.findById).mockResolvedValueOnce({
+      _id: "license_1",
+      beatId: "beat_1",
+      type: "basic",
+      price: 499,
+      isActive: true,
+      includesWav: false,
+      includesStems: false,
+    } as never);
     vi.mocked(orderRepository.findPendingByBuyerAndBeat).mockResolvedValueOnce({
       _id: "order_existing",
       razorpayOrderId: "razorpay_existing",

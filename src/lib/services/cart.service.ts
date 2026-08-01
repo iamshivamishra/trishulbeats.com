@@ -65,7 +65,14 @@ export const cartService = {
     return populated;
   },
 
+  MAX_CART_ITEMS: 50,
+
   async addItem(userId: string, beatId: string, licenseId: string): Promise<void> {
+    const currentCount = await cartRepository.count(userId);
+    if (currentCount >= this.MAX_CART_ITEMS) {
+      throw new ConflictError(`Cart cannot exceed ${this.MAX_CART_ITEMS} items`);
+    }
+
     const beat = await beatRepository.findById(beatId);
     if (!beat) throw new NotFoundError("Beat");
     if (!beat.isPublished || beat.status !== "published") {

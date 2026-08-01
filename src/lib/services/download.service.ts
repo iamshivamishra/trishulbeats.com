@@ -130,13 +130,13 @@ export const downloadService = {
 
     const links: DownloadLink[] = [];
 
-    // MP3 Preview — always included
+    // MP3 — always included with any purchase
     const previewUrl = resolveFileUrl(beat, "preview");
     if (previewUrl) {
       const filename = buildFilename(beat.title, "preview");
       links.push({
         type: "preview",
-        label: "MP3 Preview",
+        label: "MP3",
         url: await generateSignedUrl(beat, "preview"),
         filename,
         available: true,

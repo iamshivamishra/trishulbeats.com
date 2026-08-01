@@ -10,10 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import ThemeToggle from "@/components/ThemeToggle";
+import SearchCommand from "@/components/SearchCommand";
 import { useCart } from "@/components/CartProvider";
 
 const NAV_LINKS = [
-  // { href: "/beats", label: "Browse" },
+  { href: "/beats", label: "Beats" },
   { href: "/beat-packs", label: "Beat Packs" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
@@ -60,6 +61,7 @@ export default function Navbar() {
         </div>
 
         <div className="hidden items-center gap-2 md:flex">
+          <SearchCommand />
           <ThemeToggle />
           <Link
             href="/cart"

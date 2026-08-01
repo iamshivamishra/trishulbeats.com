@@ -3,6 +3,15 @@ import { logger } from "@/lib/logger";
 
 const resend = new Resend(process.env.RESEND_API_KEY!);
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 const FROM_EMAIL = process.env.EMAIL_FROM || "Trishul Beats <noreply@trishulbeats.com>";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
@@ -22,7 +31,7 @@ export const emailService = {
         html: `
           <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
             <h2>Reset your password</h2>
-            <p>Hi ${name},</p>
+            <p>Hi ${escapeHtml(name)},</p>
             <p>We received a request to reset your password. Click the button below to set a new one:</p>
             <p style="text-align: center; margin: 24px 0;">
               <a href="${resetUrl}" style="background: #c2410c; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
@@ -59,12 +68,12 @@ export const emailService = {
           <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto;">
             <h2>New Contact Form Submission</h2>
             <table style="width: 100%; border-collapse: collapse;">
-              <tr><td style="padding: 8px 0; color: #666; width: 80px;">Name</td><td style="padding: 8px 0; font-weight: 600;">${name}</td></tr>
-              <tr><td style="padding: 8px 0; color: #666;">Email</td><td style="padding: 8px 0;"><a href="mailto:${email}">${email}</a></td></tr>
-              <tr><td style="padding: 8px 0; color: #666;">Subject</td><td style="padding: 8px 0;">${subject}</td></tr>
+              <tr><td style="padding: 8px 0; color: #666; width: 80px;">Name</td><td style="padding: 8px 0; font-weight: 600;">${escapeHtml(name)}</td></tr>
+              <tr><td style="padding: 8px 0; color: #666;">Email</td><td style="padding: 8px 0;"><a href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a></td></tr>
+              <tr><td style="padding: 8px 0; color: #666;">Subject</td><td style="padding: 8px 0;">${escapeHtml(subject)}</td></tr>
             </table>
             <hr style="border: none; border-top: 1px solid #eee; margin: 16px 0;" />
-            <div style="white-space: pre-wrap; color: #333; line-height: 1.6;">${message}</div>
+            <div style="white-space: pre-wrap; color: #333; line-height: 1.6;">${escapeHtml(message)}</div>
           </div>
         `,
       });

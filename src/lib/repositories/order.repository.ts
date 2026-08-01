@@ -96,7 +96,7 @@ export const orderRepository = {
     id: string,
     paymentData: {
       razorpayPaymentId: string;
-      razorpaySignature: string;
+      razorpaySignature?: string;
       paidAt: Date;
     },
     options: RepoOptions = {}

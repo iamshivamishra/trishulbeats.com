@@ -31,10 +31,28 @@ export async function connectDB() {
   return cached.conn;
 }
 
+function isTransactionUnsupportedError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : "";
+  return (
+    message.includes("Transaction numbers are only allowed") ||
+    message.includes("replica set") ||
+    message.includes("has been aborted") ||
+    message.includes("Transaction") ||
+    message.includes("transaction")
+  );
+}
+
 export async function withTransaction<T>(
   operation: (session: mongoose.ClientSession) => Promise<T>
 ): Promise<T> {
   await connectDB();
+
+  const useTransactions = process.env.MONGODB_USE_TRANSACTIONS !== "false";
+
+  if (!useTransactions) {
+    return operation(null as unknown as mongoose.ClientSession);
+  }
+
   const session = await mongoose.startSession();
 
   try {
@@ -44,25 +62,15 @@ export async function withTransaction<T>(
     });
     return result as T;
   } catch (error) {
-    const message = error instanceof Error ? error.message : "";
-    const unsupportedTransactions =
-      message.includes("Transaction numbers are only allowed") ||
-      message.includes("replica set");
-
-    if (unsupportedTransactions) {
+    if (isTransactionUnsupportedError(error)) {
       const allowFallback = process.env.ALLOW_NON_TRANSACTIONAL_FALLBACK === "true";
       const isProd = process.env.NODE_ENV === "production";
       if (isProd && !allowFallback) {
         throw new Error(
-          "MongoDB transactions are not supported by this deployment. Use a replica set or set ALLOW_NON_TRANSACTIONAL_FALLBACK=true explicitly."
+          "MongoDB transactions failed. Use a replica set, set ALLOW_NON_TRANSACTIONAL_FALLBACK=true, or set MONGODB_USE_TRANSACTIONS=false."
         );
       }
-      const fallbackSession = await mongoose.startSession();
-      try {
-        return await operation(fallbackSession);
-      } finally {
-        await fallbackSession.endSession();
-      }
+      return operation(null as unknown as mongoose.ClientSession);
     }
 
     throw error;

@@ -32,6 +32,7 @@ export async function POST(request: Request) {
     const hashedToken = await bcrypt.hash(rawToken, 10);
 
     user.resetToken = hashedToken;
+    user.resetTokenPrefix = rawToken.substring(0, 8);
     user.resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
     await user.save();
 

@@ -32,7 +32,7 @@ export default function BeatPackSlider({ packs }: { packs: BeatPackSliderItem[] 
   const speed = useRef(-1.2);
 
   // Seamless Loop ke liye Items Repeat
-  const displayPacks = packs.length > 0 ? [...packs, ...packs, ...packs, ...packs] : [];
+  const displayPacks = packs.length > 0 ? [...packs, ...packs, ...packs] : [];
 
   // RequestAnimationFrame Loop for Continuous Scrolling
   useEffect(() => {
@@ -63,6 +63,58 @@ export default function BeatPackSlider({ packs }: { packs: BeatPackSliderItem[] 
   }, [isHovered, displayPacks.length]);
 
   if (packs.length === 0) return null;
+
+  if (packs.length <= 2) {
+    return (
+      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <div className="mb-6 flex items-end justify-between">
+          <div>
+            <h2 className="text-2xl font-semibold sm:text-3xl">Featured Beat Packs</h2>
+            <p className="mt-2 text-muted-foreground">
+              Curated collections — get more beats for less.
+            </p>
+          </div>
+          <Link href="/beat-packs" className="text-sm font-medium text-primary hover:underline">
+            View All →
+          </Link>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {packs.map((pack) => (
+            <Link key={pack.id} href={`/beat-packs/${pack.id}`} className="group">
+              <div className="overflow-hidden rounded-xl border border-border/50 bg-card/80 transition hover:border-border hover:shadow-md">
+                <div className="relative aspect-video w-full bg-muted/30">
+                  {pack.coverUrl ? (
+                    <Image
+                      src={pack.coverUrl}
+                      alt={pack.title}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 50vw"
+                      className="object-cover transition group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center">
+                      <Layers className="h-8 w-8 text-muted-foreground/40" />
+                    </div>
+                  )}
+                </div>
+                <div className="p-4">
+                  <h3 className="font-semibold transition-colors group-hover:text-primary">
+                    {pack.title}
+                  </h3>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {pack.beatCount} beats • by {pack.producerName}
+                  </p>
+                  <p className="mt-2 text-sm font-bold text-primary">
+                    Starting at ₹{pack.startingPrice.toLocaleString("en-IN")}
+                  </p>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+    );
+  }
 
   // Pointer & Drag Event Handlers
   const onPointerDown = (e: React.PointerEvent) => {

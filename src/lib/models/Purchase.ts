@@ -14,6 +14,8 @@ const PurchaseSchema = new Schema<IPurchase>(
     amount: { type: Number, required: true },
     sourceType: { type: String, enum: ["beat", "pack"], default: "beat" },
     sourcePackId: { type: Schema.Types.ObjectId, ref: "BeatPack" },
+    upgradedFrom: { type: String },
+    upgradedAt: { type: Date },
   },
   { timestamps: true }
 );

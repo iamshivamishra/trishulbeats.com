@@ -4,15 +4,24 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { userRepository } from "@/lib/repositories/user.repository";
 import { purchaseRepository } from "@/lib/repositories/purchase.repository";
-import { beatRepository } from "@/lib/repositories/beat.repository";
-import { beatPackRepository } from "@/lib/repositories/beat-pack.repository";
+import { orderRepository } from "@/lib/repositories/order.repository";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import Image from "next/image";
-import { Music, ShoppingBag, Calendar, ArrowRight, Pencil, ExternalLink, Layers } from "lucide-react";
+import {
+  ArrowRight,
+  Calendar,
+  CreditCard,
+  Disc3,
+  ExternalLink,
+  IndianRupee,
+  Package,
+  Pencil,
+  Receipt,
+  ShieldCheck,
+  TrendingUp,
+} from "lucide-react";
 
 export const metadata: Metadata = { title: "Profile" };
 
@@ -23,58 +32,91 @@ export default async function ProfilePage() {
   const user = await userRepository.findById(session.user.id);
   if (!user) redirect("/login");
 
-  const { data: purchases, total } = await purchaseRepository.findByBuyerIdPaginated(session.user.id, 1, 20);
+  const { data: purchases, total: totalPurchases } =
+    await purchaseRepository.findByBuyerIdPaginated(session.user.id, 1, 500);
 
-  const beatIds = purchases.map((p) => p.beatId.toString());
-  const beats = await beatRepository.findByIds(beatIds);
-  const beatMap = new Map(beats.map((b) => [b._id.toString(), b]));
-  const purchasedBeats = purchases.map((p) => ({
-    purchase: p,
-    beat: beatMap.get(p.beatId.toString()) ?? null,
-  }));
+  const orders = await orderRepository.findByBuyer(session.user.id);
+  const paidOrders = orders.filter((o) => o.status === "paid");
 
-  // Build pack purchase map from paginated purchases + any pack-sourced purchases
-  const packPurchaseMap = new Map<string, {
-    packId: string;
-    purchasedAt: Date;
-    tier: string;
-    beatCount: number;
-  }>();
-  for (const purchase of purchases) {
-    const packId = purchase.sourcePackId?.toString();
-    if (!packId) continue;
-    const existing = packPurchaseMap.get(packId);
-    if (!existing) {
-      packPurchaseMap.set(packId, {
-        packId,
-        purchasedAt: purchase.createdAt,
-        tier: purchase.licenseType,
-        beatCount: 1,
-      });
-      continue;
-    }
-    existing.beatCount += 1;
-    if (purchase.createdAt < existing.purchasedAt) {
-      existing.purchasedAt = purchase.createdAt;
-    }
+  // Analytics
+  const totalSpent = paidOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+  const totalTransactions = paidOrders.length;
+
+  const individualBeats = purchases.filter(
+    (p) => p.sourceType !== "pack" || !p.sourcePackId
+  );
+
+  const packIds = new Set<string>();
+  for (const p of purchases) {
+    if (p.sourceType === "pack" && p.sourcePackId)
+      packIds.add(p.sourcePackId.toString());
   }
-  const purchasedPackIds = Array.from(packPurchaseMap.keys());
-  const purchasedPacks = await beatPackRepository.findByIds(purchasedPackIds);
-  const purchasedPackRows = purchasedPacks.map((pack) => ({
-    packId: pack._id.toString(),
-    title: pack.title,
-    beatCount: pack.beatIds.length,
-    purchasedAt: packPurchaseMap.get(pack._id.toString())?.purchasedAt ?? new Date(),
-    tier: packPurchaseMap.get(pack._id.toString())?.tier ?? "basic",
-  }));
+
+  const licenseCounts = { basic: 0, premium: 0, unlimited: 0 };
+  for (const p of purchases) {
+    const key = p.licenseType as keyof typeof licenseCounts;
+    if (key in licenseCounts) licenseCounts[key]++;
+  }
+  const dominantLicense =
+    (Object.entries(licenseCounts) as [string, number][])
+      .sort((a, b) => b[1] - a[1])
+      .find(([, count]) => count > 0)?.[0] ?? null;
+
+  // Recent activity (last 5 paid orders)
+  const recentOrders = paidOrders.slice(0, 5);
+
+  const memberSince = new Date(user.createdAt).toLocaleDateString("en-IN", {
+    year: "numeric",
+    month: "long",
+  });
 
   const displayName = user.displayName || user.name;
-  const initials = displayName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+  const initials = displayName
+    .split(" ")
+    .map((n: string) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
   const avatarSrc = user.avatarUrl || user.image;
   const isProducer = user.role === "producer" || user.role === "admin";
 
+  const stats = [
+    {
+      label: "Total Spent",
+      value: `₹${totalSpent.toLocaleString("en-IN")}`,
+      icon: IndianRupee,
+      color: "text-green-500",
+      bgColor: "bg-green-500/10",
+    },
+    {
+      label: "Beats Owned",
+      value: String(individualBeats.length),
+      icon: Disc3,
+      color: "text-blue-500",
+      bgColor: "bg-blue-500/10",
+      href: "/profile/beats",
+    },
+    {
+      label: "Packs Owned",
+      value: String(packIds.size),
+      icon: Package,
+      color: "text-purple-500",
+      bgColor: "bg-purple-500/10",
+      href: "/profile/packs",
+    },
+    {
+      label: "Transactions",
+      value: String(totalTransactions),
+      icon: Receipt,
+      color: "text-amber-500",
+      bgColor: "bg-amber-500/10",
+      href: "/profile/transactions",
+    },
+  ];
+
   return (
     <div className="page-shell max-w-4xl">
+      {/* Profile card */}
       <Card className="rounded-2xl border-border/50 bg-card/80 shadow-sm">
         <CardContent className="flex flex-col items-center gap-4 p-6 sm:flex-row">
           <Avatar className="h-20 w-20">
@@ -89,9 +131,15 @@ export default async function ProfilePage() {
               <p className="text-sm text-muted-foreground">@{user.username}</p>
             )}
             <p className="text-sm text-muted-foreground">{user.email}</p>
-            <Badge variant="secondary" className="mt-2 capitalize">
-              {user.role}
-            </Badge>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <Badge variant="secondary" className="capitalize">
+                {user.role}
+              </Badge>
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Calendar className="h-3 w-3" />
+                Member since {memberSince}
+              </span>
+            </div>
           </div>
           <div className="flex shrink-0 gap-2">
             <Button asChild variant="outline" size="sm">
@@ -110,8 +158,8 @@ export default async function ProfilePage() {
             )}
             {isProducer && (
               <Button asChild variant="outline" size="sm">
-                <Link href="/dashboard">
-                  Dashboard <ArrowRight className="ml-1 h-4 w-4" />
+                <Link href="/studio">
+                  Studio <ArrowRight className="ml-1 h-4 w-4" />
                 </Link>
               </Button>
             )}
@@ -119,128 +167,235 @@ export default async function ProfilePage() {
         </CardContent>
       </Card>
 
-      <Separator className="my-8" />
-
-      <Card className="mb-8 rounded-2xl border-border/50 bg-card/80 shadow-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Layers className="h-5 w-5 text-primary" />
-            My Beat Packs
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {purchasedPackRows.length > 0 ? (
-            <div className="space-y-3">
-              {purchasedPackRows.map((pack) => (
-                <div
-                  key={pack.packId}
-                  className="flex items-center justify-between rounded-lg border border-border/30 bg-background p-3"
-                >
-                  <div>
-                    <p className="text-sm font-medium">{pack.title}</p>
-                    <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                      <Badge variant="outline" className="capitalize text-xs">
-                        {pack.tier}
-                      </Badge>
-                      <span>{pack.beatCount} beats</span>
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {new Date(pack.purchasedAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </div>
-                  <Button asChild variant="outline" size="sm">
-                    <Link href={`/beat-packs/${pack.packId}`}>Open Pack</Link>
-                  </Button>
-                </div>
-              ))}
+      {/* Stats grid */}
+      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {stats.map((stat) => {
+          const inner = (
+            <div className="flex items-center gap-3">
+              <div
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${stat.bgColor}`}
+              >
+                <stat.icon className={`h-5 w-5 ${stat.color}`} />
+              </div>
+              <div>
+                <p className="text-xl font-bold leading-none">{stat.value}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {stat.label}
+                </p>
+              </div>
             </div>
+          );
+
+          return stat.href ? (
+            <Link key={stat.label} href={stat.href}>
+              <Card className="rounded-xl border-border/40 bg-card/80 p-4 transition-colors hover:border-primary/30 hover:bg-primary/5">
+                {inner}
+              </Card>
+            </Link>
           ) : (
-            <div className="py-8 text-center text-muted-foreground">
-              <Layers className="mx-auto mb-2 h-8 w-8" />
-              <p>No beat pack purchases yet.</p>
-              <Button asChild variant="link" className="mt-2">
-                <Link href="/beat-packs">Browse Beat Packs</Link>
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            <Card
+              key={stat.label}
+              className="rounded-xl border-border/40 bg-card/80 p-4"
+            >
+              {inner}
+            </Card>
+          );
+        })}
+      </div>
 
-      <Card className="rounded-2xl border-border/50 bg-card/80 shadow-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ShoppingBag className="h-5 w-5 text-primary" />
-            Purchase History
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {purchasedBeats.length > 0 ? (
-            <div className="space-y-3">
-              {purchasedBeats.map(({ purchase, beat }) => (
-                <div
-                  key={purchase._id.toString()}
-                  className="flex items-center justify-between rounded-lg border border-border/30 bg-background p-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-primary/10">
-                      {beat?.coverUrl ? (
-                        <Image
-                          src={beat.coverUrl}
-                          alt={beat.title}
-                          fill
-                          className="object-cover"
-                          sizes="40px"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center">
-                          <Music className="h-5 w-5 text-primary" />
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">
-                        {beat?.title || "Unknown Beat"}
-                      </p>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Badge variant="outline" className="text-xs capitalize">
-                          {purchase.licenseType}
-                        </Badge>
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {new Date(purchase.createdAt).toLocaleDateString()}
+      {/* Two-column section: License breakdown + recent activity */}
+      <div className="mt-6 grid gap-6 md:grid-cols-2">
+        {/* License breakdown */}
+        <Card className="rounded-2xl border-border/50 bg-card/80 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ShieldCheck className="h-4 w-4 text-primary" />
+              License Breakdown
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {totalPurchases > 0 ? (
+              <div className="space-y-3">
+                {(
+                  [
+                    {
+                      tier: "basic",
+                      label: "Basic",
+                      count: licenseCounts.basic,
+                      color: "bg-blue-500",
+                    },
+                    {
+                      tier: "premium",
+                      label: "Premium",
+                      count: licenseCounts.premium,
+                      color: "bg-purple-500",
+                    },
+                    {
+                      tier: "unlimited",
+                      label: "Unlimited",
+                      count: licenseCounts.unlimited,
+                      color: "bg-amber-500",
+                    },
+                  ] as const
+                ).map((item) => {
+                  const pct =
+                    totalPurchases > 0
+                      ? Math.round((item.count / totalPurchases) * 100)
+                      : 0;
+                  return (
+                    <div key={item.tier}>
+                      <div className="mb-1 flex items-center justify-between text-sm">
+                        <span className="font-medium">{item.label}</span>
+                        <span className="text-muted-foreground">
+                          {item.count}{" "}
+                          <span className="text-xs">({pct}%)</span>
                         </span>
                       </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-muted/50">
+                        <div
+                          className={`h-full rounded-full ${item.color} transition-all`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold">₹{purchase.amount}</p>
-                    {beat && (
-                      <Button asChild variant="ghost" size="sm" className="h-7 text-xs">
-                        <a href={`/api/beats/${beat._id}/download`}>Download</a>
-                      </Button>
-                    )}
-                  </div>
+                  );
+                })}
+                {dominantLicense && (
+                  <p className="pt-2 text-xs text-muted-foreground">
+                    Most purchased:{" "}
+                    <span className="font-medium capitalize text-foreground">
+                      {dominantLicense}
+                    </span>
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="py-4 text-center text-sm text-muted-foreground">
+                No purchases yet
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Recent activity */}
+        <Card className="rounded-2xl border-border/50 bg-card/80 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <TrendingUp className="h-4 w-4 text-primary" />
+              Recent Activity
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {recentOrders.length > 0 ? (
+              <div className="space-y-3">
+                {recentOrders.map((order) => {
+                  const dateStr = new Date(
+                    order.paidAt || order.createdAt
+                  ).toLocaleDateString("en-IN", {
+                    month: "short",
+                    day: "numeric",
+                  });
+                  const firstItem = order.items[0];
+                  const label =
+                    order.items.length === 1
+                      ? firstItem?.beatTitle ?? "Order"
+                      : `${order.items.length} items`;
+                  const typeLabel =
+                    firstItem?.sourceType === "pack"
+                      ? "Pack"
+                      : firstItem?.sourceType === "upgrade"
+                        ? "Upgrade"
+                        : "Beat";
+
+                  return (
+                    <div
+                      key={order._id.toString()}
+                      className="flex items-center gap-3"
+                    >
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                        <CreditCard className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{label}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {typeLabel} · {dateStr}
+                        </p>
+                      </div>
+                      <p className="shrink-0 text-sm font-semibold">
+                        ₹{order.totalAmount.toLocaleString("en-IN")}
+                      </p>
+                    </div>
+                  );
+                })}
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="sm"
+                  className="mt-1 w-full text-xs"
+                >
+                  <Link href="/profile/transactions">
+                    View all transactions
+                    <ArrowRight className="ml-1 h-3 w-3" />
+                  </Link>
+                </Button>
+              </div>
+            ) : (
+              <p className="py-4 text-center text-sm text-muted-foreground">
+                No activity yet
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Quick navigation */}
+      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+        {[
+          {
+            href: "/profile/beats",
+            icon: Disc3,
+            label: "My Beats",
+            desc: "Download your purchased beats",
+            color: "text-blue-500",
+            bg: "bg-blue-500/10",
+          },
+          {
+            href: "/profile/packs",
+            icon: Package,
+            label: "My Packs",
+            desc: "View packs & upgrade licenses",
+            color: "text-purple-500",
+            bg: "bg-purple-500/10",
+          },
+          {
+            href: "/profile/transactions",
+            icon: Receipt,
+            label: "Transactions",
+            desc: "Receipts & payment history",
+            color: "text-amber-500",
+            bg: "bg-amber-500/10",
+          },
+        ].map((item) => (
+          <Link key={item.href} href={item.href}>
+            <Card className="group rounded-xl border-border/40 bg-card/80 p-4 transition-all hover:border-primary/30 hover:bg-primary/5 hover:shadow-md">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${item.bg}`}
+                >
+                  <item.icon className={`h-5 w-5 ${item.color}`} />
                 </div>
-              ))}
-              {total > 20 && (
-                <p className="pt-3 text-center text-xs text-muted-foreground">
-                  Showing 20 of {total} purchases
-                </p>
-              )}
-            </div>
-          ) : (
-            <div className="py-8 text-center text-muted-foreground">
-              <ShoppingBag className="mx-auto mb-2 h-8 w-8" />
-              <p>No purchases yet.</p>
-              <Button asChild variant="link" className="mt-2">
-                {/* <Link href="/beats">Browse Beats</Link> */}
-                <Link href="/beat-packs">Browse Beat Packs</Link>
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                <div className="min-w-0">
+                  <p className="font-semibold group-hover:text-primary transition-colors">
+                    {item.label}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{item.desc}</p>
+                </div>
+                <ArrowRight className="ml-auto h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+              </div>
+            </Card>
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }

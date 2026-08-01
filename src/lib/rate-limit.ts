@@ -123,12 +123,19 @@ export async function rateLimit(
 }
 
 /**
- * Helper to extract a rate-limit key from a request.
- * Uses X-Forwarded-For, then falls back to a static key.
+ * Extract client IP from trusted platform headers.
+ * Priority: platform-injected headers (not spoofable) > forwarded > fallback.
  */
 export function getClientIp(request: Request): string {
+  const realIp = request.headers.get("x-real-ip");
+  if (realIp) return realIp.trim();
+
+  const cfIp = request.headers.get("cf-connecting-ip");
+  if (cfIp) return cfIp.trim();
+
   const forwarded = request.headers.get("x-forwarded-for");
   if (forwarded) return forwarded.split(",")[0].trim();
+
   return "anonymous";
 }
 

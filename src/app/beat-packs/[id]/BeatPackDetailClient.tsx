@@ -4,8 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import {
-  Check, ChevronLeft, ChevronRight, CirclePause, CirclePlay, Crown, Infinity, Layers,
-  Loader2, Music, Shield, ShoppingCart, Sparkles, X, Zap,
+  ArrowUpCircle, Check, ChevronLeft, ChevronRight, CirclePause, CirclePlay, Crown, Download, FileAudio,
+  Infinity, Layers, Loader2, Music, Shield, ShoppingCart, Sparkles, X, Zap,
 } from "lucide-react";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
@@ -18,10 +18,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useSearchParams } from "next/navigation";
 import { useAudioActions, useAudioProgress } from "@/components/AudioPlayerContext";
 import ShareDialog from "@/components/ShareDialog";
 import PackRazorpayButton from "@/components/PackRazorpayButton";
-import type { BeatPackUi } from "@/features/beats/beat-pack-ui";
+import PackUpgradeRazorpayButton from "@/components/PackUpgradeRazorpayButton";
+import type { BeatPackUi, PurchasedTierInfo } from "@/features/beats/beat-pack-ui";
 import { packCartApi } from "@/lib/api/pack-cart";
 import type { LicenseType } from "@/types";
 
@@ -30,6 +32,7 @@ interface Props {
   isLoggedIn: boolean;
   hasPurchasedAll: boolean;
   ownedBeatCount: number;
+  purchasedTier: PurchasedTierInfo | null;
 }
 
 // Extra "What You Get" flags per license tier — Content ID / Exclusive Rights
@@ -55,7 +58,10 @@ export default function BeatPackDetailClient({
   isLoggedIn,
   hasPurchasedAll,
   ownedBeatCount,
+  purchasedTier,
 }: Props) {
+  const searchParams = useSearchParams();
+  const justPurchased = searchParams.get("purchased") === "1";
   const [selectedTier, setSelectedTier] = useState<LicenseType>("basic");
   const [addingToCart, setAddingToCart] = useState(false);
   const [inPackCart, setInPackCart] = useState(false);
@@ -106,6 +112,21 @@ export default function BeatPackDetailClient({
     () => getTierExtraFeatures(selectedTier),
     [selectedTier]
   );
+
+  const upgradeOptions = useMemo(() => {
+    if (!hasPurchasedAll || !purchasedTier) return [];
+    const tierRank: Record<string, number> = { basic: 0, premium: 1, unlimited: 2 };
+    const currentRank = tierRank[purchasedTier.tier] ?? 0;
+    const currentPrice = pack.prices.find((p) => p.tier === purchasedTier.tier)?.price ?? 0;
+    return pack.prices
+      .filter((p) => (tierRank[p.tier] ?? 0) > currentRank)
+      .map((p) => ({
+        tier: p.tier as "premium" | "unlimited",
+        fullPrice: p.price,
+        upgradePrice: p.price - currentPrice,
+        features: getTierExtraFeatures(p.tier),
+      }));
+  }, [hasPurchasedAll, purchasedTier, pack.prices]);
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -169,6 +190,21 @@ export default function BeatPackDetailClient({
         <span className="text-foreground font-medium truncate max-w-[200px]">{pack.title}</span>
       </nav>
 
+      {justPurchased && hasPurchasedAll && (
+        <div className="mb-4 flex items-center gap-3 rounded-xl border border-green-500/30 bg-green-500/5 px-4 py-3">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-green-500/10">
+            <Check className="h-4 w-4 text-green-500" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-green-400">Purchase successful!</p>
+            <p className="text-xs text-muted-foreground">
+              Click any track below to access your downloads, or visit your{" "}
+              <Link href="/profile" className="underline hover:text-foreground">profile</Link>.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-[1fr_340px]">
         {/* ====== Buy card – hidden on mobile, sticky sidebar on desktop ====== */}
         <div className="hidden lg:block lg:order-last lg:sticky lg:top-24 lg:self-start">
@@ -193,14 +229,100 @@ export default function BeatPackDetailClient({
               </div>
 
               <div className="space-y-2.5 px-5 pb-5">
-                <p className="text-xs text-muted-foreground">{ownedLabel}</p>
+                {!hasPurchasedAll && (
+                  <p className="text-xs text-muted-foreground">{ownedLabel}</p>
+                )}
 
                 {hasPurchasedAll ? (
-                  <div className="rounded-xl border border-green-500/30 bg-green-500/5 p-4 text-center">
-                    <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-green-500/10">
-                      <Check className="h-5 w-5 text-green-500" />
+                  <div className="space-y-3">
+                    <div className="rounded-xl border border-green-500/30 bg-green-500/5 p-4 text-center">
+                      <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-green-500/10">
+                        <Check className="h-5 w-5 text-green-500" />
+                      </div>
+                      <p className="text-sm font-semibold text-green-400">You own all beats</p>
+                      {purchasedTier && (
+                        <Badge variant="outline" className="mt-2 capitalize">
+                          {purchasedTier.tier} License
+                        </Badge>
+                      )}
                     </div>
-                    <p className="text-sm font-semibold text-green-400">You own all beats</p>
+
+                    {purchasedTier && (
+                      <div className="rounded-xl border border-border/40 bg-muted/20 p-4">
+                        <p className="mb-3 flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                          <Download className="h-3.5 w-3.5" />
+                          Your Files
+                        </p>
+                        <ul className="space-y-2 text-sm">
+                          <li className="flex items-center gap-2.5">
+                            <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-green-500/10">
+                              <Check className="h-3 w-3 text-green-500" />
+                            </div>
+                            <span>MP3 Files</span>
+                          </li>
+                          <li className="flex items-center gap-2.5">
+                            <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${purchasedTier.includesWav ? "bg-green-500/10" : "bg-red-500/10"}`}>
+                              {purchasedTier.includesWav ? (
+                                <Check className="h-3 w-3 text-green-500" />
+                              ) : (
+                                <X className="h-3 w-3 text-red-500" />
+                              )}
+                            </div>
+                            <span>WAV Files</span>
+                          </li>
+                          <li className="flex items-center gap-2.5">
+                            <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${purchasedTier.includesStems ? "bg-green-500/10" : "bg-red-500/10"}`}>
+                              {purchasedTier.includesStems ? (
+                                <Check className="h-3 w-3 text-green-500" />
+                              ) : (
+                                <X className="h-3 w-3 text-red-500" />
+                              )}
+                            </div>
+                            <span>Stem Files</span>
+                          </li>
+                        </ul>
+                      </div>
+                    )}
+
+                    {upgradeOptions.length > 0 && (
+                      <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+                        <p className="mb-3 flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                          <ArrowUpCircle className="h-3.5 w-3.5" />
+                          Upgrade Your License
+                        </p>
+                        <div className="space-y-2">
+                          {upgradeOptions.map((opt) => (
+                            <div key={opt.tier} className="rounded-lg border border-border/40 bg-card/60 p-3">
+                              <div className="mb-2 flex items-center justify-between">
+                                <div>
+                                  <p className="text-sm font-semibold capitalize">{opt.tier}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {opt.features.wav && !purchasedTier!.includesWav ? "+WAV " : ""}
+                                    {opt.features.stems && !purchasedTier!.includesStems ? "+Stems " : ""}
+                                    {opt.features.contentId ? "+Content ID" : ""}
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-xs text-muted-foreground line-through">₹{opt.fullPrice.toLocaleString("en-IN")}</p>
+                                  <p className="text-sm font-bold text-amber-500">₹{opt.upgradePrice.toLocaleString("en-IN")}</p>
+                                </div>
+                              </div>
+                              <PackUpgradeRazorpayButton
+                                packId={pack.id}
+                                targetTier={opt.tier}
+                                upgradeAmount={opt.upgradePrice}
+                                packTitle={pack.title}
+                                currentTier={purchasedTier!.tier}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <p className="text-xs text-center text-muted-foreground">
+                      Click any track above to download your files
+                    </p>
                   </div>
                 ) : (
                   <Dialog>
@@ -320,8 +442,12 @@ export default function BeatPackDetailClient({
                               <span>MP3 File</span>
                             </li>
                             <li className="flex items-center gap-2.5">
-                              <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-green-500/10">
-                                <Check className="h-3 w-3 text-green-500" />
+                              <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${selectedExtraFeatures.wav ? "bg-green-500/10" : "bg-red-500/10"}`}>
+                                {selectedExtraFeatures.wav ? (
+                                  <Check className="h-3 w-3 text-green-500" />
+                                ) : (
+                                  <X className="h-3 w-3 text-red-500" />
+                                )}
                               </div>
                               <span>WAV File</span>
                             </li>
@@ -604,10 +730,12 @@ export default function BeatPackDetailClient({
                   className="rounded-lg border border-border/50 bg-background/50 p-2 sm:p-3"
                 >
                   <div className="flex items-center justify-between">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">
-                        {index + 1}. {track.title}
-                      </p>
+                    <div className="min-w-0 flex-1">
+                      <Link href={`/beats/${track.id}`} className="group/track">
+                        <p className="truncate text-sm font-medium group-hover/track:text-primary transition-colors">
+                          {index + 1}. {track.title}
+                        </p>
+                      </Link>
                       <p className="text-xs text-muted-foreground">
                         {track.genre}
                         {track.bpm ? ` • ${track.bpm} BPM` : ""} • {track.durationLabel}
@@ -729,8 +857,12 @@ export default function BeatPackDetailClient({
                         <span>MP3 File</span>
                       </li>
                       <li className="flex items-center gap-2.5">
-                        <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-green-500/10">
-                          <Check className="h-3 w-3 text-green-500" />
+                        <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${selectedExtraFeatures.wav ? "bg-green-500/10" : "bg-red-500/10"}`}>
+                          {selectedExtraFeatures.wav ? (
+                            <Check className="h-3 w-3 text-green-500" />
+                          ) : (
+                            <X className="h-3 w-3 text-red-500" />
+                          )}
                         </div>
                         <span>WAV File</span>
                       </li>

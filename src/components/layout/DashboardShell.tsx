@@ -8,7 +8,7 @@ import type { Session } from "next-auth";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
-  Home,   // ← add this import
+  Home,
   Music,
   Layers,
   Upload,
@@ -20,6 +20,9 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Menu,
+  Package,
+  Receipt,
+  Disc3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -73,7 +76,11 @@ export default function DashboardShell({ session, children }: DashboardShellProp
   { href: "/upload", label: "Upload", icon: Upload, show: isProducer },
 ].filter((item) => item.show);
 
-
+  const libraryLinks = [
+    { href: "/profile/beats", label: "My Beats", icon: Disc3 },
+    { href: "/profile/packs", label: "My Packs", icon: Package },
+    { href: "/profile/transactions", label: "Transactions", icon: Receipt },
+  ];
 
   const accountLinks = [
     { href: "/profile", label: "Profile", icon: User, show: true },
@@ -84,7 +91,7 @@ export default function DashboardShell({ session, children }: DashboardShellProp
   const isActive = (href: string) =>
     href === "/studio" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
 
-  const currentTitle = [...workspaceLinks, ...accountLinks]
+  const currentTitle = [...workspaceLinks, ...libraryLinks, ...accountLinks]
     .find((link) => isActive(link.href))?.label || "Dashboard";
 
   const sidebarLinkClass = (href: string) =>
@@ -158,6 +165,32 @@ export default function DashboardShell({ session, children }: DashboardShellProp
             </nav>
           </div>
           )}
+
+          <div className="mb-6">
+            {!collapsed && (
+              <p className="mb-2 px-2 text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">
+                My Library
+              </p>
+            )}
+            <nav className="space-y-1.5">
+              {libraryLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  title={collapsed ? link.label : undefined}
+                  className={sidebarLinkClass(link.href)}
+                >
+                  {isActive(link.href) && (
+                    <span className="absolute inset-y-1.5 left-0 w-1 rounded-r-full bg-primary" />
+                  )}
+                  <span className={cn("flex items-center", collapsed ? "" : "gap-2.5")}>
+                    <link.icon className={cn("h-4 w-4", isActive(link.href) ? "text-primary" : "")} />
+                    {!collapsed && <span className="font-medium">{link.label}</span>}
+                  </span>
+                </Link>
+              ))}
+            </nav>
+          </div>
 
           <div className="mt-auto space-y-6">
             <div>
@@ -265,6 +298,28 @@ export default function DashboardShell({ session, children }: DashboardShellProp
                       </nav>
                     </div>
                     )}
+                    <div>
+                      <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                        My Library
+                      </p>
+                      <nav className="space-y-1">
+                        {libraryLinks.map((link) => (
+                          <Link
+                            key={link.href}
+                            href={link.href}
+                            className={cn(
+                              "focus-ring flex items-center gap-2 rounded-lg px-3 py-2 text-sm",
+                              isActive(link.href)
+                                ? "bg-primary/15 text-primary"
+                                : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                            )}
+                          >
+                            <link.icon className="h-4 w-4" />
+                            {link.label}
+                          </Link>
+                        ))}
+                      </nav>
+                    </div>
                     <div>
                       <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                         Account

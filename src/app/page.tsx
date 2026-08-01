@@ -1,8 +1,7 @@
 import Link from "next/link";
-import Image from "next/image";
 import {
-  ArrowRight, Headphones, Music, Zap, TrendingUp,
-  Search, ShoppingCart, Download, Star, Layers,
+  ArrowRight, Headphones, Music, Zap,
+  Search, ShoppingCart, Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -157,16 +156,6 @@ export default async function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(trendingItemList) }}
       />
 
-       <BeatPackSlider packs={featuredPacks} />
-
-
-{/* YouTube Beats — auto-moving marquee */}
-<YoutubeBeats />
-
-
-{/* Spotify — hero image + floating notes */}
-<SpotifyShowcase />
-
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-border/30">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,oklch(0.58_0.22_280_/_0.15),transparent_70%)]" />
@@ -177,28 +166,13 @@ export default async function HomePage() {
             fill="none"
           >
             <circle cx="56" cy="62" r="25" stroke="currentColor" strokeWidth="2.2" />
-            <path
-              d="M28 56C28 44 37 34 48 34"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-            />
-            <path
-              d="M84 56C84 44 75 34 64 34"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-            />
+            <path d="M28 56C28 44 37 34 48 34" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+            <path d="M84 56C84 44 75 34 64 34" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
             <rect x="24" y="52" width="8" height="14" rx="4" fill="currentColor" />
             <rect x="80" y="52" width="8" height="14" rx="4" fill="currentColor" />
             <circle cx="48" cy="60" r="2.4" fill="currentColor" />
             <circle cx="64" cy="60" r="2.4" fill="currentColor" />
-            <path
-              d="M47 73C50 77 62 77 65 73"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-            />
+            <path d="M47 73C50 77 62 77 65 73" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
           </svg>
           <svg
             className="doodle-drift absolute right-[6%] top-8 hidden h-9 w-9 text-primary/15 sm:block sm:h-11 sm:w-11 md:right-[11%] md:top-14"
@@ -209,24 +183,9 @@ export default async function HomePage() {
             <circle cx="50" cy="56" r="18" stroke="currentColor" strokeWidth="2.2" />
             <circle cx="43" cy="54" r="2.2" fill="currentColor" />
             <circle cx="57" cy="54" r="2.2" fill="currentColor" />
-            <path
-              d="M43 63C45.5 66.5 54.5 66.5 57 63"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-            />
-            <path
-              d="M37 39C37 31 42 25 48 25"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-            />
-            <path
-              d="M63 39C63 31 58 25 52 25"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-            />
+            <path d="M43 63C45.5 66.5 54.5 66.5 57 63" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+            <path d="M37 39C37 31 42 25 48 25" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+            <path d="M63 39C63 31 58 25 52 25" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
           </svg>
           <svg
             className="doodle-drift absolute left-[20%] top-[22%] h-8 w-8 text-primary/15 sm:left-[24%] sm:top-[20%] sm:h-10 sm:w-10"
@@ -234,20 +193,8 @@ export default async function HomePage() {
             viewBox="0 0 80 80"
             fill="none"
           >
-            <path
-              d="M8 42C18 30 30 30 40 42C50 54 62 54 72 42"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M8 56C18 44 30 44 40 56C50 68 62 68 72 56"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+            <path d="M8 42C18 30 30 30 40 42C50 54 62 54 72 42" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M8 56C18 44 30 44 40 56C50 68 62 68 72 56" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           <svg
             className="doodle-float absolute bottom-[16%] right-[24%] hidden h-7 w-7 text-primary/15 sm:block sm:h-9 sm:w-9 md:right-[20%]"
@@ -255,17 +202,11 @@ export default async function HomePage() {
             viewBox="0 0 64 64"
             fill="none"
           >
-            <path
-              d="M34 12V34C34 38.5 30.5 42 26 42C22 42 19 39.2 19 35.5C19 31.8 22 29 26 29C27.4 29 28.8 29.4 30 30.2V16L45 13V29C45 33.5 41.5 37 37 37C33 37 30 34.2 30 30.5C30 26.8 33 24 37 24C38.4 24 39.8 24.4 41 25.2V10"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+            <path d="M34 12V34C34 38.5 30.5 42 26 42C22 42 19 39.2 19 35.5C19 31.8 22 29 26 29C27.4 29 28.8 29.4 30 30.2V16L45 13V29C45 33.5 41.5 37 37 37C33 37 30 34.2 30 30.5C30 26.8 33 24 37 24C38.4 24 39.8 24.4 41 25.2V10" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           <div className="doodle-pulse absolute left-[14%] top-[76%] h-1.5 w-1.5 rounded-full bg-primary/20 sm:h-2 sm:w-2" />
         </div>
-        {/* <div className="app-container relative py-24 sm:py-32">
+        <div className="app-container relative py-24 sm:py-32">
           <div className="mx-auto max-w-2xl text-center">
             <Badge variant="secondary" className="mb-4">
               Beat Marketplace
@@ -290,47 +231,12 @@ export default async function HomePage() {
               </Button>
             </div>
           </div>
-        </div> */}
-      </section>
-
-      {/* Stats */}
-      {/* <section className="border-b border-border/30 bg-card/30">
-        <div className="app-container grid grid-cols-2 gap-4 py-8 sm:grid-cols-4">
-          {[
-            { label: "Beats", value: "1K+", icon: Music },
-            { label: "Producers", value: "50+", icon: Headphones },
-            { label: "Genres", value: "15+", icon: TrendingUp },
-            { label: "Previews", value: "Free", icon: Zap },
-          ].map((stat) => (
-            <div key={stat.label} className="text-center">
-              <stat.icon className="mx-auto mb-2 h-5 w-5 text-primary" />
-              <p className="text-2xl font-bold">{stat.value}</p>
-              <p className="text-sm text-muted-foreground">{stat.label}</p>
-            </div>
-          ))}
-        </div>
-      </section> */}
-
-      {/* Features */}
-      <section className="app-container py-16">
-        <div className="grid gap-6 sm:grid-cols-3">
-          {[
-            { icon: Headphones, title: "Free Previews", desc: "Listen to tagged previews before you buy. No account needed." },
-            { icon: Music, title: "All Genres", desc: "Hip Hop, Trap, R&B, Lo-Fi, Drill, and more — find your sound." },
-            { icon: Zap, title: "Instant License", desc: "Purchase a license and get immediate download access to the full track." },
-          ].map((feat) => (
-            <div key={feat.title} className="rounded-xl border border-border/50 bg-card/50 p-6">
-              <feat.icon className="mb-3 h-8 w-8 text-primary" />
-              <h2 className="text-lg font-semibold">{feat.title}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">{feat.desc}</p>
-            </div>
-          ))}
         </div>
       </section>
 
       {/* Trending Beats */}
-      {/* {trendingWithPrices.length > 0 && (
-        <section className="app-container pb-16">
+      {trendingWithPrices.length > 0 && (
+        <section className="app-container py-16">
           <div className="mb-6 flex items-center justify-between">
             <h2 className="text-2xl font-semibold">Trending Beats</h2>
             <Button asChild variant="ghost" size="sm">
@@ -350,15 +256,13 @@ export default async function HomePage() {
             ))}
           </div>
         </section>
-      )} */}
+      )}
 
       {/* Recent Beats */}
-      {/* {recentWithPrices.length > 0 && (
+      {recentWithPrices.length > 0 && (
         <section className="app-container pb-16">
           <div className="mb-6 flex items-center justify-between">
-            <h2 className="flex items-center gap-2 text-2xl font-bold">
-              Recently Added
-            </h2>
+            <h2 className="text-2xl font-semibold">Recently Added</h2>
             <Button asChild variant="ghost" size="sm">
               <Link href="/beats?sort=newest">
                 See all <ArrowRight className="ml-1 h-4 w-4" />
@@ -376,120 +280,27 @@ export default async function HomePage() {
             ))}
           </div>
         </section>
-      )} */}
+      )}
 
       {/* Featured Beat Packs */}
-      {/* {featuredPacks.length > 0 && (
-        <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-          <div className="mb-8 flex items-end justify-between">
-            <div>
-              <h2 className="text-2xl font-semibold sm:text-3xl">Featured Beat Packs</h2>
-              <p className="mt-2 text-muted-foreground">
-                Curated collections — get more beats for less.
-              </p>
-            </div>
-            <Link href="/beat-packs" className="text-sm font-medium text-primary hover:underline">
-              View All →
-            </Link>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {featuredPacks.map((pack) => (
-              <Link key={pack.id} href={`/beat-packs/${pack.id}`} className="group">
-                <div className="overflow-hidden rounded-xl border border-border/50 bg-card/80 transition hover:border-border hover:shadow-md">
-                  <div className="relative aspect-video w-full bg-muted/30">
-                    {pack.coverUrl ? (
-                      <Image
-                        src={pack.coverUrl}
-                        alt={pack.title}
-                        fill
-                        sizes="(max-width: 768px) 100vw, 33vw"
-                        className="object-cover transition group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center">
-                        <Layers className="h-8 w-8 text-muted-foreground/40" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-semibold group-hover:text-primary transition-colors">{pack.title}</h3>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {pack.beatCount} beats • by {pack.producerName}
-                    </p>
-                    <p className="mt-2 text-sm font-bold text-primary">
-                      Starting at ₹{pack.startingPrice.toLocaleString("en-IN")}
-                    </p>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )} */}
+      <BeatPackSlider packs={featuredPacks} />
 
-      {/* Browse by Genre */}
-      {/* <section className="app-container pb-16">
-        <div className="mb-6 flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-2xl font-bold">
-            <span aria-hidden>🎸</span> Browse by Genre
-          </h2>
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/beats">
-              See all <ArrowRight className="ml-1 h-4 w-4" />
-            </Link>
-          </Button>
-        </div>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-          {GENRE_CARDS.map((g) => (
-            <Link
-              key={g.name}
-              href={`/beats?genre=${encodeURIComponent(g.name)}`}
-              className="group flex items-center gap-3 rounded-xl border border-border/50 bg-card/60 p-4 transition-colors hover:bg-card/90"
-              style={{ borderLeftWidth: 3, borderLeftColor: g.color }}
-            >
-              <span className="text-2xl" aria-hidden>{g.emoji}</span>
-              <span className="font-semibold">{g.name}</span>
-            </Link>
+      {/* Features */}
+      <section className="app-container py-16">
+        <div className="grid gap-6 sm:grid-cols-3">
+          {[
+            { icon: Headphones, title: "Free Previews", desc: "Listen to tagged previews before you buy. No account needed." },
+            { icon: Music, title: "All Genres", desc: "Hip Hop, Trap, R&B, Lo-Fi, Drill, and more — find your sound." },
+            { icon: Zap, title: "Instant License", desc: "Purchase a license and get immediate download access to the full track." },
+          ].map((feat) => (
+            <div key={feat.title} className="rounded-xl border border-border/50 bg-card/50 p-6">
+              <feat.icon className="mb-3 h-8 w-8 text-primary" />
+              <h2 className="text-lg font-semibold">{feat.title}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">{feat.desc}</p>
+            </div>
           ))}
         </div>
-      </section> */}
-
-      {/* What Users Say */}
-      {/* <section className="border-t border-border/30 bg-card/20">
-        <div className="app-container py-16">
-          <h2 className="mb-8 text-center text-2xl font-bold">
-            <span aria-hidden>💬</span> What Users Say
-          </h2>
-          <div className="grid gap-6 sm:grid-cols-3">
-            {TESTIMONIALS.map((t) => (
-              <Card key={t.name} className="border-border/50 bg-card/60">
-                <CardContent className="p-6">
-                  <div className="mb-3 flex gap-0.5">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star
-                        key={i}
-                        className={`h-4 w-4 ${i < t.stars ? "fill-amber-400 text-amber-400" : "fill-muted text-muted"}`}
-                      />
-                    ))}
-                  </div>
-                  <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
-                    &ldquo;{t.quote}&rdquo;
-                  </p>
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl" aria-hidden>{t.avatar}</span>
-                    <div>
-                      <p className="text-sm font-semibold">{t.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        📍 {t.location}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section> */}
+      </section>
 
       {/* How It Works */}
       <section className="app-container py-16">
@@ -510,25 +321,13 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <PartnerBrands />
+      {/* YouTube Beats */}
+      <YoutubeBeats />
 
-      {/* CTA */}
-      {/* <section className="border-t border-border/30 bg-card/30">
-        <div className="app-container py-16 text-center">
-          <h2 className="text-3xl font-semibold">Ready to find your sound?</h2>
-          <p className="mx-auto mt-3 max-w-md text-muted-foreground">
-            Join thousands of artists and producers on Trishul Beats today.
-          </p>
-          <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-            <Button asChild size="lg">
-              <Link href="/signup">Get Started Free</Link>
-            </Button>
-            <Button asChild variant="outline" size="lg">
-              <Link href="/beats">Browse Beats</Link>
-            </Button>
-          </div>
-        </div>
-      </section> */}
+      {/* Spotify Showcase */}
+      <SpotifyShowcase />
+
+      <PartnerBrands />
     </div>
   );
 }

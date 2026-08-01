@@ -387,9 +387,9 @@ export default function CartClient() {
             Browse beats or beat packs and add what you love.
           </p>
           <Button asChild className="mt-6" size="lg">
-            <Link href="/beat-packs">
+            <Link href="/beats">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Browse Beat Packs
+              Browse Beats
             </Link>
           </Button>
         </div>

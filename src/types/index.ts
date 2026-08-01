@@ -27,6 +27,7 @@ export interface IUser {
   followersCount?: number;
   salesCount?: number;
   resetToken?: string;
+  resetTokenPrefix?: string;
   resetTokenExpiry?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -133,6 +134,8 @@ export interface IPurchase {
   amount: number;
   sourceType?: "beat" | "pack";
   sourcePackId?: string | Types.ObjectId;
+  upgradedFrom?: string;
+  upgradedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -145,7 +148,7 @@ export interface IOrderItem {
   licenseType: LicenseType;
   price: number;
   beatTitle: string;
-  sourceType?: "beat" | "pack";
+  sourceType?: "beat" | "pack" | "upgrade";
   sourcePackId?: string | Types.ObjectId;
 }
 

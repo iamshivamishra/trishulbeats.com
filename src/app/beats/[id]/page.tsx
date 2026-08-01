@@ -471,8 +471,8 @@ export default async function BeatPage({ params }: BeatPageProps) {
           )}
         </div>
 
-        {/* ====================== RIGHT COLUMN (hidden on mobile, sticky sidebar on desktop) ====================== */}
-        <div className="hidden lg:block lg:sticky lg:top-24 lg:self-start">
+        {/* ====================== RIGHT COLUMN (sticky sidebar on desktop, mobile sticky bar handled by LicenseSelector) ====================== */}
+        <div className="lg:sticky lg:top-24 lg:self-start">
           {isPackOnly && !hasPurchased ? (
             <Card className="border-amber-500/30 bg-amber-500/5">
               <CardContent className="space-y-3 p-5">

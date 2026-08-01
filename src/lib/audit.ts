@@ -16,6 +16,7 @@ export type AuditAction =
   | "payment.signature_invalid"
   | "payment.verified"
   | "payment.failed"
+  | "payment.upgrade_order_created"
   | "download.links_generated"
   | "download.signed_url"
   | "upload.presign"

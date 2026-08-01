@@ -3,7 +3,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Play, Pause, AudioWaveform, ShoppingCart, Music, MoreVertical, Heart } from "lucide-react";
+import { Play, Pause, AudioWaveform, ShoppingCart, Music, Heart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAudioActions } from "@/components/AudioPlayerContext";
 import type { IBeat } from "@/types";
@@ -97,7 +97,7 @@ export default function BeatCard({
             className={`flex h-9 w-9 items-center justify-center rounded-full shadow-md transition-all duration-300 ${
               isThisBeatActive
                 ? "bg-primary text-primary-foreground scale-100 opacity-100"
-                : "bg-purple-600 text-white scale-90 opacity-0 group-hover:scale-100 group-hover:opacity-100"
+                : "bg-primary text-primary-foreground scale-90 opacity-0 group-hover:scale-100 group-hover:opacity-100"
             }`}
           >
             {isThisBeatPlaying ? (
@@ -135,15 +135,15 @@ export default function BeatCard({
             )}
             {startingPrice !== undefined && (
               <span className="flex items-center gap-1.5">
-                <ShoppingCart className="h-4 w-4 text-red-500" />
-                <span className="text-sm font-medium text-red-500">
+                <ShoppingCart className="h-4 w-4 text-primary" />
+                <span className="text-sm font-semibold text-foreground">
                   ₹{startingPrice.toLocaleString("en-IN")}
                 </span>
               </span>
             )}
           </div>
 
-          {/* Title + producer badge row */}
+          {/* Title + genre badge row */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 min-w-0">
               <h3 className="truncate text-lg font-semibold text-foreground transition-colors duration-300 group-hover:text-primary">
@@ -158,7 +158,6 @@ export default function BeatCard({
                 </Badge>
               )}
             </div>
-            <MoreVertical className="h-4 w-4 shrink-0 text-muted-foreground" />
           </div>
         </Link>
 

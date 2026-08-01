@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import { paymentService } from "@/lib/services/payment.service";
-import { createOrderSchema, createPackOrderSchema, checkoutCartSchema } from "@/lib/validators/payment";
+import { createOrderSchema, createPackOrderSchema, createUpgradeOrderSchema, checkoutCartSchema } from "@/lib/validators/payment";
 import { formatErrorResponse, UnauthorizedError } from "@/lib/errors";
 import { rateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 
@@ -24,6 +24,12 @@ export async function POST(request: NextRequest) {
     if (body.fromCart) {
       const input = checkoutCartSchema.parse(body);
       const order = await paymentService.checkoutCart(input, session.user.id);
+      return Response.json(order);
+    }
+
+    if (body.packId && body.targetTier) {
+      const input = createUpgradeOrderSchema.parse(body);
+      const order = await paymentService.createUpgradeOrder(input, session.user.id);
       return Response.json(order);
     }
 

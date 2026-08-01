@@ -16,6 +16,7 @@ import { packCartService } from "@/lib/services/pack-cart.service";
 import type {
   CreateOrderInput,
   CreatePackOrderInput,
+  CreateUpgradeOrderInput,
   VerifyPaymentInput,
   CheckoutCartInput,
 } from "@/lib/validators/payment";
@@ -51,21 +52,35 @@ export const paymentService = {
       throw new ConflictError("You have already purchased this beat");
     }
 
+    const license = await licenseRepository.findById(input.licenseId);
+    if (!license || !license.isActive) throw new NotFoundError("License");
+
     const existingPendingOrder = await orderRepository.findPendingByBuyerAndBeat(
       buyerId,
       input.beatId
     );
     if (existingPendingOrder?.razorpayOrderId) {
-      return {
-        orderId: existingPendingOrder.razorpayOrderId,
-        amount: existingPendingOrder.totalAmount,
-        currency: "INR",
-        internalOrderId: existingPendingOrder._id.toString(),
-      };
-    }
+      const isSingleItemOrder = existingPendingOrder.items.length === 1;
+      const itemMatch = isSingleItemOrder &&
+        existingPendingOrder.items[0].licenseId.toString() === input.licenseId &&
+        existingPendingOrder.totalAmount === license.price;
 
-    const license = await licenseRepository.findById(input.licenseId);
-    if (!license || !license.isActive) throw new NotFoundError("License");
+      if (itemMatch) {
+        return {
+          orderId: existingPendingOrder.razorpayOrderId,
+          amount: existingPendingOrder.totalAmount,
+          currency: "INR",
+          internalOrderId: existingPendingOrder._id.toString(),
+        };
+      }
+      if (isSingleItemOrder) {
+        await orderRepository.updateStatus(
+          existingPendingOrder._id.toString(),
+          "failed",
+          { failureReason: "License or price changed since order was created" }
+        );
+      }
+    }
     if (license.beatId.toString() !== input.beatId) {
       throw new ConflictError("License does not belong to this beat");
     }
@@ -210,6 +225,131 @@ export const paymentService = {
   },
 
   /**
+   * Create a Razorpay order for upgrading a beat pack tier.
+   * User pays only the price difference between current and target tier.
+   */
+  async createUpgradeOrder(
+    input: CreateUpgradeOrderInput,
+    buyerId: string
+  ): Promise<{ orderId: string; amount: number; currency: string; internalOrderId: string }> {
+    const pack = await beatPackRepository.findById(input.packId);
+    if (!pack || !pack.isPublished || pack.status !== "published") {
+      throw new NotFoundError("Beat pack");
+    }
+
+    const beatIds = pack.beatIds.map((id) => id.toString());
+    if (beatIds.length === 0) {
+      throw new ConflictError("This beat pack has no beats");
+    }
+
+    const ownedSet = await purchaseRepository.hasPurchasedBatch(buyerId, beatIds);
+    if (!beatIds.every((id) => ownedSet.has(id))) {
+      throw new ConflictError("You must own all beats in this pack to upgrade");
+    }
+
+    const existingPurchases = await purchaseRepository.findByBuyerAndBeatIds(buyerId, beatIds);
+    if (existingPurchases.length === 0) {
+      throw new ConflictError("No existing purchases found for this pack");
+    }
+
+    const packPurchases = existingPurchases.filter(
+      (p) => p.sourceType === "pack" && p.sourcePackId?.toString() === input.packId
+    );
+    if (packPurchases.length !== beatIds.length) {
+      throw new ConflictError(
+        "Upgrade is only available for beats purchased through this pack"
+      );
+    }
+
+    const tierRank: Record<string, number> = { basic: 0, premium: 1, unlimited: 2 };
+    const currentTier = packPurchases.reduce(
+      (lowest, p) => (tierRank[p.licenseType] ?? 0) < (tierRank[lowest] ?? 0) ? p.licenseType : lowest,
+      packPurchases[0].licenseType
+    );
+
+    if ((tierRank[currentTier] ?? 0) >= (tierRank[input.targetTier] ?? 0)) {
+      throw new ConflictError(`You already have ${currentTier} or higher. Cannot upgrade to ${input.targetTier}.`);
+    }
+
+    const currentPrice = pack.prices[currentTier as keyof typeof pack.prices] ?? 0;
+    const targetPrice = pack.prices[input.targetTier] ?? 0;
+    const upgradeAmount = targetPrice - currentPrice;
+
+    if (upgradeAmount <= 0) {
+      throw new ConflictError("Upgrade price difference is zero or negative");
+    }
+
+    const licenses = await Promise.all(
+      beatIds.map(async (beatId) => {
+        const options = await licenseRepository.findByBeatId(beatId);
+        return options.find((lic) => lic.type === input.targetTier && lic.isActive);
+      })
+    );
+    if (licenses.some((lic) => !lic)) {
+      throw new ConflictError(`Missing ${input.targetTier} license on one or more beats`);
+    }
+
+    const perBeatAmounts = allocateAmounts(upgradeAmount, beatIds.length);
+    const receipt = generateReceipt();
+    const beats = await beatRepository.findByIds(beatIds);
+    const beatTitleMap = new Map(beats.map((b) => [b._id.toString(), b.title]));
+
+    const orderItems: IOrderItem[] = beatIds.map((beatId, idx) => ({
+      beatId: beatId as unknown as IOrderItem["beatId"],
+      licenseId: licenses[idx]!._id as unknown as IOrderItem["licenseId"],
+      licenseType: input.targetTier,
+      price: perBeatAmounts[idx],
+      beatTitle: beatTitleMap.get(beatId) ?? "Beat",
+      sourceType: "upgrade" as const,
+      sourcePackId: pack._id as unknown as IOrderItem["sourcePackId"],
+    }));
+
+    const order = await orderRepository.create({
+      buyerId: buyerId as unknown as IOrder["buyerId"],
+      items: orderItems,
+      totalAmount: upgradeAmount,
+      status: "pending",
+      receipt,
+    });
+
+    const razorpayOrder = await razorpay.orders.create({
+      amount: upgradeAmount * 100,
+      currency: "INR",
+      receipt,
+      notes: {
+        internalOrderId: order._id.toString(),
+        buyerId,
+        packId: pack._id.toString(),
+        upgradeFrom: currentTier,
+        upgradeTo: input.targetTier,
+      },
+    });
+    await orderRepository.attachRazorpayOrderId(order._id.toString(), razorpayOrder.id);
+
+    logger.info("Upgrade order created", {
+      orderId: order._id,
+      packId: input.packId,
+      from: currentTier,
+      to: input.targetTier,
+      upgradeAmount,
+    });
+    audit({
+      action: "payment.upgrade_order_created",
+      userId: buyerId,
+      resourceType: "order",
+      resourceId: order._id.toString(),
+      metadata: { packId: input.packId, from: currentTier, to: input.targetTier, upgradeAmount },
+    });
+
+    return {
+      orderId: razorpayOrder.id,
+      amount: upgradeAmount,
+      currency: "INR",
+      internalOrderId: order._id.toString(),
+    };
+  },
+
+  /**
    * Create a Razorpay order for the entire cart.
    */
   async checkoutCart(
@@ -231,17 +371,27 @@ export const paymentService = {
         );
       }
     }
+    const currentCartTotal = cartItems.reduce((sum, i) => sum + i.price, 0);
     const existingPendingOrder = await orderRepository.findPendingByBuyerAndBeatIds(
       buyerId,
       cartBeatIds
     );
     if (existingPendingOrder?.razorpayOrderId) {
-      return {
-        orderId: existingPendingOrder.razorpayOrderId,
-        amount: existingPendingOrder.totalAmount,
-        currency: "INR",
-        internalOrderId: existingPendingOrder._id.toString(),
-      };
+      const pendingBeatIds = new Set(existingPendingOrder.items.map((i) => i.beatId.toString()));
+      const cartBeatIdSet = new Set(cartBeatIds);
+      const exactItemMatch =
+        pendingBeatIds.size === cartBeatIdSet.size &&
+        [...cartBeatIdSet].every((id) => pendingBeatIds.has(id)) &&
+        existingPendingOrder.totalAmount === currentCartTotal;
+
+      if (exactItemMatch) {
+        return {
+          orderId: existingPendingOrder.razorpayOrderId,
+          amount: existingPendingOrder.totalAmount,
+          currency: "INR",
+          internalOrderId: existingPendingOrder._id.toString(),
+        };
+      }
     }
 
     const orderItems: IOrderItem[] = cartItems.map((item) => ({
@@ -556,7 +706,7 @@ export const paymentService = {
         if (!beat.isPublished || beat.status !== "published") {
           throw new ConflictError("Beat is no longer available for purchase");
         }
-        if (beat.saleMode === "pack_only" && item.sourceType !== "pack") {
+        if (beat.saleMode === "pack_only" && item.sourceType !== "pack" && item.sourceType !== "upgrade") {
           throw new ConflictError("Beat is only purchasable through its beat pack");
         }
         if (!license || !license.isActive) {
@@ -564,6 +714,34 @@ export const paymentService = {
         }
         if (license.beatId.toString() !== beatId) {
           throw new ConflictError("License does not belong to this beat");
+        }
+
+        if (item.sourceType === "upgrade") {
+          const existingPurchases = await purchaseRepository.findByBuyerAndBeat(buyerId, beatId, { session });
+          const existing = existingPurchases[0];
+          if (!existing) {
+            throw new ConflictError("Cannot upgrade: no existing purchase found");
+          }
+          const upgraded = await purchaseRepository.upgradeTier(
+            buyerId,
+            beatId,
+            {
+              licenseId: item.licenseId.toString(),
+              licenseType: item.licenseType,
+              includesWav: license.includesWav,
+              includesStems: license.includesStems,
+              upgradedFrom: existing.licenseType,
+              orderId: input.orderId,
+              paymentId: input.paymentId,
+              upgradeAmount: item.price,
+            },
+            { session }
+          );
+          if (upgraded) {
+            purchases.push(upgraded);
+            createdCount += 1;
+          }
+          continue;
         }
 
         try {
@@ -662,6 +840,156 @@ export const paymentService = {
       order: updatedOrder!,
       purchases: result.purchases,
     };
+  },
+
+  /**
+   * Webhook-safe fulfillment: fetch payment from Razorpay directly,
+   * verify amount/status server-side, and record purchases.
+   * Skips client-supplied signature because the webhook itself is
+   * already authenticated via HMAC.
+   */
+  async fulfillFromWebhook(
+    razorpayOrderId: string,
+    razorpayPaymentId: string
+  ): Promise<void> {
+    const order = await orderRepository.findByRazorpayOrderId(razorpayOrderId);
+    if (!order) return;
+    if (order.status === "paid") return;
+    if (order.status !== "pending") return;
+
+    const providerPayment = await fetchPaymentById(razorpayPaymentId);
+    const expectedAmountPaise = order.totalAmount * 100;
+
+    if (
+      providerPayment.order_id !== razorpayOrderId ||
+      providerPayment.status !== "captured" ||
+      providerPayment.amount !== expectedAmountPaise ||
+      providerPayment.currency !== "INR"
+    ) {
+      await orderRepository.updateStatus(order._id.toString(), "failed", {
+        razorpayPaymentId,
+        failureReason: "Webhook fulfillment: payment validation failed",
+      });
+      return;
+    }
+
+    const buyerId = order.buyerId.toString();
+
+    const result = await withTransaction(async (session) => {
+      const paidOrder = await orderRepository.markPaidIfPending(
+        order._id.toString(),
+        {
+          razorpayPaymentId,
+          paidAt: new Date(),
+        },
+        { session }
+      );
+      if (!paidOrder) return null;
+
+      const allItemBeatIds = paidOrder.items.map((item) => item.beatId.toString());
+      const allItemLicenseIds = paidOrder.items.map((item) => item.licenseId.toString());
+      const [allItemBeats, allItemLicenses] = await Promise.all([
+        beatRepository.findByIds(allItemBeatIds),
+        licenseRepository.findByIds(allItemLicenseIds),
+      ]);
+      const beatMap = new Map(allItemBeats.map((b) => [b._id.toString(), b]));
+      const licenseMap = new Map(allItemLicenses.map((l) => [l._id.toString(), l]));
+
+      const purchases: IPurchase[] = [];
+
+      for (const item of paidOrder.items) {
+        const beatId = item.beatId.toString();
+        const beat = beatMap.get(beatId);
+        const license = licenseMap.get(item.licenseId.toString());
+        if (!beat || !license) continue;
+
+        if (item.sourceType === "upgrade") {
+          const existingPurchases = await purchaseRepository.findByBuyerAndBeat(buyerId, beatId, { session });
+          const existing = existingPurchases[0];
+          if (!existing) continue;
+
+          const webhookTierRank: Record<string, number> = { basic: 0, premium: 1, unlimited: 2 };
+          if ((webhookTierRank[existing.licenseType] ?? 0) >= (webhookTierRank[item.licenseType] ?? 0)) {
+            continue;
+          }
+
+          const upgraded = await purchaseRepository.upgradeTier(
+            buyerId, beatId,
+            {
+              licenseId: item.licenseId.toString(),
+              licenseType: item.licenseType,
+              includesWav: license.includesWav,
+              includesStems: license.includesStems,
+              upgradedFrom: existing.licenseType,
+              orderId: razorpayOrderId,
+              paymentId: razorpayPaymentId,
+              upgradeAmount: item.price,
+            },
+            { session }
+          );
+          if (upgraded) purchases.push(upgraded);
+          continue;
+        }
+
+        try {
+          const purchase = await purchaseRepository.create(
+            {
+              buyerId: buyerId as unknown as IPurchase["buyerId"],
+              beatId: item.beatId as unknown as IPurchase["beatId"],
+              licenseId: item.licenseId as unknown as IPurchase["licenseId"],
+              licenseType: item.licenseType,
+              includesWav: license.includesWav,
+              includesStems: license.includesStems,
+              orderId: razorpayOrderId,
+              paymentId: razorpayPaymentId,
+              amount: item.price,
+              sourceType: item.sourceType ?? "beat",
+              sourcePackId: item.sourcePackId as unknown as IPurchase["sourcePackId"],
+            },
+            { session }
+          );
+          purchases.push(purchase);
+          await beatRepository.incrementSalesCount(beatId, { session });
+          await userRepository.incrementSalesCount(beat.producerId.toString(), { session });
+        } catch (error) {
+          const mongoError = error as MongoLikeError;
+          if (mongoError.code === 11000) continue;
+          throw error;
+        }
+      }
+
+      if (purchases.length === 0) {
+        throw new ConflictError("Webhook fulfillment: no purchases could be created");
+      }
+
+      await cartRepository.clear(buyerId, { session });
+
+      const packIds = new Set<string>();
+      for (const item of paidOrder.items) {
+        if (item.sourceType === "pack" && item.sourcePackId) {
+          packIds.add(item.sourcePackId.toString());
+        }
+      }
+      for (const packId of packIds) {
+        await beatPackRepository.incrementSalesCount(packId, { session });
+      }
+
+      return purchases;
+    });
+
+    if (!result || result.length === 0) return;
+
+    logger.info("Webhook fulfillment completed", {
+      orderId: order._id,
+      purchaseCount: result.length,
+    });
+    audit({
+      action: "payment.verified",
+      userId: buyerId,
+      resourceType: "order",
+      resourceId: order._id.toString(),
+      metadata: { source: "webhook", purchaseCount: result.length },
+    });
   },
 
   /**

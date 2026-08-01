@@ -151,7 +151,7 @@ export default function LicenseSelector({
 
   return (
     <div className="space-y-3">
-      <Card className="rounded-2xl border-border/50 bg-card/80 shadow-sm overflow-hidden">
+      <Card className="hidden rounded-2xl border-border/50 bg-card/80 shadow-sm overflow-hidden lg:block">
         <CardContent className="p-0">
           {/* Price hero */}
           <div className="bg-gradient-to-br from-primary/5 via-transparent to-primary/5 px-5 py-6 text-center">

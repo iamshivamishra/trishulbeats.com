@@ -26,12 +26,14 @@ const UserSchema = new Schema<IUser>(
     followersCount: { type: Number, default: 0 },
     salesCount: { type: Number, default: 0 },
     resetToken: { type: String, select: false },
+    resetTokenPrefix: { type: String, select: false },
     resetTokenExpiry: { type: Date, select: false },
   },
   { timestamps: true }
 );
 
 UserSchema.index({ role: 1 });
+UserSchema.index({ resetTokenPrefix: 1, resetTokenExpiry: 1 });
 
 const User: Model<IUser> =
   mongoose.models.User || mongoose.model<IUser>("User", UserSchema);

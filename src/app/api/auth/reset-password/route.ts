@@ -21,12 +21,14 @@ export async function POST(request: Request) {
 
     await connectDB();
 
-    const users = await User.find({
+    const prefix = token.substring(0, 8);
+    const candidates = await User.find({
+      resetTokenPrefix: prefix,
       resetTokenExpiry: { $gt: new Date() },
-    }).select("+resetToken +resetTokenExpiry +password");
+    }).select("+resetToken +resetTokenPrefix +resetTokenExpiry +password");
 
     let matchedUser = null;
-    for (const user of users) {
+    for (const user of candidates) {
       if (user.resetToken && (await bcrypt.compare(token, user.resetToken))) {
         matchedUser = user;
         break;
@@ -39,6 +41,7 @@ export async function POST(request: Request) {
 
     matchedUser.password = await bcrypt.hash(password, 12);
     matchedUser.resetToken = undefined;
+    matchedUser.resetTokenPrefix = undefined;
     matchedUser.resetTokenExpiry = undefined;
     await matchedUser.save();
 

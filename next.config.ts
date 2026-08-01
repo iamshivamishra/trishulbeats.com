@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ["pdfkit"],
+
   allowedDevOrigins: [
     "192.168.0.101",
   ],
@@ -64,6 +66,20 @@ const nextConfig: NextConfig = {
           {
             key: "X-XSS-Protection",
             value: "1; mode=block",
+          },
+          {
+            key: "Content-Security-Policy",
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://www.googletagmanager.com",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: blob: https://res.cloudinary.com https://*.r2.dev https://lh3.googleusercontent.com https://logo.clearbit.com",
+              "font-src 'self'",
+              "connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com https://*.google-analytics.com",
+              "frame-src https://api.razorpay.com",
+              "object-src 'none'",
+              "base-uri 'self'",
+            ].join("; "),
           },
         ],
       },

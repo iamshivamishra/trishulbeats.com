@@ -12,7 +12,7 @@ const OrderItemSchema = new Schema(
     },
     price: { type: Number, required: true, min: 0 },
     beatTitle: { type: String, required: true },
-    sourceType: { type: String, enum: ["beat", "pack"], default: "beat" },
+    sourceType: { type: String, enum: ["beat", "pack", "upgrade"], default: "beat" },
     sourcePackId: { type: Schema.Types.ObjectId, ref: "BeatPack" },
   },
   { _id: false }
@@ -28,7 +28,7 @@ const OrderSchema = new Schema<IOrder>(
       enum: ["pending", "paid", "failed", "refunded"],
       default: "pending",
     },
-    razorpayOrderId: { type: String, sparse: true },
+    razorpayOrderId: { type: String },
     razorpayPaymentId: { type: String },
     razorpaySignature: { type: String },
     receipt: { type: String, required: true, unique: true },
