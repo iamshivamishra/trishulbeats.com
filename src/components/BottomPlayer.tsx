@@ -1,9 +1,9 @@
+
 // components/BottomPlayer.tsx
 "use client";
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   Play,
@@ -17,9 +17,7 @@ import {
   Volume2,
   VolumeX,
   ShoppingCart,
-  Package,
   Music,
-  X,
 } from "lucide-react";
 import { useAudioPlayer } from "@/components/AudioPlayerContext";
 import ShareDialog from "@/components/ShareDialog";
@@ -36,15 +34,11 @@ export default function BottomPlayer() {
     togglePlay,
     seek,
     setVolume,
-    closePlayer,
   } = useAudioPlayer();
 
-  const pathname = usePathname();
   const [isMuted, setIsMuted] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [isRepeat, setIsRepeat] = useState(false);
-
-  const isOnPackPage = currentBeat?.packId && pathname === `/beat-packs/${currentBeat.packId}`;
 
   if (!currentBeat) return null;
 
@@ -56,124 +50,58 @@ export default function BottomPlayer() {
 
   const beatUrl = typeof window !== "undefined" ? `${window.location.origin}/beats/${currentBeat.id}` : "";
 
-  const buyHref = currentBeat.packId
-    ? `/beat-packs/${currentBeat.packId}`
-    : `/beats/${currentBeat.id}`;
-  const buyLabel = currentBeat.packId ? "Buy Pack" : "Buy";
-  const BuyIcon = currentBeat.packId ? Package : ShoppingCart;
-  const showBuy = !isOnPackPage;
-
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#0d0d0d]">
-      {/* Seek bar — larger touch target on mobile via padding */}
-      <div className="-mb-px cursor-pointer py-1.5 sm:py-0" onClick={handleSeekClick}>
-        <div className="h-1 w-full bg-white/10 sm:h-1">
-          <div
-            className="h-full bg-gradient-to-r from-primary to-purple-500 transition-all"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
+      {/* Seek bar */}
+      <div className="h-1 w-full cursor-pointer bg-white/10" onClick={handleSeekClick}>
+        <div
+          className="h-full bg-gradient-to-r from-primary to-purple-500 transition-all"
+          style={{ width: `${progress}%` }}
+        />
       </div>
 
-      {/* ========== MOBILE LAYOUT (below sm) ========== */}
-      <div className="flex items-center gap-2 px-2 py-1.5 sm:hidden">
-        {/* Cover art */}
-        {currentBeat.coverUrl ? (
-          <Image
-            src={currentBeat.coverUrl}
-            alt={currentBeat.title}
-            width={36}
-            height={36}
-            className="h-9 w-9 shrink-0 rounded-md object-cover"
-          />
-        ) : (
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-white/5">
-            <Music className="h-4 w-4 text-white/30" />
-          </div>
-        )}
-
-        {/* Title + producer + time */}
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-xs font-medium text-white">{currentBeat.title}</p>
-          <p className="truncate text-[10px] text-zinc-400">
-            {currentBeat.producerName}
-            <span className="mx-1 text-zinc-600">·</span>
-            <span className="tabular-nums">{formatDuration(currentTime)}</span>
-            <span className="text-zinc-600"> / </span>
-            <span className="tabular-nums">{formatDuration(duration)}</span>
-          </p>
-        </div>
-
-        {/* Action buttons */}
-        <div className="flex shrink-0 items-center gap-1">
-          {/* Play/Pause */}
-          <button
-            onClick={togglePlay}
-            aria-label={isPlaying ? "Pause" : "Play"}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-black active:scale-95"
-          >
-            {isPlaying ? (
-              <Pause className="h-3.5 w-3.5 fill-current" />
-            ) : (
-              <Play className="ml-0.5 h-3.5 w-3.5 fill-current" />
-            )}
-          </button>
-
-          {/* Buy */}
-          {showBuy && (
-            <Link
-              href={buyHref}
-              aria-label={buyLabel}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground active:scale-95"
-            >
-              <BuyIcon className="h-3.5 w-3.5" />
-            </Link>
-          )}
-
-          {/* Close */}
-          <button
-            onClick={closePlayer}
-            aria-label="Close player"
-            className="flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 active:scale-95 active:text-white"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* ========== DESKTOP LAYOUT (sm+) ========== */}
-      <div className="hidden items-center gap-4 px-4 py-3 sm:flex">
+      <div className="flex items-center gap-2 px-2 py-2 sm:gap-4 sm:px-4 sm:py-3">
         {/* Cover + Info */}
-        <div className="flex w-56 shrink-0 items-center gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:w-56 sm:flex-none sm:gap-3">
           {currentBeat.coverUrl ? (
             <Image
               src={currentBeat.coverUrl}
               alt={currentBeat.title}
-              width={48}
-              height={48}
-              className="h-12 w-12 shrink-0 rounded-md object-cover"
+              width={40}
+              height={40}
+              className="h-9 w-9 shrink-0 rounded-md object-cover sm:h-12 sm:w-12"
             />
           ) : (
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-white/5">
-              <Music className="h-5 w-5 text-white/30" />
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-white/5 sm:h-12 sm:w-12">
+              <Music className="h-4 w-4 text-white/30 sm:h-5 sm:w-5" />
             </div>
           )}
           <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-white">{currentBeat.title}</p>
-            <p className="truncate text-xs text-zinc-400">{currentBeat.producerName}</p>
+            <p className="truncate text-xs font-medium text-white sm:text-sm">
+              {currentBeat.title}
+            </p>
+             {currentBeat.producerName &&
+  !currentBeat.producerName.toLowerCase().includes("unknown") && (
+    <p className="truncate text-[11px] text-zinc-400 sm:text-xs">
+      {currentBeat.producerName}
+    </p>
+  )}
           </div>
         </div>
 
-        {/* Share / Download / Like */}
+        {/* Share / Download / Like - tablet+ only */}
         <div className="hidden shrink-0 items-center gap-3 text-zinc-400 md:flex">
-          <ShareDialog title={currentBeat.title} url={beatUrl}>
-            <button aria-label="Share" className="text-zinc-400 hover:text-white">
+          <ShareDialog
+            title={currentBeat.title}
+            url={beatUrl}
+          >
+            <button aria-label="Share" className="hover:text-white text-zinc-400">
               <Share2 className="h-4 w-4" />
             </button>
           </ShareDialog>
-          <Link href={`/beats/${currentBeat.id}`} aria-label="Download" className="hover:text-white">
+          {/* <Link href={`/beats/${currentBeat.id}`} aria-label="Download" className="hover:text-white">
             <Download className="h-4 w-4" />
-          </Link>
+          </Link> */}
           <button
             onClick={() => setIsLiked(!isLiked)}
             aria-label={isLiked ? "Unlike" : "Like"}
@@ -183,16 +111,20 @@ export default function BottomPlayer() {
           </button>
         </div>
 
-        {/* Center controls */}
+        {/* Center controls - flex-1 taaki yeh beech ki jagah le aur play truly centered rahe */}
         <div className="flex flex-1 flex-col items-center gap-1">
-          <div className="flex items-center gap-4">
-            <button aria-label="Previous" className="text-zinc-500 cursor-not-allowed" disabled>
+          <div className="flex items-center gap-2 sm:gap-4">
+            <button
+              aria-label="Previous"
+              className="hidden text-zinc-500 cursor-not-allowed sm:block"
+              disabled
+            >
               <SkipBack className="h-4 w-4" />
             </button>
             <button
               onClick={togglePlay}
               aria-label={isPlaying ? "Pause" : "Play"}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-black transition-transform hover:scale-105 active:scale-95"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-black transition-transform hover:scale-105 active:scale-95 sm:h-10 sm:w-10"
             >
               {isPlaying ? (
                 <Pause className="h-4 w-4 fill-current" />
@@ -200,18 +132,22 @@ export default function BottomPlayer() {
                 <Play className="ml-0.5 h-4 w-4 fill-current" />
               )}
             </button>
-            <button aria-label="Next" className="text-zinc-500 cursor-not-allowed" disabled>
+            <button
+              aria-label="Next"
+              className="hidden text-zinc-500 cursor-not-allowed sm:block"
+              disabled
+            >
               <SkipForward className="h-4 w-4" />
             </button>
           </div>
-          <div className="flex items-center gap-2 text-xs text-zinc-400">
+          <div className="hidden items-center gap-2 text-xs text-zinc-400 sm:flex">
             <span className="w-10 text-right">{formatDuration(currentTime)}</span>
             <span>/</span>
             <span className="w-10">{formatDuration(duration)}</span>
           </div>
         </div>
 
-        {/* Repeat / Volume */}
+        {/* Repeat / Volume - desktop only */}
         <div className="hidden shrink-0 items-center gap-3 lg:flex">
           <button
             onClick={() => setIsRepeat(!isRepeat)}
@@ -250,25 +186,14 @@ export default function BottomPlayer() {
         </div>
 
         {/* Buy button */}
-        {showBuy && (
-          <Link
-            href={buyHref}
-            aria-label={buyLabel}
-            className="flex shrink-0 items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:brightness-110"
-          >
-            <BuyIcon className="h-4 w-4" />
-            <span>{buyLabel}</span>
-          </Link>
-        )}
-
-        {/* Close */}
-        <button
-          onClick={closePlayer}
-          aria-label="Close player"
-          className="shrink-0 text-zinc-400 hover:text-white"
+        <Link
+          href={`/beats/${currentBeat.id}`}
+          aria-label="Buy"
+          className="flex shrink-0 items-center gap-2 rounded-full bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:brightness-110 sm:px-4"
         >
-          <X className="h-4 w-4" />
-        </button>
+          <ShoppingCart className="h-4 w-4" />
+          <span className="hidden sm:inline">Buy now</span>
+        </Link>
       </div>
     </div>
   );
