@@ -157,7 +157,7 @@ export default async function HomePage() {
       />
 
       {/* Hero */}
-      <section className="relative overflow-hidden border-b border-border/30">
+      {/* <section className="relative overflow-hidden border-b border-border/30">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,oklch(0.58_0.22_280_/_0.15),transparent_70%)]" />
         <div className="hero-doodle-layer pointer-events-none absolute inset-0" aria-hidden>
           <svg
@@ -232,10 +232,10 @@ export default async function HomePage() {
             </div>
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Trending Beats */}
-      {trendingWithPrices.length > 0 && (
+      {/* {trendingWithPrices.length > 0 && (
         <section className="app-container py-16">
           <div className="mb-6 flex items-center justify-between">
             <h2 className="text-2xl font-semibold">Trending Beats</h2>
@@ -256,10 +256,10 @@ export default async function HomePage() {
             ))}
           </div>
         </section>
-      )}
+      )} */}
 
       {/* Recent Beats */}
-      {recentWithPrices.length > 0 && (
+      {/* {recentWithPrices.length > 0 && (
         <section className="app-container pb-16">
           <div className="mb-6 flex items-center justify-between">
             <h2 className="text-2xl font-semibold">Recently Added</h2>
@@ -280,10 +280,13 @@ export default async function HomePage() {
             ))}
           </div>
         </section>
-      )}
+      )} */}
 
       {/* Featured Beat Packs */}
       <BeatPackSlider packs={featuredPacks} />
+
+      {/* YouTube Beats */}
+      <YoutubeBeats />
 
       {/* Features */}
       <section className="app-container py-16">
@@ -321,8 +324,8 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* YouTube Beats */}
-      <YoutubeBeats />
+      {/* YouTube Beats
+      <YoutubeBeats /> */}
 
       {/* Spotify Showcase */}
       <SpotifyShowcase />
