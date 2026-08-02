@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, ShoppingCart } from "lucide-react";
+import { ArrowUpCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { loadRazorpayScript } from "@/components/RazorpayButton";
+import { loadRazorpayScript } from "@/features/payments/RazorpayButton";
 
 declare global {
   interface Window {
@@ -15,16 +15,23 @@ declare global {
 
 interface Props {
   packId: string;
-  tier: "basic" | "premium" | "unlimited";
-  amount: number;
+  targetTier: "premium" | "unlimited";
+  upgradeAmount: number;
   packTitle: string;
+  currentTier: string;
 }
 
-export default function PackRazorpayButton({ packId, tier, amount, packTitle }: Props) {
+export default function PackUpgradeRazorpayButton({
+  packId,
+  targetTier,
+  upgradeAmount,
+  packTitle,
+  currentTier,
+}: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  const handlePayment = async () => {
+  const handleUpgrade = async () => {
     setLoading(true);
     try {
       const loaded = await loadRazorpayScript();
@@ -36,22 +43,22 @@ export default function PackRazorpayButton({ packId, tier, amount, packTitle }: 
       const res = await fetch("/api/payment/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ packId, tier }),
+        body: JSON.stringify({ packId, targetTier }),
       });
 
       if (!res.ok) {
         const err = await res.json();
-        toast.error(err.error || "Failed to create order");
+        toast.error(err.error || "Failed to create upgrade order");
         return;
       }
 
       const { orderId } = await res.json();
       const razorpay = new window.Razorpay({
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: amount * 100,
+        amount: upgradeAmount * 100,
         currency: "INR",
         name: "Trishul Beats",
-        description: `${tier} Pack License — ${packTitle}`,
+        description: `Upgrade ${currentTier} → ${targetTier} — ${packTitle}`,
         order_id: orderId,
         handler: async (response: {
           razorpay_order_id: string;
@@ -69,17 +76,17 @@ export default function PackRazorpayButton({ packId, tier, amount, packTitle }: 
               }),
             });
             if (verifyRes.ok) {
-              toast.success("Payment successful! Redirecting to your downloads…");
+              toast.success(`Upgraded to ${targetTier}! Refreshing…`);
               router.push(`/beat-packs/${packId}?purchased=1`);
               router.refresh();
               return;
             }
             const data = await verifyRes.json().catch(() => ({}));
-            console.error("Payment verification failed:", data);
-            toast.error(data.error || "Payment verification failed. Please contact support.");
+            console.error("Upgrade verification failed:", data);
+            toast.error(data.error || "Upgrade verification failed");
           } catch (err) {
-            console.error("Payment verification network error:", err);
-            toast.error("Network error during payment verification. Please refresh and check your profile.");
+            console.error("Upgrade verification error:", err);
+            toast.error("Network error during upgrade verification");
           }
         },
         modal: {
@@ -89,7 +96,7 @@ export default function PackRazorpayButton({ packId, tier, amount, packTitle }: 
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 orderId,
-                reason: "Payment cancelled by user",
+                reason: "Upgrade cancelled by user",
               }),
             }).catch(() => {});
           },
@@ -106,19 +113,22 @@ export default function PackRazorpayButton({ packId, tier, amount, packTitle }: 
   };
 
   return (
-    <Button className="w-full" onClick={handlePayment} disabled={loading}>
+    <Button
+      className="w-full"
+      onClick={handleUpgrade}
+      disabled={loading}
+    >
       {loading ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Processing...
+          Processing…
         </>
       ) : (
         <>
-          <ShoppingCart className="mr-2 h-4 w-4" />
-          Buy {tier} — ₹{amount.toLocaleString("en-IN")}
+          <ArrowUpCircle className="mr-2 h-4 w-4" />
+          Upgrade to {targetTier} — ₹{upgradeAmount.toLocaleString("en-IN")}
         </>
       )}
     </Button>
   );
 }
-

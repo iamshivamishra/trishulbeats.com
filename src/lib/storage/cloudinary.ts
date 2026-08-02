@@ -29,14 +29,12 @@ function inferResourceType(contentTypeOrExtension: string): CloudinaryResourceTy
   ) {
     return "image";
   }
-  // ZIP/archive files (stems) go through "video" endpoint — Cloudinary's "raw"
-  // endpoint has limited CORS support for browser-side uploads
   if (
     contentTypeOrExtension === "application/zip" ||
     contentTypeOrExtension === "application/x-zip-compressed" ||
     contentTypeOrExtension.toLowerCase() === ".zip"
   ) {
-    return "video";
+    return "raw";
   }
   return "raw";
 }
@@ -113,13 +111,19 @@ export async function createCloudinaryPresignedUpload(
   const resourceType = inferResourceType(contentType);
   const deliveryType = deliveryTypeForCategory(category);
   const timestamp = Math.floor(Date.now() / 1000);
-  const signedParams = {
+
+  // Cloudinary's video endpoint doesn't recognise "zip" as a format,
+  // so we omit allowed_formats for stems to avoid a 400.
+  const allowedFormats = category !== "stems" ? allowedFormatsForCategory(category) : undefined;
+
+  const signedParams: Record<string, string | number> = {
     public_id: publicId,
     timestamp,
     type: deliveryType,
-    allowed_formats: allowedFormatsForCategory(category),
     overwrite: "true",
   };
+  if (allowedFormats) signedParams.allowed_formats = allowedFormats;
+
   const signature = cloudinary.utils.api_sign_request(signedParams, apiSecret);
 
   const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`;
@@ -129,19 +133,21 @@ export async function createCloudinaryPresignedUpload(
     secure: true,
   });
 
+  const fields: Record<string, string> = {
+    api_key: String(apiKey),
+    timestamp: String(timestamp),
+    signature,
+    public_id: publicId,
+    type: deliveryType,
+    overwrite: "true",
+  };
+  if (allowedFormats) fields.allowed_formats = allowedFormats;
+
   return {
     uploadUrl,
     publicUrl,
     key,
-    fields: {
-      api_key: String(apiKey),
-      timestamp: String(timestamp),
-      signature,
-      public_id: publicId,
-      type: deliveryType,
-      allowed_formats: allowedFormatsForCategory(category),
-      overwrite: "true",
-    },
+    fields,
   };
 }
 

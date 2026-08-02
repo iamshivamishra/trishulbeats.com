@@ -1,30 +1,51 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
 import {
   Loader2, Save, ArrowLeft, Music, Eye, EyeOff, Trash2, Archive,
+  RefreshCw, FileArchive, ImageIcon, CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import LicenseEditor from "@/components/LicenseEditor";
-import { GENRE_OPTIONS, KEY_OPTIONS, MOOD_OPTIONS } from "@/lib/validators/beat";
+import BeatMetadataFields, { type BeatMetadata } from "@/features/studio/BeatMetadataFields";
 import type { IBeat, ILicense, BeatStatus } from "@/types";
+import { uploadMultipart, MULTIPART_THRESHOLD } from "@/lib/upload/multipart";
+import { STORAGE_PROVIDER, resolveContentType } from "./pack-beat-uploader-types";
+import type { FileCategory } from "./pack-beat-uploader-types";
+
+interface FileReplaceState {
+  uploading: boolean;
+  progress: number;
+  done: boolean;
+}
+
+interface PresignedUploadPayload {
+  uploadUrl: string;
+  publicUrl: string;
+  key: string;
+  fields?: Record<string, string>;
+}
+
+const MAX_SIZES: Record<string, number> = {
+  preview: 50 * 1024 * 1024,
+  master: 500 * 1024 * 1024,
+  stems: 5 * 1024 * 1024 * 1024,
+  artwork: 5 * 1024 * 1024,
+};
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 interface Props {
   beat: IBeat;
@@ -45,29 +66,161 @@ export default function EditBeatForm({ beat, licenses }: Props) {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const [title, setTitle] = useState(beat.title);
-  const [description, setDescription] = useState(beat.description || "");
-  const [genre, setGenre] = useState(beat.genre);
-  const [bpm, setBpm] = useState(beat.bpm?.toString() || "");
-  const [key, setKey] = useState(beat.key || "");
-  const [mood, setMood] = useState(beat.mood || "");
-  const [tags, setTags] = useState(beat.tags.join(", "));
+  const [meta, setMeta] = useState<BeatMetadata>({
+    title: beat.title,
+    description: beat.description || "",
+    genre: beat.genre,
+    bpm: beat.bpm?.toString() || "",
+    key: beat.key || "",
+    mood: beat.mood || "",
+    tags: beat.tags.join(", "),
+  });
+  const updateMeta = useCallback(<K extends keyof BeatMetadata>(field: K, value: BeatMetadata[K]) => {
+    setMeta((prev) => ({ ...prev, [field]: value }));
+  }, []);
   const [status, setStatus] = useState<BeatStatus>(beat.status);
+
+  const [currentFiles, setCurrentFiles] = useState({
+    audioTaggedUrl: beat.audioTaggedUrl,
+    audioFullUrl: beat.audioFullUrl,
+    stemsUrl: beat.stemsUrl,
+    coverUrl: beat.coverUrl,
+  });
+
+  const defaultReplaceState: FileReplaceState = { uploading: false, progress: 0, done: false };
+  const [replacePreview, setReplacePreview] = useState<FileReplaceState>(defaultReplaceState);
+  const [replaceMaster, setReplaceMaster] = useState<FileReplaceState>(defaultReplaceState);
+  const [replaceStems, setReplaceStems] = useState<FileReplaceState>(defaultReplaceState);
+  const [replaceArtwork, setReplaceArtwork] = useState<FileReplaceState>(defaultReplaceState);
+
+  const previewRef = useRef<HTMLInputElement>(null);
+  const masterRef = useRef<HTMLInputElement>(null);
+  const stemsRef = useRef<HTMLInputElement>(null);
+  const artworkRef = useRef<HTMLInputElement>(null);
+
+  const uploadAndReplace = useCallback(
+    async (
+      file: File,
+      category: "preview" | "master" | "stems" | "artwork",
+      setState: React.Dispatch<React.SetStateAction<FileReplaceState>>
+    ) => {
+      const max = MAX_SIZES[category];
+      if (max && file.size > max) {
+        toast.error(`${file.name} exceeds the ${formatSize(max)} limit`);
+        return;
+      }
+
+      setState({ uploading: true, progress: 0, done: false });
+
+      try {
+        let uploadedUrl: string;
+        let uploadedKey: string;
+        const mime = resolveContentType(file, category as FileCategory);
+
+        if ((STORAGE_PROVIDER === "s3" || STORAGE_PROVIDER === "r2") && file.size > MULTIPART_THRESHOLD) {
+          const result = await uploadMultipart(file, {
+            beatId: beat._id.toString(),
+            category,
+            contentType: mime,
+            onProgress: (pct) => setState((s) => ({ ...s, progress: pct })),
+          });
+          uploadedUrl = result.url;
+          uploadedKey = result.key;
+        } else {
+          const presignRes = await fetch("/api/upload/presign", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              beatId: beat._id.toString(),
+              category,
+              contentType: mime,
+              fileSize: file.size,
+            }),
+          });
+
+          if (!presignRes.ok) {
+            const err = await presignRes.json().catch(() => null);
+            throw new Error(err?.error || "Failed to get upload URL");
+          }
+
+          const target = (await presignRes.json()) as PresignedUploadPayload;
+
+          await new Promise<void>((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.upload.addEventListener("progress", (event) => {
+              if (event.lengthComputable) {
+                const pct = Math.round((event.loaded / event.total) * 100);
+                setState((s) => ({ ...s, progress: pct }));
+              }
+            });
+            xhr.addEventListener("load", () => {
+              if (xhr.status >= 200 && xhr.status < 300) {
+                resolve();
+                return;
+              }
+              reject(new Error(`Upload failed (${xhr.status})`));
+            });
+            xhr.addEventListener("error", () => reject(new Error("Network error")));
+
+            if (target.fields) {
+              xhr.open("POST", target.uploadUrl);
+              const fd = new FormData();
+              fd.append("file", file);
+              for (const [k, v] of Object.entries(target.fields)) fd.append(k, v);
+              xhr.send(fd);
+            } else {
+              xhr.open("PUT", target.uploadUrl);
+              xhr.setRequestHeader("Content-Type", mime);
+              xhr.send(file);
+            }
+          });
+
+          uploadedUrl = target.publicUrl;
+          uploadedKey = target.key;
+        }
+
+        const patchRes = await fetch(`/api/beats/${beat._id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            uploadedAssets: { [category]: { url: uploadedUrl, key: uploadedKey } },
+          }),
+        });
+
+        if (!patchRes.ok) throw new Error("Failed to save file URL");
+
+        setState({ uploading: false, progress: 100, done: true });
+        const urlField =
+          category === "preview" ? "audioTaggedUrl"
+          : category === "master" ? "audioFullUrl"
+          : category === "stems" ? "stemsUrl"
+          : "coverUrl";
+        setCurrentFiles((f) => ({ ...f, [urlField]: uploadedUrl }));
+        toast.success(`${category.charAt(0).toUpperCase() + category.slice(1)} replaced`);
+        setTimeout(() => setState(defaultReplaceState), 2000);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Upload failed";
+        toast.error(msg);
+        setState(defaultReplaceState);
+      }
+    },
+    [beat._id, defaultReplaceState]
+  );
 
   const handleSave = async () => {
     setSaving(true);
     try {
       const body: Record<string, unknown> = {
-        title,
-        description: description || undefined,
-        genre,
-        tags: tags ? tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
+        title: meta.title,
+        description: meta.description || undefined,
+        genre: meta.genre,
+        tags: meta.tags ? meta.tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
         status,
         isPublished: status === "published",
       };
-      if (bpm) body.bpm = Number(bpm);
-      if (key) body.key = key;
-      if (mood) body.mood = mood;
+      if (meta.bpm) body.bpm = Number(meta.bpm);
+      if (meta.key) body.key = meta.key;
+      if (meta.mood) body.mood = meta.mood;
 
       const res = await fetch(`/api/beats/${beat._id}`, {
         method: "PATCH",
@@ -181,9 +334,9 @@ export default function EditBeatForm({ beat, licenses }: Props) {
       </div>
 
       {/* Artwork preview */}
-      {beat.coverUrl && (
+      {currentFiles.coverUrl && (
         <div className="relative h-40 w-40 overflow-hidden rounded-xl">
-          <Image src={beat.coverUrl} alt={beat.title} fill className="object-cover" sizes="160px" />
+          <Image src={currentFiles.coverUrl} alt={beat.title} fill className="object-cover" sizes="160px" />
         </div>
       )}
 
@@ -196,122 +349,122 @@ export default function EditBeatForm({ beat, licenses }: Props) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="title">Title</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Beat title"
-              maxLength={100}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe your beat..."
-              maxLength={1000}
-              rows={3}
-            />
-            <p className="text-right text-xs text-muted-foreground">
-              {description.length}/1000
-            </p>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Genre</Label>
-              <Select value={genre} onValueChange={(v) => v && setGenre(v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select genre" />
-                </SelectTrigger>
-                <SelectContent>
-                  {GENRE_OPTIONS.map((g) => (
-                    <SelectItem key={g} value={g}>{g}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="bpm">BPM</Label>
-              <Input
-                id="bpm"
-                type="number"
-                value={bpm}
-                onChange={(e) => setBpm(e.target.value)}
-                min={40}
-                max={300}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Key</Label>
-              <Select value={key} onValueChange={(v) => setKey(v ?? "")}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select key" />
-                </SelectTrigger>
-                <SelectContent>
-                  {KEY_OPTIONS.map((k) => (
-                    <SelectItem key={k} value={k}>{k}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Mood</Label>
-              <Select value={mood} onValueChange={(v) => setMood(v ?? "")}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select mood" />
-                </SelectTrigger>
-                <SelectContent>
-                  {MOOD_OPTIONS.map((m) => (
-                    <SelectItem key={m} value={m}>{m}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="tags">Tags (comma-separated)</Label>
-            <Input
-              id="tags"
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-              placeholder="e.g. dark, melodic, piano"
-            />
-          </div>
+          <BeatMetadataFields values={meta} onChange={updateMeta} showCharCount />
         </CardContent>
       </Card>
 
-      {/* Files info */}
+      {/* Files */}
       <Card className="rounded-2xl border-border/50 bg-card/80 shadow-sm">
         <CardHeader>
           <CardTitle className="text-lg">Files</CardTitle>
           <CardDescription>
-            To replace files, delete this beat and re-upload.
+            Preview your uploaded files and replace them individually.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center justify-between rounded-md bg-background p-3">
-              <span className="text-muted-foreground">Preview MP3</span>
-              <Badge variant="outline">{beat.audioTaggedUrl ? "Uploaded" : "Missing"}</Badge>
+        <CardContent className="space-y-4">
+          {/* Hidden file inputs */}
+          <input ref={previewRef} type="file" accept="audio/mpeg,audio/mp3,.mp3" className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadAndReplace(f, "preview", setReplacePreview); e.target.value = ""; }} />
+          <input ref={masterRef} type="file" accept="audio/wav,audio/x-wav,.wav" className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadAndReplace(f, "master", setReplaceMaster); e.target.value = ""; }} />
+          <input ref={stemsRef} type="file" accept="application/zip,.zip" className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadAndReplace(f, "stems", setReplaceStems); e.target.value = ""; }} />
+          <input ref={artworkRef} type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadAndReplace(f, "artwork", setReplaceArtwork); e.target.value = ""; }} />
+
+          {/* Preview MP3 */}
+          <div className="rounded-lg border border-border/40 bg-background p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Music className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">Preview MP3</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {replacePreview.done && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                <Badge variant="outline">{currentFiles.audioTaggedUrl ? "Uploaded" : "Missing"}</Badge>
+                <Button variant="outline" size="sm" disabled={replacePreview.uploading}
+                  onClick={() => previewRef.current?.click()}>
+                  {replacePreview.uploading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-1.5 h-3.5 w-3.5" />}
+                  Replace
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center justify-between rounded-md bg-background p-3">
-              <span className="text-muted-foreground">Master WAV</span>
-              <Badge variant="outline">{beat.audioFullUrl ? "Uploaded" : "Missing"}</Badge>
+            {replacePreview.uploading && <Progress value={replacePreview.progress} className="h-1.5" />}
+            {currentFiles.audioTaggedUrl && (
+              <audio controls preload="metadata" className="w-full h-10" key={currentFiles.audioTaggedUrl}>
+                <source src={currentFiles.audioTaggedUrl} type="audio/mpeg" />
+              </audio>
+            )}
+          </div>
+
+          {/* Master WAV */}
+          <div className="rounded-lg border border-border/40 bg-background p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Music className="h-4 w-4 text-blue-500" />
+                <span className="text-sm font-medium">Master WAV</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {replaceMaster.done && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                <Badge variant="outline">{currentFiles.audioFullUrl ? "Uploaded" : "Missing"}</Badge>
+                <Button variant="outline" size="sm" disabled={replaceMaster.uploading}
+                  onClick={() => masterRef.current?.click()}>
+                  {replaceMaster.uploading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-1.5 h-3.5 w-3.5" />}
+                  Replace
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center justify-between rounded-md bg-background p-3">
-              <span className="text-muted-foreground">Stems ZIP</span>
-              <Badge variant="outline">{beat.stemsUrl ? "Uploaded" : "Not provided"}</Badge>
+            {replaceMaster.uploading && <Progress value={replaceMaster.progress} className="h-1.5" />}
+            {currentFiles.audioFullUrl && (
+              <audio controls preload="metadata" className="w-full h-10" key={currentFiles.audioFullUrl}>
+                <source src={currentFiles.audioFullUrl} type="audio/wav" />
+              </audio>
+            )}
+          </div>
+
+          {/* Stems ZIP */}
+          <div className="rounded-lg border border-border/40 bg-background p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileArchive className="h-4 w-4 text-amber-500" />
+                <span className="text-sm font-medium">Stems ZIP</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {replaceStems.done && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                <Badge variant="outline">{currentFiles.stemsUrl ? "Uploaded" : "Not provided"}</Badge>
+                <Button variant="outline" size="sm" disabled={replaceStems.uploading}
+                  onClick={() => stemsRef.current?.click()}>
+                  {replaceStems.uploading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-1.5 h-3.5 w-3.5" />}
+                  {currentFiles.stemsUrl ? "Replace" : "Upload"}
+                </Button>
+              </div>
             </div>
+            {replaceStems.uploading && <Progress value={replaceStems.progress} className="h-1.5" />}
+          </div>
+
+          {/* Artwork */}
+          <div className="rounded-lg border border-border/40 bg-background p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ImageIcon className="h-4 w-4 text-purple-500" />
+                <span className="text-sm font-medium">Artwork</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {replaceArtwork.done && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                <Badge variant="outline">{currentFiles.coverUrl ? "Uploaded" : "Not provided"}</Badge>
+                <Button variant="outline" size="sm" disabled={replaceArtwork.uploading}
+                  onClick={() => artworkRef.current?.click()}>
+                  {replaceArtwork.uploading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-1.5 h-3.5 w-3.5" />}
+                  {currentFiles.coverUrl ? "Replace" : "Upload"}
+                </Button>
+              </div>
+            </div>
+            {replaceArtwork.uploading && <Progress value={replaceArtwork.progress} className="h-1.5" />}
+            {currentFiles.coverUrl && (
+              <div className="relative h-24 w-24 overflow-hidden rounded-lg">
+                <Image src={currentFiles.coverUrl} alt="Artwork" fill className="object-cover" sizes="96px" key={currentFiles.coverUrl} />
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

@@ -22,9 +22,10 @@ import type { BeatPackUi } from "@/features/beats/beat-pack-ui";
 interface Props {
   mode: "create" | "edit";
   initialPack?: BeatPackUi;
+  producerId: string;
 }
 
-export default function BeatPackEditorForm({ mode, initialPack }: Props) {
+export default function BeatPackEditorForm({ mode, initialPack, producerId }: Props) {
   const router = useRouter();
   const [title, setTitle] = useState(initialPack?.title ?? "");
   const [metadata, setMetadata] = useState(initialPack?.metadata ?? "");
@@ -338,6 +339,7 @@ export default function BeatPackEditorForm({ mode, initialPack }: Props) {
             slots={beatSlots}
             onChange={setBeatSlots}
             disabled={submitting}
+            producerId={producerId}
           />
 
           {/* Submit buttons */}
