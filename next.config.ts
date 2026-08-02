@@ -75,6 +75,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https://res.cloudinary.com https://*.r2.dev https://lh3.googleusercontent.com https://logo.clearbit.com",
               "font-src 'self'",
+              "media-src 'self' https://res.cloudinary.com https://*.r2.dev blob:",
               "connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com https://*.google-analytics.com",
               "frame-src https://api.razorpay.com",
               "object-src 'none'",
