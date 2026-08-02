@@ -2,6 +2,8 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import BeatCard from "@/components/BeatCard";
+import ScrollReveal from "@/components/ScrollReveal";
+import StaggerReveal from "@/components/StaggerReveal";
 import type { IBeat } from "@/types";
 
 interface HomeBeatGridProps {
@@ -18,15 +20,17 @@ export default function HomeBeatGrid({
 
   return (
     <section className={sectionClassName}>
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">{title}</h2>
-        <Button asChild variant="ghost" size="sm">
-          <Link href={viewAllHref}>
-            See all <ArrowRight className="ml-1 h-4 w-4" />
-          </Link>
-        </Button>
-      </div>
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+      <ScrollReveal>
+        <div className="mb-6 flex items-center justify-between">
+          <h2 className="text-2xl font-semibold">{title}</h2>
+          <Button asChild variant="ghost" size="sm">
+            <Link href={viewAllHref}>
+              See all <ArrowRight className="ml-1 h-4 w-4" />
+            </Link>
+          </Button>
+        </div>
+      </ScrollReveal>
+      <StaggerReveal className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4" staggerDelay={75}>
         {beats.map(({ beat, startingPrice }, index) => (
           <BeatCard
             key={beat._id.toString()}
@@ -35,7 +39,7 @@ export default function HomeBeatGrid({
             priority={index < 4}
           />
         ))}
-      </div>
+      </StaggerReveal>
     </section>
   );
 }

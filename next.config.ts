@@ -35,6 +35,14 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "**.amazonaws.com",
       },
+      {
+        protocol: "https",
+        hostname: "upload.wikimedia.org",
+      },
+      {
+        protocol: "https",
+        hostname: "m.media-amazon.com",
+      },
     ],
   },
 
@@ -77,7 +85,7 @@ const nextConfig: NextConfig = {
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://www.googletagmanager.com",
               "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob: https://res.cloudinary.com https://*.r2.dev https://*.amazonaws.com https://lh3.googleusercontent.com https://logo.clearbit.com",
+              "img-src 'self' data: blob: https://res.cloudinary.com https://*.r2.dev https://*.amazonaws.com https://lh3.googleusercontent.com https://logo.clearbit.com https://img.youtube.com https://i.scdn.co https://*.spotifycdn.com https://upload.wikimedia.org https://m.media-amazon.com",
               "font-src 'self'",
               "media-src 'self' https://res.cloudinary.com https://api.cloudinary.com https://*.r2.dev https://*.amazonaws.com blob:",
               "connect-src 'self' https://api.cloudinary.com https://res.cloudinary.com https://*.r2.dev https://*.amazonaws.com https://api.razorpay.com https://lumberjack.razorpay.com https://*.google-analytics.com",

@@ -108,6 +108,16 @@ export default function BeatCard({
           </div>
         </div>
 
+        {/* Waveform indicator — idle pulse at rest, active bounce when playing */}
+        <div className={`absolute bottom-3 right-3 z-10 flex items-end gap-[3px] h-5 transition-opacity duration-300 ${
+          isThisBeatPlaying ? "opacity-100" : "opacity-60 group-hover:opacity-100 sm:opacity-40"
+        }`}>
+          <span className={`w-[3px] rounded-full ${isThisBeatPlaying ? "bg-primary animate-[eq-bar_0.4s_ease-in-out_infinite_alternate]" : "bg-white/90 animate-[eq-idle_1.8s_ease-in-out_infinite_alternate]"}`} />
+          <span className={`w-[3px] rounded-full ${isThisBeatPlaying ? "bg-primary animate-[eq-bar_0.4s_ease-in-out_infinite_alternate_0.15s]" : "bg-white/90 animate-[eq-idle_1.8s_ease-in-out_infinite_alternate_0.4s]"}`} />
+          <span className={`w-[3px] rounded-full ${isThisBeatPlaying ? "bg-primary animate-[eq-bar_0.4s_ease-in-out_infinite_alternate_0.3s]" : "bg-white/90 animate-[eq-idle_1.8s_ease-in-out_infinite_alternate_0.8s]"}`} />
+          <span className={`w-[3px] rounded-full ${isThisBeatPlaying ? "bg-primary animate-[eq-bar_0.4s_ease-in-out_infinite_alternate_0.05s]" : "bg-white/90 animate-[eq-idle_1.8s_ease-in-out_infinite_alternate_1.2s]"}`} />
+        </div>
+
         {isPurchased && (
           <Badge className="absolute right-2 top-2 z-20 rounded-full bg-green-500 px-2 py-0.5 text-[10px] text-white shadow">
             Purchased

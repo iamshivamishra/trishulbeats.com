@@ -49,8 +49,8 @@ export default async function SpotifyShowcase() {
   const albums = await Promise.all(ALBUM_URLS.map(fetchAlbumMeta));
 
   return (
-    <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-      <div className="mb-10 text-center">
+    <section className="relative mx-auto max-w-7xl overflow-hidden px-4 py-14 sm:px-6 lg:px-8">
+      <div className="mb-10 text-center relative z-10">
         <h2 className="flex items-center justify-center gap-2 text-2xl font-semibold sm:text-3xl">
           <svg viewBox="0 0 24 24" className="h-7 w-7 fill-[#1DB954]">
             <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.14 4.32-1.32 9.719-.66 13.439 1.621.361.181.54.78.301 1.2zm.12-3.42C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
@@ -64,12 +64,20 @@ export default async function SpotifyShowcase() {
 
       {/* Galaxy container */}
       <div className="relative mx-auto aspect-square w-full max-w-[600px]">
+        {/* Animated pulsing orbit rings */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[280px] w-[280px] sm:h-[360px] sm:w-[360px] rounded-full border border-[#1DB954]/20 animate-[orbit-pulse_4s_ease-in-out_infinite]" />
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[400px] w-[400px] sm:h-[480px] sm:w-[480px] rounded-full border border-[#1DB954]/10 animate-[orbit-pulse_4s_ease-in-out_infinite_1s]" />
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[520px] w-[520px] sm:h-[580px] sm:w-[580px] rounded-full border border-[#1DB954]/5 animate-[orbit-pulse_4s_ease-in-out_infinite_2s]" />
+
+        {/* Rotating gradient ring behind logo */}
+        <div className="absolute left-1/2 top-1/2 z-[9] h-44 w-44 -translate-x-1/2 -translate-y-1/2 rounded-full sm:h-56 sm:w-56 animate-[spin_8s_linear_infinite] bg-[conic-gradient(from_0deg,transparent,#1DB954,transparent,transparent)]" />
+
         {/* Center big Spotify logo */}
         <a
           href="https://open.spotify.com"
           target="_blank"
           rel="noopener noreferrer"
-          className="absolute left-1/2 top-1/2 z-10 flex h-40 w-40 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black shadow-2xl sm:h-52 sm:w-52"
+          className="absolute left-1/2 top-1/2 z-10 flex h-40 w-40 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black shadow-[0_0_80px_20px_rgba(29,185,84,0.3)] sm:h-52 sm:w-52"
         >
           <svg viewBox="0 0 24 24" className="h-24 w-24 fill-[#1DB954] sm:h-32 sm:w-32">
             <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.14 4.32-1.32 9.719-.66 13.439 1.621.361.181.54.78.301 1.2zm.12-3.42C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
@@ -85,7 +93,7 @@ export default async function SpotifyShowcase() {
               href={album.url}
               target="_blank"
               rel="noopener noreferrer"
-              className={`spotify-float group absolute -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl border border-border/50 bg-card shadow-xl transition hover:scale-110 hover:shadow-2xl ${pos.size}`}
+              className={`spotify-float group absolute -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl border border-border/50 bg-card shadow-xl transition-all duration-300 hover:scale-110 hover:border-[#1DB954]/60 hover:shadow-[0_0_25px_-3px_rgba(29,185,84,0.5)] ${pos.size}`}
               style={{
                 top: pos.top,
                 left: pos.left,

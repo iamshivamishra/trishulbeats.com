@@ -9,6 +9,8 @@ import PartnerBrands from "@/components/PartnerBrands";
 import HomeHeroSection from "./(home)/HomeHeroSection";
 import HomeBeatGrid from "./(home)/HomeBeatGrid";
 import HomeFeatures from "./(home)/HomeFeatures";
+import SocialProofStrip from "@/components/SocialProofStrip";
+import ScrollReveal from "@/components/ScrollReveal";
 
 export const revalidate = 120;
 
@@ -68,6 +70,7 @@ export default async function HomePage() {
       />
 
       <HomeHeroSection />
+      <SocialProofStrip />
 
       <HomeBeatGrid
         title="Trending Beats"
@@ -82,13 +85,25 @@ export default async function HomePage() {
         sectionClassName="app-container pb-16"
       />
 
-      <BeatPackSlider packs={featuredPacks} />
+      <ScrollReveal>
+        <BeatPackSlider packs={featuredPacks} />
+      </ScrollReveal>
 
-      <HomeFeatures />
+      <ScrollReveal>
+        <HomeFeatures />
+      </ScrollReveal>
 
-      <YoutubeBeats />
-      <SpotifyShowcase />
-      <PartnerBrands />
+      <ScrollReveal>
+        <YoutubeBeats />
+      </ScrollReveal>
+
+      <ScrollReveal>
+        <SpotifyShowcase />
+      </ScrollReveal>
+
+      <ScrollReveal>
+        <PartnerBrands />
+      </ScrollReveal>
     </div>
   );
 }
