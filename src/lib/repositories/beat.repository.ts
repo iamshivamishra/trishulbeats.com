@@ -136,6 +136,14 @@ export const beatRepository = {
     return query.lean<IBeat[]>();
   },
 
+  async findByIdsMinimal(ids: string[]): Promise<Pick<IBeat, "_id" | "title" | "genre" | "bpm" | "duration" | "audioTaggedUrl">[]> {
+    await connectDB();
+    if (ids.length === 0) return [];
+    return Beat.find({ _id: { $in: ids } })
+      .select("title genre bpm duration audioTaggedUrl")
+      .lean();
+  },
+
   async findByProducerPaginated(
     producerId: string,
     status?: BeatStatus,
