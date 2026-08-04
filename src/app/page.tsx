@@ -69,28 +69,24 @@ export default async function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(trendingItemList) }}
       />
 
-      <HomeHeroSection />
-      <SocialProofStrip />
+      {/* <HomeHeroSection /> */}
+      {/* <SocialProofStrip /> */}
 
-      <HomeBeatGrid
+      {/* <HomeBeatGrid
         title="Trending Beats"
         beats={trendingWithPrices}
         viewAllHref="/beats?sort=popular"
-      />
+      /> */}
 
-      <HomeBeatGrid
+      {/* <HomeBeatGrid
         title="Recently Added"
         beats={recentWithPrices}
         viewAllHref="/beats?sort=newest"
         sectionClassName="app-container pb-16"
-      />
+      /> */}
 
       <ScrollReveal>
         <BeatPackSlider packs={featuredPacks} />
-      </ScrollReveal>
-
-      <ScrollReveal>
-        <HomeFeatures />
       </ScrollReveal>
 
       <ScrollReveal>
@@ -100,6 +96,13 @@ export default async function HomePage() {
       <ScrollReveal>
         <SpotifyShowcase />
       </ScrollReveal>
+
+
+      <ScrollReveal>
+        <HomeFeatures />
+      </ScrollReveal>
+
+      
 
       <ScrollReveal>
         <PartnerBrands />
