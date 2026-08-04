@@ -3,6 +3,7 @@ import BeatPacksClient from "@/app/beat-packs/BeatPacksClient";
 import { beatPackRepository } from "@/lib/repositories/beat-pack.repository";
 import { userRepository } from "@/lib/repositories/user.repository";
 import { beatRepository } from "@/lib/repositories/beat.repository";
+import { connectDB } from "@/lib/db";
 import type { BeatPackUi } from "@/features/beats/beat-pack-ui";
 
 export const metadata: Metadata = {
@@ -20,18 +21,19 @@ export const metadata: Metadata = {
   },
 };
 
-export const revalidate = 60;
+export const revalidate = 300;
 
 export default async function BeatPacksPage() {
+  await connectDB();
+
   const result = await beatPackRepository.listPublished(1, 24);
 
-  // Batch: fetch all producers and beats in two queries instead of per-pack
   const uniqueProducerIds = [...new Set(result.data.map((p) => p.producerId.toString()))];
   const allBeatIds = [...new Set(result.data.flatMap((p) => p.beatIds.map((id) => id.toString())))];
 
   const [producers, allBeats] = await Promise.all([
     userRepository.findByIds(uniqueProducerIds),
-    beatRepository.findByIds(allBeatIds),
+    beatRepository.findByIdsMinimal(allBeatIds),
   ]);
 
   const producerMap = new Map(producers.map((p) => [p._id.toString(), p]));
@@ -41,7 +43,7 @@ export default async function BeatPacksPage() {
     const producer = producerMap.get(pack.producerId.toString());
     const beats = pack.beatIds
       .map((id) => beatMap.get(id.toString()))
-      .filter(Boolean) as typeof allBeats;
+      .filter(Boolean) as NonNullable<(typeof allBeats)[number]>[];
 
     return {
       id: pack._id.toString(),
