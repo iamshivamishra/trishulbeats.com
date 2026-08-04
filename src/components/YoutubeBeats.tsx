@@ -4,22 +4,30 @@ import { Play } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Spotlight } from "@/components/ui/spotlight";
 
+function getYoutubeId(url: string): string {
+  if (!url) return "";
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/;
+  const match = url.match(regExp);
+  return match && match[2].length === 11 ? match[2] : "";
+}
+
 interface YoutubeBeatItem {
-  id: string;
+  url: string;
   title: string;
 }
 
 const YOUTUBE_BEATS: YoutubeBeatItem[] = [
-  { id: "LBpYDDPtzJ8", title: "" },
-  { id: "hDDfAaIilZA", title: "" },
-  { id: "92jdkMnYkfs", title: "" },
-  { id: "NokYYrE8b3k", title: "" },
-  { id: "I5S_ae0SyPA", title: "" },
-  { id: "LbOBSJ3ygag", title: "" },
-  { id: "dnDEdN7YwUo", title: "" },
+  { url: "https://youtu.be/PXPRLsYOofg?si=gUZIvsK5u_NAqyQP", title: "" },
+  { url: "https://youtu.be/dPSx6fM8QQw?si=7sVaHBnHLyuNtKyL", title: "" },
+  { url: "https://youtu.be/2WMbKwyhCpE?si=dQJpKLwtwsjaLwdx", title: "" },
+  { url: "https://youtu.be/dnDEdN7YwUo?si=dhOmJ9-Usqrbf4S9", title: "" },
+  { url: "https://youtu.be/LqnzDFPdwUE?si=ln-wIFlRYsTwHgSY", title: "" },
+  { url: "https://youtu.be/LbOBSJ3ygag?si=qXM9iUopdHvMcSoO", title: "" },
+  { url: "https://youtu.be/I5S_ae0SyPA?si=9SoXCTWm0IRPIE1T", title: "" },
+  { url: "https://youtu.be/92jdkMnYkfs?si=x2RSj-fEVHFFvpdR", title: "" },
+  { url: "https://youtu.be/NokYYrE8b3k?si=PCEcdXWJId8GkYXI", title: "" },
 ];
 
-// Seamless loop ke liye list repeat ki gayi hai
 const MARQUEE_ITEMS = [
   ...YOUTUBE_BEATS,
   ...YOUTUBE_BEATS,
@@ -27,19 +35,60 @@ const MARQUEE_ITEMS = [
   ...YOUTUBE_BEATS,
 ];
 
+function buildThumbCandidates(videoId: string): string[] {
+  return [`/api/youtube-thumbnail/${videoId}`];
+}
+
+function YoutubeThumbnail({ videoId, title }: { videoId: string; title: string }) {
+  const candidates = useRef(buildThumbCandidates(videoId));
+  const [srcIndex, setSrcIndex] = useState(0);
+  const [failed, setFailed] = useState(false);
+
+  const handleError = () => {
+    if (srcIndex < candidates.current.length - 1) {
+      setSrcIndex((i) => i + 1);
+    } else {
+      setFailed(true);
+    }
+  };
+
+  if (failed) {
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-red-950/40 to-black">
+        <svg
+          className="h-8 w-8 text-red-500/70"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          aria-hidden="true"
+        >
+          <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+        </svg>
+        <span className="text-xs text-zinc-400">{title}</span>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      key={srcIndex}
+      src={candidates.current[srcIndex]}
+      onError={handleError}
+      alt={title || "YouTube Beat"}
+      className="h-full w-full object-cover transition group-hover:scale-105"
+      draggable={false}
+    />
+  );
+}
+
 export default function YoutubeBeats() {
   const containerRef = useRef<HTMLDivElement>(null);
-
-  // States & Refs for Custom Scroll Loop
   const [isHovered, setIsHovered] = useState(false);
   const isDragging = useRef(false);
+  const hasDragged = useRef(false);
   const startX = useRef(0);
   const scrollLeftStart = useRef(0);
-  
-  // Speed parameter: +1 matlab Right-to-Left, -1 matlab Left-to-Right
   const speed = useRef(1);
 
-  // Infinite Scroll & Animation Loop
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -47,11 +96,9 @@ export default function YoutubeBeats() {
     let animationFrameId: number;
 
     const loop = () => {
-      // Jab hover ya drag chal raha ho tab auto scroll ko pauze rakhenge
       if (!isHovered && !isDragging.current) {
         container.scrollLeft += speed.current;
 
-        // Infinite seamless loop boundary condition
         const maxScroll = container.scrollWidth / 2;
         if (container.scrollLeft >= maxScroll) {
           container.scrollLeft -= maxScroll;
@@ -67,33 +114,41 @@ export default function YoutubeBeats() {
     return () => cancelAnimationFrame(animationFrameId);
   }, [isHovered]);
 
-  // Mouse / Touch Drag Event Handlers
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      isDragging.current = false;
+    };
+
+    window.addEventListener("mouseup", handleGlobalMouseUp);
+    return () => window.removeEventListener("mouseup", handleGlobalMouseUp);
+  }, []);
+
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!containerRef.current) return;
     isDragging.current = true;
+    hasDragged.current = false;
     startX.current = e.pageX - containerRef.current.offsetLeft;
     scrollLeftStart.current = containerRef.current.scrollLeft;
   };
 
-  const handleMouseUp = () => {
-    isDragging.current = false;
-  };
-
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging.current || !containerRef.current) return;
-    e.preventDefault();
 
     const x = e.pageX - containerRef.current.offsetLeft;
-    const walk = (x - startX.current) * 1.5; // Drag Sensitivity
+    const walk = (x - startX.current) * 1.5;
 
-    // Dynamic Direction Logic: Jis taraf drag karoge speed/direction update ho jayegi
-    if (walk < 0) {
-      speed.current = 1.2; // Right to Left scroll
-    } else if (walk > 0) {
-      speed.current = -1.2; // Left to Right scroll
+    if (Math.abs(walk) > 5) {
+      hasDragged.current = true;
     }
 
     containerRef.current.scrollLeft = scrollLeftStart.current - walk;
+  };
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (hasDragged.current) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
   };
 
   return (
@@ -130,39 +185,45 @@ export default function YoutubeBeats() {
           isDragging.current = false;
         }}
         onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
         onMouseMove={handleMouseMove}
+        onTouchStart={() => setIsHovered(true)}
+        onTouchEnd={() => setIsHovered(false)}
         className="relative cursor-grab overflow-x-auto select-none scrollbar-none active:cursor-grabbing [mask-image:linear-gradient(to_right,transparent,white_5%,white_95%,transparent)]"
       >
         <div className="flex w-max gap-4 py-2">
-          {MARQUEE_ITEMS.map((video, index) => (
-            <a
-              key={`${video.id}-${index}`}
-              href={`https://youtu.be/${video.id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              draggable={false}
-              className="group relative w-[260px] flex-shrink-0 overflow-hidden rounded-xl border border-border/50 bg-card/80 transition hover:border-red-500/50 hover:shadow-[0_0_30px_-5px_rgba(239,68,68,0.4)] sm:w-[300px]"
-            >
-              <div className="relative aspect-video w-full bg-muted/30">
-                <img
-                  src={`https://img.youtube.com/vi/${video.id}/hqdefault.jpg`}
-                  alt={video.title}
-                  className="h-full w-full object-cover transition group-hover:scale-105"
-                  draggable={false}
-                  loading="lazy"
-                />
-                <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition group-hover:opacity-100">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-600/90">
-                    <Play className="h-5 w-5 fill-white text-white" />
+          {MARQUEE_ITEMS.map((video, index) => {
+            const videoId = getYoutubeId(video.url);
+
+            return (
+              <a
+                key={`${videoId}-${index}`}
+                href={video.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                draggable={false}
+                onClick={handleCardClick}
+                className="group relative w-[260px] flex-shrink-0 overflow-hidden rounded-xl border border-border/50 bg-card/80 transition hover:border-red-500/50 hover:shadow-[0_0_30px_-5px_rgba(239,68,68,0.4)] sm:w-[300px]"
+              >
+                <div className="relative aspect-video w-full bg-muted/30">
+                  {videoId ? (
+                    <YoutubeThumbnail videoId={videoId} title={video.title} />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-zinc-800 text-xs text-zinc-400">
+                      Invalid Video
+                    </div>
+                  )}
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition group-hover:opacity-100">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-600/90">
+                      <Play className="h-5 w-5 fill-white text-white" />
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="p-3">
-                <p className="line-clamp-1 text-sm font-medium">{video.title}</p>
-              </div>
-            </a>
-          ))}
+                <div className="p-3">
+                  <p className="line-clamp-1 text-sm font-medium">{video.title}</p>
+                </div>
+              </a>
+            );
+          })}
         </div>
       </div>
     </section>

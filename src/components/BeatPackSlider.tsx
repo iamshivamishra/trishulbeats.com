@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Layers } from "lucide-react";
@@ -14,109 +14,57 @@ export interface BeatPackSliderItem {
   startingPrice: number;
 }
 
-const DRAG_THRESHOLD = 6; // px threshold for click vs drag detection
+const DRAG_THRESHOLD = 6;
 
 export default function BeatPackSlider({ packs }: { packs: BeatPackSliderItem[] }) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  
-  // Hover & Drag States
-  const [isHovered, setIsHovered] = useState(false);
-  const [dragActive, setDragActive] = useState(false);
-  
   const isPointerDown = useRef(false);
   const isDraggingRef = useRef(false);
   const startX = useRef(0);
   const startScrollLeft = useRef(0);
-  
-  // FIXED: -1.2 means default scroll is Left to Right
-  const speed = useRef(-1.2);
 
-  // Seamless Loop ke liye Items Repeat
-  const displayPacks = packs.length > 0 ? [...packs, ...packs, ...packs] : [];
+  const [dragActive, setDragActive] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
-  // RequestAnimationFrame Loop for Continuous Scrolling
+  // Duplicate items for infinite seamless looping
+  const displayPacks = packs.length < 5 ? [...packs, ...packs, ...packs, ...packs] : [...packs, ...packs];
+
+  // --- 1. Initial Scroll Position to Middle ---
   useEffect(() => {
     const el = scrollRef.current;
-    if (!el || displayPacks.length === 0) return;
+    if (el) {
+      // Direct jump to halfway mark so it has space to move Left-to-Right immediately
+      el.scrollLeft = el.scrollWidth / 2;
+    }
+  }, [packs.length]);
+
+  // --- 2. Left-to-Right Auto-Scroll Logic ---
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || packs.length === 0) return;
 
     let animationFrameId: number;
 
-    const loop = () => {
-      // Hover ya active drag ke waqt animation paused rahegi
-      if (!isHovered && !isPointerDown.current) {
-        el.scrollLeft += speed.current;
-
-        // Infinite Seamless Loop Reset Logic (Left to Right & Vice Versa)
-        const maxScroll = el.scrollWidth / 2;
+    const scroll = () => {
+      if (!isPointerDown.current && !isHovered) {
+        // Left-to-Right movement: Decrement scrollLeft
         if (el.scrollLeft <= 0) {
-          el.scrollLeft += maxScroll;
-        } else if (el.scrollLeft >= maxScroll) {
-          el.scrollLeft -= maxScroll;
+          // Continuous Loop reset back to middle
+          el.scrollLeft = el.scrollWidth / 2;
+        } else {
+          el.scrollLeft -= 1; // Speed control (e.g. 0.8 ya 1.5)
         }
       }
-      animationFrameId = requestAnimationFrame(loop);
+      animationFrameId = requestAnimationFrame(scroll);
     };
 
-    animationFrameId = requestAnimationFrame(loop);
+    animationFrameId = requestAnimationFrame(scroll);
 
     return () => cancelAnimationFrame(animationFrameId);
-  }, [isHovered, displayPacks.length]);
+  }, [isHovered, packs.length]);
 
   if (packs.length === 0) return null;
 
-  if (packs.length <= 2) {
-    return (
-      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="mb-6 flex items-end justify-between">
-          <div>
-            <h2 className="text-2xl font-semibold sm:text-3xl">Featured Beat Packs</h2>
-            <p className="mt-2 text-muted-foreground">
-              Curated collections — get more beats for less.
-            </p>
-          </div>
-          <Link href="/beat-packs" className="text-sm font-medium text-primary hover:underline">
-            View All →
-          </Link>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {packs.map((pack) => (
-            <Link key={pack.id} href={`/beat-packs/${pack.id}`} className="group">
-              <div className="overflow-hidden rounded-xl border border-border/50 bg-card/80 transition hover:border-border hover:shadow-md">
-                <div className="relative aspect-video w-full bg-muted/30">
-                  {pack.coverUrl ? (
-                    <Image
-                      src={pack.coverUrl}
-                      alt={pack.title}
-                      fill
-                      sizes="(max-width: 768px) 100vw, 50vw"
-                      className="object-cover transition group-hover:scale-105"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center">
-                      <Layers className="h-8 w-8 text-muted-foreground/40" />
-                    </div>
-                  )}
-                </div>
-                <div className="p-4">
-                  <h3 className="font-semibold transition-colors group-hover:text-primary">
-                    {pack.title}
-                  </h3>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {pack.beatCount} beats • by {pack.producerName}
-                  </p>
-                  <p className="mt-2 text-sm font-bold text-primary">
-                    Starting at ₹{pack.startingPrice.toLocaleString("en-IN")}
-                  </p>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
-    );
-  }
-
-  // Pointer & Drag Event Handlers
   const onPointerDown = (e: React.PointerEvent) => {
     const el = scrollRef.current;
     if (!el) return;
@@ -134,6 +82,7 @@ export default function BeatPackSlider({ packs }: { packs: BeatPackSliderItem[] 
   const onWindowPointerMove = (e: PointerEvent) => {
     const el = scrollRef.current;
     if (!el || !isPointerDown.current) return;
+
     const dx = e.clientX - startX.current;
 
     if (!isDraggingRef.current && Math.abs(dx) > DRAG_THRESHOLD) {
@@ -142,15 +91,6 @@ export default function BeatPackSlider({ packs }: { packs: BeatPackSliderItem[] 
     }
 
     if (isDraggingRef.current) {
-      // FIXED Drag logic for Left to Right preference:
-      // dx > 0 (Mouse Right taraf ghasita) -> Speed -1.2 (Left to Right)
-      // dx < 0 (Mouse Left taraf ghasita) -> Speed +1.2 (Right to Left)
-      if (dx > 0) {
-        speed.current = -1.2; // Left to Right
-      } else if (dx < 0) {
-        speed.current = 1.2;  // Right to Left
-      }
-
       el.scrollLeft = startScrollLeft.current - dx;
     }
   };
@@ -158,6 +98,7 @@ export default function BeatPackSlider({ packs }: { packs: BeatPackSliderItem[] 
   const onWindowPointerUp = () => {
     isPointerDown.current = false;
     setDragActive(false);
+
     window.removeEventListener("pointermove", onWindowPointerMove);
     window.removeEventListener("pointerup", onWindowPointerUp);
 
@@ -191,14 +132,11 @@ export default function BeatPackSlider({ packs }: { packs: BeatPackSliderItem[] 
         ref={scrollRef}
         onPointerDown={onPointerDown}
         onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => {
-          setIsHovered(false);
-          isPointerDown.current = false;
-          setDragActive(false);
-        }}
+        onMouseLeave={() => setIsHovered(false)}
         className={`no-scrollbar flex gap-4 overflow-x-auto pb-2 ${
           dragActive ? "cursor-grabbing select-none" : "cursor-grab"
         }`}
+        style={{ scrollBehavior: "auto" }}
       >
         {displayPacks.map((pack, index) => (
           <Link
@@ -230,11 +168,8 @@ export default function BeatPackSlider({ packs }: { packs: BeatPackSliderItem[] 
                   {pack.title}
                 </h3>
                 <p className="mt-1 text-xs text-muted-foreground">
-  {pack.beatCount} beats
-  {pack.producerName &&
-    pack.producerName.toLowerCase() !== "unknown" &&
-    ` • by ${pack.producerName}`}
-</p>
+                  {pack.beatCount} beats • by {pack.producerName}
+                </p>
                 <p className="mt-2 text-sm font-bold text-primary">
                   Starting at ₹{pack.startingPrice.toLocaleString("en-IN")}
                 </p>

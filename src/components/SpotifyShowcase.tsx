@@ -4,6 +4,9 @@ interface SpotifyAlbum {
   coverUrl: string | null;
 }
 
+const ARTIST_URL =
+  "https://open.spotify.com/artist/2NymkQcUWoYwzaR1fTcR6c?si=79GH4sdoTbW3AYOQ3oAJmA&utm_source=copy-link&nd=1&dlsi=ea874c7f182f4403";
+
 const ALBUM_URLS = [
   "https://open.spotify.com/album/6hmjIW4ZgfMZApLMOSpxIj",
   "https://open.spotify.com/album/1oAk5nYBlTgtzjJzKCt0Ie",
@@ -14,6 +17,10 @@ const ALBUM_URLS = [
   "https://open.spotify.com/album/2uYKRbgLUudwSFKv1hkuxF",
   "https://open.spotify.com/album/3cV78ZcGuQZlCtLen9a0SD",
 ];
+
+function proxiedImageUrl(originalUrl: string): string {
+  return `/api/spotify-image?url=${encodeURIComponent(originalUrl)}`;
+}
 
 async function fetchAlbumMeta(url: string): Promise<SpotifyAlbum> {
   try {
@@ -26,14 +33,13 @@ async function fetchAlbumMeta(url: string): Promise<SpotifyAlbum> {
     return {
       url,
       title: data.title || "Spotify Album",
-      coverUrl: data.thumbnail_url || null,
+      coverUrl: data.thumbnail_url ? proxiedImageUrl(data.thumbnail_url) : null,
     };
   } catch {
     return { url, title: "Spotify Album", coverUrl: null };
   }
 }
 
-// Har album ke liye galaxy-style position (percentage from center) + float timing
 const ORBIT_POSITIONS = [
   { top: "2%", left: "50%", size: "w-24 h-24 sm:w-32 sm:h-32", delay: "0s", duration: "7s" },
   { top: "16%", left: "84%", size: "w-20 h-20 sm:w-28 sm:h-28", delay: "0.9s", duration: "8s" },
@@ -72,12 +78,12 @@ export default async function SpotifyShowcase() {
         {/* Rotating gradient ring behind logo */}
         <div className="absolute left-1/2 top-1/2 z-[9] h-44 w-44 -translate-x-1/2 -translate-y-1/2 rounded-full sm:h-56 sm:w-56 animate-[spin_8s_linear_infinite] bg-[conic-gradient(from_0deg,transparent,#1DB954,transparent,transparent)]" />
 
-        {/* Center big Spotify logo */}
+        {/* Center big Spotify logo — links to artist page */}
         <a
-          href="https://open.spotify.com"
+          href={ARTIST_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="absolute left-1/2 top-1/2 z-10 flex h-40 w-40 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black shadow-[0_0_80px_20px_rgba(29,185,84,0.3)] sm:h-52 sm:w-52"
+          className="absolute left-1/2 top-1/2 z-10 flex h-40 w-40 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black shadow-[0_0_80px_20px_rgba(29,185,84,0.3)] transition hover:scale-105 sm:h-52 sm:w-52"
         >
           <svg viewBox="0 0 24 24" className="h-24 w-24 fill-[#1DB954] sm:h-32 sm:w-32">
             <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.14 4.32-1.32 9.719-.66 13.439 1.621.361.181.54.78.301 1.2zm.12-3.42C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />

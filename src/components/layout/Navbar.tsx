@@ -14,7 +14,7 @@ import SearchCommand from "@/components/SearchCommand";
 import { useCart } from "@/components/CartProvider";
 
 const NAV_LINKS = [
-  { href: "/beats", label: "Beats" },
+  // { href: "/beats", label: "Beats" },
   { href: "/beat-packs", label: "Beat Packs" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
