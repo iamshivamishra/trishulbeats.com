@@ -1,7 +1,9 @@
 "use client";
 import { cn } from "@/lib/utils";
 import { motion } from "motion/react";
-import React from "react";
+import React, { useEffect, useState } from "react";
+
+type MeteorTiming = { animationDelay: string; animationDuration: string };
 
 export const Meteors = ({
   number,
@@ -10,7 +12,20 @@ export const Meteors = ({
   number?: number;
   className?: string;
 }) => {
-  const meteors = new Array(number || 20).fill(true);
+  const meteorCount = number || 20;
+  const meteors = new Array(meteorCount).fill(true);
+
+  const [meteorTimings, setMeteorTimings] = useState<MeteorTiming[]>([]);
+
+  useEffect(() => {
+    const timings: MeteorTiming[] = meteors.map(() => ({
+      animationDelay: Math.random() * 5 + "s",
+      animationDuration: Math.floor(Math.random() * (10 - 5) + 5) + "s",
+    }));
+    setMeteorTimings(timings);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meteorCount]);
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -18,9 +33,12 @@ export const Meteors = ({
       transition={{ duration: 0.5 }}
     >
       {meteors.map((el, idx) => {
-        const meteorCount = number || 20;
-        // Calculate position to evenly distribute meteors across container width
-        const position = idx * (800 / meteorCount) - 400; // Spread across 800px range, centered
+        const position = idx * (800 / meteorCount) - 400;
+
+        const timing = meteorTimings[idx] || {
+          animationDelay: "0s",
+          animationDuration: "7s",
+        };
 
         return (
           <span
@@ -31,10 +49,10 @@ export const Meteors = ({
               className,
             )}
             style={{
-              top: "-40px", // Start above the container
+              top: "-40px",
               left: position + "px",
-              animationDelay: Math.random() * 5 + "s", // Random delay between 0-5s
-              animationDuration: Math.floor(Math.random() * (10 - 5) + 5) + "s", // Keep some randomness in duration
+              animationDelay: timing.animationDelay,
+              animationDuration: timing.animationDuration,
             }}
           ></span>
         );

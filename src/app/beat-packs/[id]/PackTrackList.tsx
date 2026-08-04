@@ -59,11 +59,10 @@ export default function PackTrackList({
           >
             <div className="flex items-center justify-between">
               <div className="min-w-0 flex-1">
-                <Link href={`/beats/${track.id}`} className="group/track">
                   <p className="truncate text-sm font-medium group-hover/track:text-primary transition-colors">
                     {index + 1}. {track.title}
                   </p>
-                </Link>
+
                 <p className="text-xs text-muted-foreground">
                   {track.genre}
                   {track.bpm ? ` • ${track.bpm} BPM` : ""} •{" "}
