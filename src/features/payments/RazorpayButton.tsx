@@ -92,8 +92,9 @@ export default function RazorpayButton({
             });
 
             if (verifyRes.ok) {
+              const data = await verifyRes.json();
               toast.success("Payment successful! Beat purchased.");
-              router.refresh();
+              router.push(`/checkout/success?orderId=${data.order?._id || response.razorpay_order_id}`);
             } else {
               const data = await verifyRes.json();
               toast.error(data.error || "Payment verification failed");

@@ -1,8 +1,9 @@
-export type StorageProvider = "r2" | "cloudinary";
+export type StorageProvider = "r2" | "cloudinary" | "s3";
 
 export function getStorageProvider(): StorageProvider {
   const provider = process.env.STORAGE_PROVIDER?.toLowerCase();
   if (provider === "cloudinary") return "cloudinary";
+  if (provider === "s3") return "s3";
   return "r2";
 }
 

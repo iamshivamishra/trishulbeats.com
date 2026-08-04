@@ -20,15 +20,21 @@ import {
   getCloudinarySignedDownloadUrl,
   getCloudinaryUrl,
 } from "@/lib/storage/cloudinary";
+import {
+  createPresignedUploadUrl as s3PresignedUploadUrl,
+  uploadToS3,
+  deleteFromS3,
+  getSignedDownloadUrl as s3DownloadUrl,
+  getPublicUrl as s3PublicUrl,
+} from "@/lib/storage/s3";
 import { logger } from "@/lib/logger";
 
 function resourceTypeForCategory(
   category: FileCategory
 ): "image" | "video" | "raw" {
   if (["artwork", "avatar", "cover"].includes(category)) return "image";
-  // stems (ZIP) also uses "video" — Cloudinary's "raw" endpoint has limited
-  // CORS support for browser-side uploads
-  if (["preview", "master", "stems"].includes(category)) return "video";
+  if (["preview", "master"].includes(category)) return "video";
+  if (category === "stems") return "raw";
   return "raw";
 }
 
@@ -61,6 +67,9 @@ export const storageService = {
     if (provider === "cloudinary") {
       return createCloudinaryPresignedUpload(key, contentType, category, fileSize);
     }
+    if (provider === "s3") {
+      return s3PresignedUploadUrl(key, contentType, fileSize);
+    }
     return createPresignedUploadUrl(key, contentType, fileSize);
   },
 
@@ -86,6 +95,9 @@ export const storageService = {
     if (provider === "cloudinary") {
       return createCloudinaryPresignedUpload(key, contentType, category, fileSize);
     }
+    if (provider === "s3") {
+      return s3PresignedUploadUrl(key, contentType, fileSize);
+    }
     return createPresignedUploadUrl(key, contentType, fileSize);
   },
 
@@ -110,6 +122,8 @@ export const storageService = {
     let url: string;
     if (provider === "cloudinary") {
       url = await uploadToCloudinary(buffer, key, resourceTypeForCategory(category));
+    } else if (provider === "s3") {
+      url = await uploadToS3(buffer, key, file.type);
     } else {
       url = await uploadToR2(buffer, key, file.type);
     }
@@ -136,6 +150,8 @@ export const storageService = {
     let url: string;
     if (provider === "cloudinary") {
       url = await uploadToCloudinary(buffer, key, "image");
+    } else if (provider === "s3") {
+      url = await uploadToS3(buffer, key, file.type);
     } else {
       url = await uploadToR2(buffer, key, file.type);
     }
@@ -169,6 +185,8 @@ export const storageService = {
     let url: string;
     if (provider === "cloudinary") {
       url = await uploadToCloudinary(buffer, key, resourceTypeForCategory(category));
+    } else if (provider === "s3") {
+      url = await uploadToS3(buffer, key, file.type);
     } else {
       url = await uploadToR2(buffer, key, file.type);
     }
@@ -194,6 +212,8 @@ export const storageService = {
     let url: string;
     if (provider === "cloudinary") {
       url = await uploadToCloudinary(buffer, key, "image");
+    } else if (provider === "s3") {
+      url = await uploadToS3(buffer, key, file.type);
     } else {
       url = await uploadToR2(buffer, key, file.type);
     }
@@ -211,10 +231,14 @@ export const storageService = {
     const key = `avatars/${ts}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
     const provider = getStorageProvider();
 
-    const url =
-      provider === "cloudinary"
-        ? await uploadToCloudinary(buffer, key, "image")
-        : await uploadToR2(buffer, key, file.type);
+    let url: string;
+    if (provider === "cloudinary") {
+      url = await uploadToCloudinary(buffer, key, "image");
+    } else if (provider === "s3") {
+      url = await uploadToS3(buffer, key, file.type);
+    } else {
+      url = await uploadToR2(buffer, key, file.type);
+    }
 
     logger.info("Avatar uploaded", { provider, key, size: file.size });
     return { url, key };
@@ -226,6 +250,8 @@ export const storageService = {
     const provider = getStorageProvider();
     if (provider === "cloudinary") {
       await deleteFromCloudinary(key);
+    } else if (provider === "s3") {
+      await deleteFromS3(key);
     } else {
       await deleteFromR2(key);
     }
@@ -240,12 +266,19 @@ export const storageService = {
     if (provider === "cloudinary") {
       return getCloudinarySignedDownloadUrl(key, expiresInSeconds);
     }
+    if (provider === "s3") {
+      return s3DownloadUrl(key, expiresInSeconds);
+    }
     return r2DownloadUrl(key, expiresInSeconds);
   },
 
   getPublicUrl(key: string): string {
-    if (getStorageProvider() === "cloudinary") {
+    const provider = getStorageProvider();
+    if (provider === "cloudinary") {
       return getCloudinaryUrl(key);
+    }
+    if (provider === "s3") {
+      return s3PublicUrl(key);
     }
     return r2PublicUrl(key);
   },

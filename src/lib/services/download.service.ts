@@ -88,12 +88,18 @@ async function generateSignedUrl(beat: IBeat, fileType: DownloadFileType): Promi
     });
   }
 
-  const publicBase = process.env.R2_PUBLIC_URL?.replace(/\/$/, "");
-  if (publicBase && url.startsWith(publicBase)) {
-    const key = url.slice(publicBase.length + 1);
-    return storageService.getDownloadUrl(key, {
-      expiresInSeconds: storageService.SIGNED_URL_TTL_SECONDS,
-    });
+  const publicBases = [
+    process.env.R2_PUBLIC_URL,
+    process.env.AWS_S3_PUBLIC_URL,
+  ].filter(Boolean).map((u) => u!.replace(/\/$/, ""));
+
+  for (const publicBase of publicBases) {
+    if (url.startsWith(publicBase)) {
+      const key = url.slice(publicBase.length + 1);
+      return storageService.getDownloadUrl(key, {
+        expiresInSeconds: storageService.SIGNED_URL_TTL_SECONDS,
+      });
+    }
   }
 
   return url;

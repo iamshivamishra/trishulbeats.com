@@ -24,7 +24,7 @@ import { useAudioActions } from "@/components/AudioPlayerContext";
 import dynamic from "next/dynamic";
 import type { ILicense } from "@/types";
 
-const RazorpayButton = dynamic(() => import("@/components/RazorpayButton"), {
+const RazorpayButton = dynamic(() => import("@/features/payments/RazorpayButton"), {
   ssr: false,
   loading: () => (
     <div className="h-11 w-full animate-pulse rounded-md bg-muted" />

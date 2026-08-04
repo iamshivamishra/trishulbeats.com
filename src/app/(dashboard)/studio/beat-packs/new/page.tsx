@@ -14,6 +14,6 @@ export default async function NewBeatPackPage() {
     redirect("/");
   }
 
-  return <BeatPackEditorForm mode="create" />;
+  return <BeatPackEditorForm mode="create" producerId={session.user.id} />;
 }
 

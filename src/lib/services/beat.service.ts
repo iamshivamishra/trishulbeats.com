@@ -1,6 +1,8 @@
 import { beatRepository } from "@/lib/repositories/beat.repository";
 import { licenseRepository } from "@/lib/repositories/license.repository";
 import { purchaseRepository } from "@/lib/repositories/purchase.repository";
+import { userRepository } from "@/lib/repositories/user.repository";
+import { toPublicBeatForUi } from "@/lib/serializers/beat";
 import { withTransaction } from "@/lib/db";
 import {
   ConflictError,
@@ -286,6 +288,29 @@ export const beatService = {
 
   async getTrending(limit = 8): Promise<IBeat[]> {
     return beatRepository.findTrending(limit);
+  },
+
+  async enrichWithPrices(beats: IBeat[]) {
+    if (beats.length === 0) return [];
+
+    const beatIds = beats.map((b) => b._id.toString());
+    const uniqueProducerIds = [...new Set(beats.map((b) => b.producerId.toString()))];
+
+    const [cheapestMap, producers] = await Promise.all([
+      licenseRepository.findCheapestForBeats(beatIds),
+      userRepository.findByIds(uniqueProducerIds),
+    ]);
+
+    const producerMap = new Map(producers.map((p) => [p._id.toString(), p]));
+
+    return beats.map((beat) => {
+      const producer = producerMap.get(beat.producerId.toString()) ?? null;
+      const cheapest = cheapestMap[beat._id.toString()];
+      return {
+        beat: toPublicBeatForUi(beat, producer),
+        startingPrice: cheapest?.price,
+      };
+    });
   },
 
   async getProducerStats(producerId: string) {

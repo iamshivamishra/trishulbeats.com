@@ -19,6 +19,9 @@ export interface BeatPackTrack {
   priceUnlimited?: number;
   durationLabel: string;
   previewUrl?: string;
+  masterUrl?: string;
+  stemsUrl?: string;
+  coverUrl?: string;
 }
 
 export interface BeatPackUi {

@@ -10,17 +10,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { GENRE_OPTIONS, KEY_OPTIONS, MOOD_OPTIONS } from "@/lib/validators/beat";
+import BeatMetadataFields, { type BeatMetadata } from "@/features/studio/BeatMetadataFields";
 
 interface FileSlot {
   file: File | null;
@@ -74,13 +66,12 @@ function formatSize(bytes: number): string {
 export default function UploadForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [genre, setGenre] = useState("");
-  const [bpm, setBpm] = useState("");
-  const [key, setKey] = useState("");
-  const [mood, setMood] = useState("");
-  const [tags, setTags] = useState("");
+  const [meta, setMeta] = useState<BeatMetadata>({
+    title: "", description: "", genre: "", bpm: "", key: "", mood: "", tags: "",
+  });
+  const updateMeta = useCallback(<K extends keyof BeatMetadata>(field: K, value: BeatMetadata[K]) => {
+    setMeta((prev) => ({ ...prev, [field]: value }));
+  }, []);
 
   // Price fields (optional overrides for default license tiers)
   const [priceBasic, setPriceBasic] = useState("");
@@ -206,14 +197,14 @@ export default function UploadForm() {
       ]);
 
       const payload = {
-        title,
-        description: description || undefined,
-        genre,
-        bpm: bpm ? Number(bpm) : undefined,
-        key: key || undefined,
-        mood: mood || undefined,
-        tags: tags
-          ? tags
+        title: meta.title,
+        description: meta.description || undefined,
+        genre: meta.genre,
+        bpm: meta.bpm ? Number(meta.bpm) : undefined,
+        key: meta.key || undefined,
+        mood: meta.mood || undefined,
+        tags: meta.tags
+          ? meta.tags
               .split(",")
               .map((tag) => tag.trim())
               .filter(Boolean)
@@ -407,97 +398,7 @@ export default function UploadForm() {
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-6">
-          {/* Metadata */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="title">Title *</Label>
-              <Input
-                id="title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Beat title"
-                required
-                minLength={2}
-              />
-            </div>
-
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Describe your beat..."
-                maxLength={1000}
-                rows={3}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="genre">Genre *</Label>
-              <Select value={genre} onValueChange={(v) => v && setGenre(v)} required>
-                <SelectTrigger id="genre">
-                  <SelectValue placeholder="Select genre" />
-                </SelectTrigger>
-                <SelectContent>
-                  {GENRE_OPTIONS.map((g) => (
-                    <SelectItem key={g} value={g}>{g}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="bpm">BPM</Label>
-              <Input
-                id="bpm"
-                type="number"
-                value={bpm}
-                onChange={(e) => setBpm(e.target.value)}
-                placeholder="e.g. 140"
-                min={40}
-                max={300}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="key">Key</Label>
-              <Select value={key} onValueChange={(v) => setKey(v ?? "")}>
-                <SelectTrigger id="key">
-                  <SelectValue placeholder="Select key" />
-                </SelectTrigger>
-                <SelectContent>
-                  {KEY_OPTIONS.map((k) => (
-                    <SelectItem key={k} value={k}>{k}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="mood">Mood</Label>
-              <Select value={mood} onValueChange={(v) => setMood(v ?? "")}>
-                <SelectTrigger id="mood">
-                  <SelectValue placeholder="Select mood" />
-                </SelectTrigger>
-                <SelectContent>
-                  {MOOD_OPTIONS.map((m) => (
-                    <SelectItem key={m} value={m}>{m}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="tags">Tags (comma-separated)</Label>
-              <Input
-                id="tags"
-                value={tags}
-                onChange={(e) => setTags(e.target.value)}
-                placeholder="e.g. dark, melodic, piano"
-              />
-            </div>
-          </div>
+          <BeatMetadataFields values={meta} onChange={updateMeta} />
 
           {/* License Pricing — click a card to expand its details */}
           <div className="space-y-1">

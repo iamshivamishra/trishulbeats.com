@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import DownloadPanel from "@/components/DownloadPanel";
-import PackUpgradeRazorpayButton from "@/components/PackUpgradeRazorpayButton";
+import PackUpgradeRazorpayButton from "@/features/payments/PackUpgradeRazorpayButton";
 
 interface UpgradeOption {
   tier: "premium" | "unlimited";

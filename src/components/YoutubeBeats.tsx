@@ -2,6 +2,7 @@
 
 import { Play } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { Spotlight } from "@/components/ui/spotlight";
 
 function getYoutubeId(url: string): string {
   if (!url) return "";
@@ -151,8 +152,12 @@ export default function YoutubeBeats() {
   };
 
   return (
-    <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-      <div className="mb-6 flex items-end justify-between">
+    <section className="relative mx-auto max-w-7xl overflow-hidden px-4 py-10 sm:px-6 lg:px-8">
+      <Spotlight
+        className="-top-20 right-0 md:right-40 md:-top-10 opacity-60"
+        fill="oklch(0.56 0.21 24 / 0.2)"
+      />
+      <div className="relative z-10 mb-6 flex items-end justify-between">
         <div>
           <h2 className="flex items-center gap-2 text-2xl font-semibold sm:text-3xl">
             <svg
@@ -171,6 +176,7 @@ export default function YoutubeBeats() {
         </div>
       </div>
 
+      {/* Main Drag & Auto Scroll Track — fades at edges */}
       <div
         ref={containerRef}
         onMouseEnter={() => setIsHovered(true)}
@@ -182,7 +188,7 @@ export default function YoutubeBeats() {
         onMouseMove={handleMouseMove}
         onTouchStart={() => setIsHovered(true)}
         onTouchEnd={() => setIsHovered(false)}
-        className="relative cursor-grab overflow-x-auto select-none scrollbar-none active:cursor-grabbing"
+        className="relative cursor-grab overflow-x-auto select-none scrollbar-none active:cursor-grabbing [mask-image:linear-gradient(to_right,transparent,white_5%,white_95%,transparent)]"
       >
         <div className="flex w-max gap-4 py-2">
           {MARQUEE_ITEMS.map((video, index) => {
@@ -196,7 +202,7 @@ export default function YoutubeBeats() {
                 rel="noopener noreferrer"
                 draggable={false}
                 onClick={handleCardClick}
-                className="group relative w-[260px] flex-shrink-0 overflow-hidden rounded-xl border border-border/50 bg-card/80 transition hover:border-border hover:shadow-md sm:w-[300px]"
+                className="group relative w-[260px] flex-shrink-0 overflow-hidden rounded-xl border border-border/50 bg-card/80 transition hover:border-red-500/50 hover:shadow-[0_0_30px_-5px_rgba(239,68,68,0.4)] sm:w-[300px]"
               >
                 <div className="relative aspect-video w-full bg-muted/30">
                   {videoId ? (

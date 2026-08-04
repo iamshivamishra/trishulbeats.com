@@ -10,7 +10,7 @@ import {
   ShoppingCart, Trash2, ArrowLeft, Music, Loader2,
   CreditCard, ArrowRight, CheckCircle2,
 } from "lucide-react";
-import { loadRazorpayScript } from "@/components/RazorpayButton";
+import { loadRazorpayScript } from "@/features/payments/RazorpayButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -289,10 +289,10 @@ export default function CartClient() {
             });
 
             if (verifyRes.ok) {
-              setCheckoutSuccess(true);
+              const data = await verifyRes.json();
               toast.success("Payment successful! Beats purchased.");
               await refresh();
-              router.refresh();
+              router.push(`/checkout/success?orderId=${data.order?._id || response.razorpay_order_id}`);
             } else {
               const data = await verifyRes.json();
               toast.error(data.error || "Payment verification failed");

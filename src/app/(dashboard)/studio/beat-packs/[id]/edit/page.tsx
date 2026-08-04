@@ -5,6 +5,7 @@ import BeatPackEditorForm from "@/features/studio/BeatPackEditorForm";
 import { beatPackService } from "@/lib/services/beat-pack.service";
 import { beatRepository } from "@/lib/repositories/beat.repository";
 import { licenseRepository } from "@/lib/repositories/license.repository";
+import { storageService } from "@/lib/services/storage.service";
 import type { BeatPackUi } from "@/features/beats/beat-pack-ui";
 
 interface Props {
@@ -28,7 +29,7 @@ export default async function EditBeatPackPage({ params }: Props) {
   if (session.user.role !== "admin" && pack.producerId.toString() !== session.user.id) {
     notFound();
   }
-  const beats = await beatRepository.findByIds(pack.beatIds.map((beatId) => beatId.toString()));
+  const beats = await beatRepository.findByIds(pack.beatIds.map((beatId) => beatId.toString()), true);
 
   // Fetch license prices for each beat
   const beatLicenses = await Promise.all(
@@ -64,30 +65,47 @@ export default async function EditBeatPackPage({ params }: Props) {
       { tier: "premium", price: pack.prices.premium },
       { tier: "unlimited", price: pack.prices.unlimited },
     ],
-    tracks: beats.map((beat) => {
-      const prices = licensePriceMap.get(beat._id.toString());
-      return {
-        id: beat._id.toString(),
-        title: beat.title,
-        description: beat.description || "",
-        genre: beat.genre,
-        bpm: beat.bpm,
-        key: beat.key || "",
-        mood: beat.mood || "",
-        tags: beat.tags || [],
-        priceBasic: prices?.basic,
-        pricePremium: prices?.premium,
-        priceUnlimited: prices?.unlimited,
-        durationLabel: beat.duration
-          ? `${Math.floor(beat.duration / 60)}:${String(beat.duration % 60).padStart(2, "0")}`
-          : "—",
-        previewUrl: beat.audioTaggedUrl || "",
-      };
-    }),
+    tracks: await Promise.all(
+      beats.map(async (beat) => {
+        const prices = licensePriceMap.get(beat._id.toString());
+        const keys = beat.storageKeys;
+
+        // Authenticated resources (master, stems) need signed URLs for preview
+        let masterUrl = beat.audioFullUrl || "";
+        let stemsUrl = beat.stemsUrl || "";
+        if (keys?.master) {
+          try { masterUrl = await storageService.getDownloadUrl(keys.master, { expiresInSeconds: 3600 }); } catch { /* keep raw URL */ }
+        }
+        if (keys?.stems) {
+          try { stemsUrl = await storageService.getDownloadUrl(keys.stems, { expiresInSeconds: 3600 }); } catch { /* keep raw URL */ }
+        }
+
+        return {
+          id: beat._id.toString(),
+          title: beat.title,
+          description: beat.description || "",
+          genre: beat.genre,
+          bpm: beat.bpm,
+          key: beat.key || "",
+          mood: beat.mood || "",
+          tags: beat.tags || [],
+          priceBasic: prices?.basic,
+          pricePremium: prices?.premium,
+          priceUnlimited: prices?.unlimited,
+          durationLabel: beat.duration
+            ? `${Math.floor(beat.duration / 60)}:${String(beat.duration % 60).padStart(2, "0")}`
+            : "—",
+          previewUrl: beat.audioTaggedUrl || "",
+          masterUrl,
+          stemsUrl,
+          coverUrl: beat.coverUrl || "",
+        };
+      })
+    ),
     status: pack.status === "published" ? "published" : "draft",
     updatedAtLabel: `Updated ${new Date(pack.updatedAt).toLocaleDateString()}`,
   };
 
-  return <BeatPackEditorForm mode="edit" initialPack={initialPack} />;
+  return <BeatPackEditorForm mode="edit" initialPack={initialPack} producerId={session.user.id} />;
 }
 
