@@ -41,7 +41,7 @@ export const beatPackRepository = {
     }
     const skip = (page - 1) * limit;
     const [data, total] = await Promise.all([
-      BeatPack.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean<IBeatPack[]>(),
+      BeatPack.find(query).select("-metadata").sort({ createdAt: -1 }).skip(skip).limit(limit).lean<IBeatPack[]>(),
       BeatPack.countDocuments(query),
     ]);
     const totalPages = Math.ceil(total / limit);

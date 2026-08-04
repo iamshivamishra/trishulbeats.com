@@ -28,7 +28,7 @@ const BeatPackSchema = new Schema<IBeatPack>(
 );
 
 BeatPackSchema.index({ producerId: 1, status: 1 });
-BeatPackSchema.index({ isPublished: 1, status: 1 });
+BeatPackSchema.index({ isPublished: 1, status: 1, createdAt: -1 });
 BeatPackSchema.index({ createdAt: -1 });
 
 const BeatPack: Model<IBeatPack> =
