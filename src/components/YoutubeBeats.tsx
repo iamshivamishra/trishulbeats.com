@@ -26,6 +26,7 @@ const YOUTUBE_BEATS: YoutubeBeatItem[] = [
   { url: "https://youtu.be/I5S_ae0SyPA?si=9SoXCTWm0IRPIE1T", title: "" },
   { url: "https://youtu.be/92jdkMnYkfs?si=x2RSj-fEVHFFvpdR", title: "" },
   { url: "https://youtu.be/NokYYrE8b3k?si=PCEcdXWJId8GkYXI", title: "" },
+  { url: "https://youtu.be/FsnP7aIH4nQ?si=mPMY_tGsD8RI-ZdY", title: "" },
 ];
 
 const MARQUEE_ITEMS = [
