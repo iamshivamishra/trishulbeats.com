@@ -19,20 +19,24 @@ export interface PlayableBeat {
   packId?: string;
 }
 
-/* ── Actions context (stable — identity-stable callbacks via refs) ── */
+/* ── Actions context ── */
 
 interface AudioActionsContextType {
   currentBeat: PlayableBeat | null;
   isPlaying: boolean;
   volume: number;
-  playBeat: (beat: PlayableBeat) => void;
+  playlist: PlayableBeat[];
+  setPlaylist: (beats: PlayableBeat[]) => void;
+  playBeat: (beat: PlayableBeat, newPlaylist?: PlayableBeat[]) => void;
   togglePlay: () => void;
   seek: (percent: number) => void;
   setVolume: (v: number) => void;
   closePlayer: () => void;
+  playNext: () => void;
+  playPrevious: () => void;
 }
 
-/* ── Progress context (high-frequency — 60 fps timeupdate) ── */
+/* ── Progress context ── */
 
 interface AudioProgressContextType {
   progress: number;
@@ -43,12 +47,11 @@ interface AudioProgressContextType {
 const AudioActionsContext = createContext<AudioActionsContextType | null>(null);
 const AudioProgressContext = createContext<AudioProgressContextType | null>(null);
 
-/* ── Legacy combined type for backward-compat export ── */
-
 type AudioPlayerContextType = AudioActionsContextType & AudioProgressContextType;
 
 export function AudioPlayerProvider({ children }: { children: React.ReactNode }) {
   const [currentBeat, setCurrentBeat] = useState<PlayableBeat | null>(null);
+  const [playlist, setPlaylistState] = useState<PlayableBeat[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -62,7 +65,71 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   isPlayingRef.current = isPlaying;
   const durationRef = useRef(duration);
   durationRef.current = duration;
+  const playlistRef = useRef(playlist);
+  playlistRef.current = playlist;
 
+  const playNext = useCallback(() => {
+    const list = playlistRef.current;
+    const current = currentBeatRef.current;
+    if (!current) return;
+
+    if (!list.length) {
+      if (audioRef.current) audioRef.current.currentTime = 0;
+      return;
+    }
+
+    const currentIndex = list.findIndex((b) => b.id === current.id);
+    if (currentIndex !== -1 && currentIndex < list.length - 1) {
+      const nextBeat = list[currentIndex + 1];
+      const audio = audioRef.current;
+      if (audio) {
+        setCurrentBeat(nextBeat);
+        audio.src = nextBeat.previewUrl;
+        audio.currentTime = 0;
+        audio.play().catch(() => setIsPlaying(false));
+        setIsPlaying(true);
+      }
+    } else {
+      // Playlist ke end par first track loop karega
+      const firstBeat = list[0];
+      const audio = audioRef.current;
+      if (audio && firstBeat) {
+        setCurrentBeat(firstBeat);
+        audio.src = firstBeat.previewUrl;
+        audio.currentTime = 0;
+        audio.play().catch(() => setIsPlaying(false));
+        setIsPlaying(true);
+      }
+    }
+  }, []);
+
+
+ const playPrevious = useCallback(() => {
+    const list = playlistRef.current;
+    const current = currentBeatRef.current;
+    if (!current) return;
+
+    if (!list.length || audioRef.current?.currentTime! > 3) {
+      if (audioRef.current) audioRef.current.currentTime = 0;
+      return;
+    }
+
+    const currentIndex = list.findIndex((b) => b.id === current.id);
+    if (currentIndex > 0) {
+      const prevBeat = list[currentIndex - 1];
+      const audio = audioRef.current;
+      if (audio) {
+        setCurrentBeat(prevBeat);
+        audio.src = prevBeat.previewUrl;
+        audio.currentTime = 0;
+        audio.play().catch(() => setIsPlaying(false));
+        setIsPlaying(true);
+      }
+    } else if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+    }
+  }, []);
+  
   useEffect(() => {
     const audio = new Audio();
     audio.preload = "metadata";
@@ -70,7 +137,10 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
 
     const onTimeUpdate = () => setCurrentTime(audio.currentTime);
     const onLoadedMetadata = () => setDuration(audio.duration);
-    const onEnded = () => setIsPlaying(false);
+    const onEnded = () => {
+      // Beat khatam hone par auto next play karega
+      playNext();
+    };
 
     audio.addEventListener("timeupdate", onTimeUpdate);
     audio.addEventListener("loadedmetadata", onLoadedMetadata);
@@ -82,11 +152,19 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       audio.removeEventListener("ended", onEnded);
       audio.pause();
     };
+  }, [playNext]);
+
+  const setPlaylist = useCallback((beats: PlayableBeat[]) => {
+    setPlaylistState(beats);
   }, []);
 
-  const playBeat = useCallback((beat: PlayableBeat) => {
+  const playBeat = useCallback((beat: PlayableBeat, newPlaylist?: PlayableBeat[]) => {
     const audio = audioRef.current;
     if (!audio) return;
+
+    if (newPlaylist) {
+      setPlaylistState(newPlaylist);
+    }
 
     if (currentBeatRef.current?.id === beat.id) {
       if (isPlayingRef.current) {
@@ -152,13 +230,30 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       currentBeat,
       isPlaying,
       volume,
+      playlist,
+      setPlaylist,
       playBeat,
       togglePlay,
       seek,
       setVolume,
       closePlayer,
+      playNext,
+      playPrevious,
     }),
-    [currentBeat, isPlaying, volume, playBeat, togglePlay, seek, setVolume, closePlayer]
+    [
+      currentBeat,
+      isPlaying,
+      volume,
+      playlist,
+      setPlaylist,
+      playBeat,
+      togglePlay,
+      seek,
+      setVolume,
+      closePlayer,
+      playNext,
+      playPrevious,
+    ]
   );
 
   const progressValue = useMemo<AudioProgressContextType>(
@@ -175,30 +270,18 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   );
 }
 
-/**
- * Subscribe to actions only (stable, no re-renders during playback).
- * Use in BeatCard, PackBeatUploader, BeatPacksClient, etc.
- */
 export function useAudioActions() {
   const ctx = useContext(AudioActionsContext);
   if (!ctx) throw new Error("useAudioActions must be used within AudioPlayerProvider");
   return ctx;
 }
 
-/**
- * Subscribe to high-frequency progress updates.
- * Use only in BottomPlayer, Waveform, TrackProgressBar.
- */
 export function useAudioProgress() {
   const ctx = useContext(AudioProgressContext);
   if (!ctx) throw new Error("useAudioProgress must be used within AudioPlayerProvider");
   return ctx;
 }
 
-/**
- * Legacy combined hook — subscribers get ALL re-renders.
- * Prefer useAudioActions() or useAudioProgress() for new code.
- */
 export function useAudioPlayer(): AudioPlayerContextType {
   const actions = useAudioActions();
   const progress = useAudioProgress();

@@ -11,7 +11,6 @@ import {
   SkipBack,
   SkipForward,
   Share2,
-  Download,
   Repeat,
   Volume2,
   VolumeX,
@@ -32,10 +31,13 @@ export default function BottomPlayer() {
     duration,
     progress,
     volume,
+    playlist,
     togglePlay,
     seek,
     setVolume,
     closePlayer,
+    playNext,
+    playPrevious,
   } = useAudioPlayer();
 
   const pathname = usePathname();
@@ -45,6 +47,14 @@ export default function BottomPlayer() {
   const isOnPackPage = currentBeat?.packId && pathname === `/beat-packs/${currentBeat.packId}`;
 
   if (!currentBeat) return null;
+
+  // Playlist me kam se kam 2 tracks ho tabhi Next/Previous ka koi matlab hai.
+  // Agar playlist khali hai ya sirf 1 track hai, to button disabled rehna
+  // chahiye — warna user click karta hai aur kuch hota nahi (misleading UX).
+  const currentIndex = playlist.findIndex((b) => b.id === currentBeat.id);
+  const hasPlaylist = playlist.length > 1 && currentIndex !== -1;
+  const hasPrevious = hasPlaylist && (currentIndex > 0 || currentTime > 3);
+  const hasNext = hasPlaylist && currentIndex < playlist.length - 1;
 
   const handleSeekClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -117,7 +127,17 @@ export default function BottomPlayer() {
 
         {/* Action buttons */}
         <div className="flex shrink-0 items-center gap-1">
-          {/* Play/Pause */}
+          <button
+            onClick={playPrevious}
+            disabled={!hasPrevious}
+            aria-label="Previous"
+            className={`p-1 text-muted-foreground transition-colors ${
+              hasPrevious ? "hover:text-foreground cursor-pointer" : "opacity-40 cursor-not-allowed"
+            }`}
+          >
+            <SkipBack className="h-3.5 w-3.5" />
+          </button>
+
           <button
             onClick={togglePlay}
             aria-label={isPlaying ? "Pause" : "Play"}
@@ -130,7 +150,17 @@ export default function BottomPlayer() {
             )}
           </button>
 
-          {/* Buy */}
+          <button
+            onClick={playNext}
+            disabled={!hasNext}
+            aria-label="Next"
+            className={`p-1 text-muted-foreground transition-colors ${
+              hasNext ? "hover:text-foreground cursor-pointer" : "opacity-40 cursor-not-allowed"
+            }`}
+          >
+            <SkipForward className="h-3.5 w-3.5" />
+          </button>
+
           {showBuy && (
             <Link
               href={buyHref}
@@ -141,7 +171,6 @@ export default function BottomPlayer() {
             </Link>
           )}
 
-          {/* Close */}
           <button
             onClick={closePlayer}
             aria-label="Close player"
@@ -165,8 +194,8 @@ export default function BottomPlayer() {
               className="h-12 w-12 shrink-0 rounded-md object-cover"
             />
           ) : (
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-muted/50">
-            <Music className="h-5 w-5 text-muted-foreground/30" />
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-muted/50">
+              <Music className="h-5 w-5 text-muted-foreground/30" />
             </div>
           )}
           <div className="min-w-0">
@@ -175,24 +204,29 @@ export default function BottomPlayer() {
           </div>
         </div>
 
-        {/* Share / Download / Like */}
+        {/* Share */}
         <div className="hidden shrink-0 items-center gap-3 text-muted-foreground md:flex">
           <ShareDialog title={currentBeat.title} url={beatUrl}>
             <button aria-label="Share" className="text-muted-foreground hover:text-foreground">
               <Share2 className="h-4 w-4" />
             </button>
           </ShareDialog>
-          <Link href={`/beats/${currentBeat.id}`} aria-label="Download" className="hover:text-foreground">
-            <Download className="h-4 w-4" />
-          </Link>
         </div>
 
         {/* Center controls */}
         <div className="flex flex-1 flex-col items-center gap-1">
           <div className="flex items-center gap-4">
-            <button aria-label="Previous" className="text-muted-foreground/40 cursor-not-allowed" disabled>
+            <button
+              onClick={playPrevious}
+              disabled={!hasPrevious}
+              aria-label="Previous"
+              className={`text-muted-foreground transition-colors ${
+                hasPrevious ? "hover:text-foreground cursor-pointer" : "opacity-40 cursor-not-allowed"
+              }`}
+            >
               <SkipBack className="h-4 w-4" />
             </button>
+
             <button
               onClick={togglePlay}
               aria-label={isPlaying ? "Pause" : "Play"}
@@ -204,7 +238,15 @@ export default function BottomPlayer() {
                 <Play className="ml-0.5 h-4 w-4 fill-current" />
               )}
             </button>
-            <button aria-label="Next" className="text-muted-foreground/40 cursor-not-allowed" disabled>
+
+            <button
+              onClick={playNext}
+              disabled={!hasNext}
+              aria-label="Next"
+              className={`text-muted-foreground transition-colors ${
+                hasNext ? "hover:text-foreground cursor-pointer" : "opacity-40 cursor-not-allowed"
+              }`}
+            >
               <SkipForward className="h-4 w-4" />
             </button>
           </div>
@@ -253,18 +295,6 @@ export default function BottomPlayer() {
             className="w-24 accent-primary"
           />
         </div>
-
-        {/* Buy button */}
-        {showBuy && (
-          <Link
-            href={buyHref}
-            aria-label={buyLabel}
-            className="flex shrink-0 items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:brightness-110"
-          >
-            <BuyIcon className="h-4 w-4" />
-            <span>{buyLabel}</span>
-          </Link>
-        )}
 
         {/* Close */}
         <button

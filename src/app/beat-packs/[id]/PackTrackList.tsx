@@ -35,13 +35,31 @@ export default function PackTrackList({
       toast.info("Preview is not available for this track.");
       return;
     }
-    playBeat({
-      id: track.id,
-      title: track.title,
-      producerName,
-      coverUrl,
-      previewUrl: track.previewUrl,
-    });
+
+    // Build the full playlist (only tracks that actually have a preview,
+    // since a track without previewUrl can't be played by Next/Previous
+    // anyway) so BottomPlayer's playNext/playPrevious can navigate within
+    // this pack instead of getting stuck with an empty playlist.
+    const playablePlaylist = tracks
+      .filter((t) => !!t.previewUrl)
+      .map((t) => ({
+        id: t.id,
+        title: t.title,
+        producerName,
+        coverUrl,
+        previewUrl: t.previewUrl!,
+      }));
+
+    playBeat(
+      {
+        id: track.id,
+        title: track.title,
+        producerName,
+        coverUrl,
+        previewUrl: track.previewUrl,
+      },
+      playablePlaylist
+    );
   };
 
   return (
