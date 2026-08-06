@@ -109,7 +109,7 @@ export default function PackImageCarousel({
     <>
       <div className="relative">
         <div
-          className="relative aspect-[2/1] sm:aspect-video w-full overflow-hidden border-b border-border/40 bg-muted/30 cursor-zoom-in"
+          className="pack-cover-drop relative aspect-[2/1] sm:aspect-video w-full overflow-hidden border-b border-border/40 bg-muted/30 cursor-zoom-in"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
