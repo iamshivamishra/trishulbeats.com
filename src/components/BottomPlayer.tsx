@@ -2,7 +2,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
@@ -14,8 +13,6 @@ import {
   Repeat,
   Volume2,
   VolumeX,
-  ShoppingCart,
-  Package,
   Music,
   X,
 } from "lucide-react";
@@ -44,13 +41,8 @@ export default function BottomPlayer() {
   const [isMuted, setIsMuted] = useState(false);
   const [isRepeat, setIsRepeat] = useState(false);
 
-  const isOnPackPage = currentBeat?.packId && pathname === `/beat-packs/${currentBeat.packId}`;
-
   if (!currentBeat) return null;
 
-  // Playlist me kam se kam 2 tracks ho tabhi Next/Previous ka koi matlab hai.
-  // Agar playlist khali hai ya sirf 1 track hai, to button disabled rehna
-  // chahiye — warna user click karta hai aur kuch hota nahi (misleading UX).
   const currentIndex = playlist.findIndex((b) => b.id === currentBeat.id);
   const hasPlaylist = playlist.length > 1 && currentIndex !== -1;
   const hasPrevious = hasPlaylist && (currentIndex > 0 || currentTime > 3);
@@ -63,13 +55,6 @@ export default function BottomPlayer() {
   };
 
   const beatUrl = typeof window !== "undefined" ? `${window.location.origin}/beats/${currentBeat.id}` : "";
-
-  const buyHref = currentBeat.packId
-    ? `/beat-packs/${currentBeat.packId}`
-    : `/beats/${currentBeat.id}`;
-  const buyLabel = currentBeat.packId ? "Buy Pack" : "Buy";
-  const BuyIcon = currentBeat.packId ? Package : ShoppingCart;
-  const showBuy = !isOnPackPage;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background dark:bg-[#0d0d0d]">
@@ -160,16 +145,6 @@ export default function BottomPlayer() {
           >
             <SkipForward className="h-3.5 w-3.5" />
           </button>
-
-          {showBuy && (
-            <Link
-              href={buyHref}
-              aria-label={buyLabel}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground active:scale-95"
-            >
-              <BuyIcon className="h-3.5 w-3.5" />
-            </Link>
-          )}
 
           <button
             onClick={closePlayer}
