@@ -10,8 +10,6 @@ interface PackInfoHeaderProps {
   pack: Pick<
     BeatPackUi,
     | "title"
-    | "metadata"
-    | "description"
     | "beatCount"
     | "producerName"
     | "producerUsername"
@@ -33,16 +31,6 @@ export default function PackInfoHeader({ pack, pageUrl }: PackInfoHeaderProps) {
         </div>
         <ShareDialog title={pack.title} url={pageUrl} />
       </div>
-      {pack.metadata && (
-        <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-foreground/80">
-          {pack.metadata}
-        </p>
-      )}
-      {pack.description && (
-        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-          {pack.description}
-        </p>
-      )}
 
       <div className="mt-3 flex items-center justify-between gap-3 border-t border-border/40 pt-3">
         <Link
@@ -55,14 +43,14 @@ export default function PackInfoHeader({ pack, pageUrl }: PackInfoHeaderProps) {
             {pack.producerAvatarUrl ? (
               <Image
                 src={pack.producerAvatarUrl}
-                alt={pack.producerName}
+                alt={pack.producerName || "Producer"}
                 fill
                 className="object-cover"
                 sizes="28px"
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-muted-foreground">
-                {pack.producerName.charAt(0).toUpperCase()}
+                {pack.producerName?.charAt(0)?.toUpperCase() || "P"}
               </div>
             )}
           </div>
@@ -72,7 +60,7 @@ export default function PackInfoHeader({ pack, pageUrl }: PackInfoHeaderProps) {
             )}
         </Link>
         <div className="flex items-center gap-1.5">
-          {pack.tags.length > 0 && (
+          {pack.tags && pack.tags.length > 0 && (
             <div className="mr-1 hidden flex-wrap gap-1 sm:flex">
               {pack.tags.slice(0, 3).map((tag) => (
                 <Badge

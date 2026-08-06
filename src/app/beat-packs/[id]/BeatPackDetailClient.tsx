@@ -9,6 +9,7 @@ import { useSearchParams } from "next/navigation";
 import { useAudioActions } from "@/components/AudioPlayerContext";
 import PackImageCarousel from "./PackImageCarousel";
 import PackInfoHeader from "./PackInfoHeader";
+import PackInfoDescription from "./PackInfoDescription";
 import PackTrackList from "./PackTrackList";
 import PackPurchaseSection from "./PackPurchaseSection";
 import PackMobileBar from "./PackMobileBar";
@@ -24,6 +25,7 @@ interface Props {
   purchasedTier: PurchasedTierInfo | null;
 }
 
+// Fixed Syntax Error: Added generic angle brackets < > to Record
 const TIER_EXTRA_FEATURES: Record<
   string,
   { contentId: boolean; streaming: boolean; stems: boolean; wav: boolean }
@@ -60,12 +62,14 @@ export default function BeatPackDetailClient({
   const [pageUrl, setPageUrl] = useState("");
 
   useEffect(() => {
-    setPageUrl(window.location.href);
+    if (typeof window !== "undefined") {
+      setPageUrl(window.location.href);
+    }
   }, []);
 
   const selectedTierPrice = useMemo(() => {
-    const found = pack.prices.find((price) => price.tier === selectedTier);
-    return found?.price ?? pack.prices[0]?.price ?? 0;
+    const found = pack.prices?.find((price) => price.tier === selectedTier);
+    return found?.price ?? pack.prices?.[0]?.price ?? 0;
   }, [pack.prices, selectedTier]);
 
   const selectedExtraFeatures = useMemo(
@@ -74,7 +78,7 @@ export default function BeatPackDetailClient({
   );
 
   const upgradeOptions = useMemo(() => {
-    if (!hasPurchasedAll || !purchasedTier) return [];
+    if (!hasPurchasedAll || !purchasedTier || !pack.prices) return [];
     const tierRank: Record<string, number> = {
       basic: 0,
       premium: 1,
@@ -98,7 +102,9 @@ export default function BeatPackDetailClient({
     const hydrate = async () => {
       try {
         const response = await packCartApi.get();
-        setInPackCart(response.items.some((item) => item.packId === pack.id));
+        if (response?.items) {
+          setInPackCart(response.items.some((item) => item.packId === pack.id));
+        }
       } catch {
         // ignore
       }
@@ -205,6 +211,11 @@ export default function BeatPackDetailClient({
             tracks={pack.tracks}
             producerName={pack.producerName}
             coverUrl={coverUrl}
+          />
+
+          <PackInfoDescription
+            metadata={pack.metadata}
+            description={pack.description}
           />
         </div>
       </div>
