@@ -97,7 +97,7 @@ export function PackUploadSlot({
       setProgress(0);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
-  }, [producerId, beatId, category, onUploaded, usePresigned]);
+  }, [producerId, beatId, category, onUploaded]);
 
   const statusBadge = uploadedFile ? (
     <Badge variant="outline" className="border-green-500/50 text-[10px] text-green-600">
