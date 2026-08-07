@@ -161,10 +161,11 @@ export function PackEditBeatDialog({
     audioPreview?: boolean;
     audioType?: string;
     imagePreview?: boolean;
+    downloadable?: boolean;
   }[] = [
     { label: "Preview MP3", category: "preview", icon: <Music className="h-4 w-4 text-primary" />, required: isNew, file: previewFile, existingUrl: slot.previewUrl, setFile: (a) => setPreviewFile(a), audioPreview: !isNew },
     { label: "Master WAV", category: "master", icon: <Music className="h-4 w-4 text-blue-500" />, required: isNew, file: masterFile, existingUrl: slot.masterUrl, setFile: (a) => setMasterFile(a), audioPreview: !isNew, audioType: "audio/wav" },
-    { label: "Stems ZIP", category: "stems", icon: <FileArchive className="h-4 w-4 text-amber-500" />, file: stemsFile, existingUrl: slot.stemsUrl, setFile: (a) => setStemsFile(a) },
+    { label: "Stems ZIP", category: "stems", icon: <FileArchive className="h-4 w-4 text-amber-500" />, file: stemsFile, existingUrl: slot.stemsUrl, setFile: (a) => setStemsFile(a), downloadable: true },
     { label: "Artwork", category: "artwork", icon: <ImageIcon className="h-4 w-4 text-purple-500" />, file: artworkFile, existingUrl: slot.coverUrl, setFile: (a) => setArtworkFile(a), imagePreview: !isNew },
   ];
 
@@ -303,6 +304,7 @@ export function PackEditBeatDialog({
                     audioPreview={fs.audioPreview}
                     audioType={fs.audioType}
                     imagePreview={fs.imagePreview}
+                    downloadable={fs.downloadable}
                   />
                 ))}
               </div>

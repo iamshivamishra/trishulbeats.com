@@ -7,7 +7,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import {
   Loader2, Save, ArrowLeft, Music, Eye, EyeOff, Trash2, Archive,
-  RefreshCw, FileArchive, ImageIcon, CheckCircle2,
+  RefreshCw, FileArchive, ImageIcon, CheckCircle2, Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -432,6 +432,22 @@ export default function EditBeatForm({ beat, licenses }: Props) {
               <div className="flex items-center gap-2">
                 {replaceStems.done && <CheckCircle2 className="h-4 w-4 text-green-500" />}
                 <Badge variant="outline">{currentFiles.stemsUrl ? "Uploaded" : "Not provided"}</Badge>
+                {currentFiles.stemsUrl && (
+                  <Button variant="outline" size="sm"
+                    onClick={async () => {
+                      try {
+                        const res = await fetch(`/api/studio/beats/${beat._id}/presign-file?type=stems`);
+                        if (!res.ok) throw new Error("Failed to get download link");
+                        const { url } = await res.json();
+                        window.open(url, "_blank");
+                      } catch {
+                        toast.error("Failed to download stems");
+                      }
+                    }}>
+                    <Download className="mr-1.5 h-3.5 w-3.5" />
+                    Download
+                  </Button>
+                )}
                 <Button variant="outline" size="sm" disabled={replaceStems.uploading}
                   onClick={() => stemsRef.current?.click()}>
                   {replaceStems.uploading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-1.5 h-3.5 w-3.5" />}
