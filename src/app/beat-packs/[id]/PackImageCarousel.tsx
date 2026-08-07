@@ -73,8 +73,19 @@ export default function PackImageCarousel({
   }, []);
 
   const handleLightboxTouchEnd = useCallback(() => {
-    if (lightboxTouchDeltaX.current > 50) goToPrev();
-    else if (lightboxTouchDeltaX.current < -50) goToNext();
+    // agar swipe hua tha (threshold cross kiya), to sirf navigate karo, close mat karo
+    if (lightboxTouchDeltaX.current > 50) {
+      goToPrev();
+      lightboxTouchDeltaX.current = 0;
+      return;
+    }
+    if (lightboxTouchDeltaX.current < -50) {
+      goToNext();
+      lightboxTouchDeltaX.current = 0;
+      return;
+    }
+    // koi swipe nahi hua matlab ye ek tap tha -> lightbox band karo
+    setLightboxOpen(false);
     lightboxTouchDeltaX.current = 0;
   }, [goToPrev, goToNext]);
 
@@ -92,8 +103,19 @@ export default function PackImageCarousel({
   const handleLightboxMouseUp = useCallback(() => {
     if (!lightboxMouseDown.current) return;
     lightboxMouseDown.current = false;
-    if (lightboxMouseDeltaX.current > 50) goToPrev();
-    else if (lightboxMouseDeltaX.current < -50) goToNext();
+
+    if (lightboxMouseDeltaX.current > 50) {
+      goToPrev();
+      lightboxMouseDeltaX.current = 0;
+      return;
+    }
+    if (lightboxMouseDeltaX.current < -50) {
+      goToNext();
+      lightboxMouseDeltaX.current = 0;
+      return;
+    }
+    // koi drag nahi hua matlab simple click tha -> lightbox band karo (image normal ho jayegi)
+    setLightboxOpen(false);
     lightboxMouseDeltaX.current = 0;
   }, [goToPrev, goToNext]);
 
@@ -203,7 +225,7 @@ export default function PackImageCarousel({
             </DialogTitle>
           </DialogHeader>
           <div
-            className="relative flex h-[80vh] w-full cursor-grab select-none items-center justify-center active:cursor-grabbing"
+            className="relative flex h-[80vh] w-full cursor-zoom-out select-none items-center justify-center active:cursor-grabbing"
             onTouchStart={handleLightboxTouchStart}
             onTouchMove={handleLightboxTouchMove}
             onTouchEnd={handleLightboxTouchEnd}
@@ -227,7 +249,10 @@ export default function PackImageCarousel({
                 {carouselIndex > 0 && (
                   <button
                     type="button"
-                    onClick={goToPrev}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      goToPrev();
+                    }}
                     className="absolute left-3 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition hover:bg-black/70"
                     aria-label="Previous image"
                   >
@@ -237,7 +262,10 @@ export default function PackImageCarousel({
                 {carouselIndex < allImages.length - 1 && (
                   <button
                     type="button"
-                    onClick={goToNext}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      goToNext();
+                    }}
                     className="absolute right-3 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition hover:bg-black/70"
                     aria-label="Next image"
                   >
