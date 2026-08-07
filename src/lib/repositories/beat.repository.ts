@@ -133,7 +133,12 @@ export const beatRepository = {
     if (!includeFullAudio) {
       query.select(PUBLIC_BEAT_EXCLUSIONS);
     }
-    return query.lean<IBeat[]>();
+    const beats = await query.lean<IBeat[]>();
+    // $in doesn't guarantee order — re-sort to match the input array
+    const idOrder = new Map(ids.map((id, i) => [id, i]));
+    return beats.sort(
+      (a, b) => (idOrder.get(a._id.toString()) ?? 0) - (idOrder.get(b._id.toString()) ?? 0)
+    );
   },
 
   async findByIdsMinimal(ids: string[]): Promise<Pick<IBeat, "_id" | "title" | "genre" | "bpm" | "duration" | "audioTaggedUrl">[]> {

@@ -23,9 +23,10 @@ interface Props {
   mode: "create" | "edit";
   initialPack?: BeatPackUi;
   producerId: string;
+  initialDisplayUrls?: Record<string, string>;
 }
 
-export default function BeatPackEditorForm({ mode, initialPack, producerId }: Props) {
+export default function BeatPackEditorForm({ mode, initialPack, producerId, initialDisplayUrls }: Props) {
   const router = useRouter();
   const [title, setTitle] = useState(initialPack?.title ?? "");
   const [metadata, setMetadata] = useState(initialPack?.metadata ?? "");
@@ -35,6 +36,7 @@ export default function BeatPackEditorForm({ mode, initialPack, producerId }: Pr
     if (urls.length === 0 && initialPack?.coverUrl) return [initialPack.coverUrl];
     return urls;
   });
+  const [displayUrls, setDisplayUrls] = useState<Record<string, string>>(initialDisplayUrls ?? {});
   const [uploadingGallery, setUploadingGallery] = useState(false);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const [basicPrice, setBasicPrice] = useState(
@@ -209,6 +211,7 @@ export default function BeatPackEditorForm({ mode, initialPack, producerId }: Pr
                 setUploadingGallery(true);
                 try {
                   const uploaded: string[] = [];
+                  const newDisplayMap: Record<string, string> = {};
                   for (const file of files) {
                     const formData = new FormData();
                     formData.append("file", file);
@@ -217,10 +220,12 @@ export default function BeatPackEditorForm({ mode, initialPack, producerId }: Pr
                       const err = await res.json().catch(() => ({}));
                       throw new Error(err.error || `Failed to upload ${file.name}`);
                     }
-                    const { url } = await res.json();
+                    const { url, displayUrl } = await res.json();
                     uploaded.push(url);
+                    if (displayUrl) newDisplayMap[url] = displayUrl;
                   }
                   setImageUrls((prev) => [...prev, ...uploaded]);
+                  setDisplayUrls((prev) => ({ ...prev, ...newDisplayMap }));
                   toast.success(`${uploaded.length} image${uploaded.length === 1 ? "" : "s"} uploaded`);
                 } catch (error) {
                   toast.error(error instanceof Error ? error.message : "Upload failed");
@@ -234,7 +239,7 @@ export default function BeatPackEditorForm({ mode, initialPack, producerId }: Pr
               <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
                 {imageUrls.map((url, index) => (
                   <div key={index} className="group relative aspect-square overflow-hidden rounded-lg border border-border/60 bg-muted/30">
-                    <Image src={url} alt={`Gallery image ${index + 1}`} fill sizes="120px" className="object-cover" />
+                    <Image src={displayUrls[url] || url} alt={`Gallery image ${index + 1}`} fill sizes="120px" className="object-cover" unoptimized />
                     <button
                       type="button"
                       onClick={() => setImageUrls((prev) => prev.filter((_, i) => i !== index))}

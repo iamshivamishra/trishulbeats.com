@@ -21,8 +21,9 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await storageService.uploadCoverImage(file, "beat-packs");
+    const presignedUrl = await storageService.presignUrl(result.url);
 
-    return Response.json({ url: result.url });
+    return Response.json({ url: result.url, displayUrl: presignedUrl });
   } catch (error) {
     return formatErrorResponse(error);
   }

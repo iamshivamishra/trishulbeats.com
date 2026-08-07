@@ -1,10 +1,26 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Music, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useAudioActions } from "@/components/AudioPlayerContext";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { restrictToVerticalAxis, restrictToParentElement } from "@dnd-kit/modifiers";
 import {
   type BeatSlot,
   type UploadedAsset,
@@ -31,6 +47,33 @@ export default function PackBeatUploader({ slots, onChange, disabled, producerId
     slots.length > 0 && slots[slots.length - 1].status === "pending" ? slots.length - 1 : null
   );
   const [editDialogIndex, setEditDialogIndex] = useState<number | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const sortableIds = useMemo(() => slots.map((s) => s.clientId), [slots]);
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+
+      const oldIndex = slots.findIndex((s) => s.clientId === active.id);
+      const newIndex = slots.findIndex((s) => s.clientId === over.id);
+      if (oldIndex === -1 || newIndex === -1) return;
+
+      onChange(arrayMove(slots, oldIndex, newIndex));
+
+      if (expandedIndex !== null) {
+        if (expandedIndex === oldIndex) setExpandedIndex(newIndex);
+        else if (oldIndex < expandedIndex && newIndex >= expandedIndex) setExpandedIndex(expandedIndex - 1);
+        else if (oldIndex > expandedIndex && newIndex <= expandedIndex) setExpandedIndex(expandedIndex + 1);
+      }
+    },
+    [slots, onChange, expandedIndex]
+  );
 
   const updateSlot = useCallback(
     (index: number, patch: Partial<BeatSlot>) => {
@@ -68,7 +111,7 @@ export default function PackBeatUploader({ slots, onChange, disabled, producerId
         <Label className="text-sm font-medium">
           Beats in This Pack
           <span className="ml-1.5 text-xs text-muted-foreground font-normal">
-            ({slots.length} {slots.length === 1 ? "beat" : "beats"})
+            ({slots.length} {slots.length === 1 ? "beat" : "beats"} · drag to reorder)
           </span>
         </Label>
         <Button type="button" variant="outline" size="sm" className="h-7 gap-1.5 text-xs" onClick={addSlot} disabled={disabled}>
@@ -93,22 +136,31 @@ export default function PackBeatUploader({ slots, onChange, disabled, producerId
         </button>
       )}
 
-      <div className="space-y-2">
-        {slots.map((slot, index) => (
-          <PackTrackCard
-            key={slot.clientId}
-            slot={slot}
-            index={index}
-            isExpanded={expandedIndex === index}
-            isCurrentlyPlaying={currentBeat?.id === slot.beatId && isPlaying}
-            onToggleExpand={() => setExpandedIndex(expandedIndex === index ? null : index)}
-            onEdit={() => setEditDialogIndex(index)}
-            onRemove={() => removeSlot(index)}
-            onPlay={() => playBeat({ id: slot.beatId!, title: slot.title, producerName: "You", previewUrl: slot.previewUrl })}
-            disabled={disabled}
-          />
-        ))}
-      </div>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+        modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+      >
+        <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
+          <div className="space-y-2">
+            {slots.map((slot, index) => (
+              <PackTrackCard
+                key={slot.clientId}
+                slot={slot}
+                index={index}
+                isExpanded={expandedIndex === index}
+                isCurrentlyPlaying={currentBeat?.id === slot.beatId && isPlaying}
+                onToggleExpand={() => setExpandedIndex(expandedIndex === index ? null : index)}
+                onEdit={() => setEditDialogIndex(index)}
+                onRemove={() => removeSlot(index)}
+                onPlay={() => playBeat({ id: slot.beatId!, title: slot.title, producerName: "You", previewUrl: slot.previewUrl })}
+                disabled={disabled}
+              />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
 
       {editDialogIndex !== null && slots[editDialogIndex] && (
         <PackEditBeatDialog

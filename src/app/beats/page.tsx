@@ -4,6 +4,7 @@ import { Music } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { beatFilterSchema, GENRE_OPTIONS, KEY_OPTIONS, MOOD_OPTIONS } from "@/lib/validators/beat";
 import { marketplaceService } from "@/lib/services/marketplace.service";
+import { storageService } from "@/lib/services/storage.service";
 import { BeatsFilters } from "./BeatsFilters";
 import BeatsGridClient from "./BeatsGridClient";
 import Pagination from "@/components/Pagination";
@@ -59,13 +60,17 @@ export default async function BeatsPage({ searchParams }: BeatsPageProps) {
   const filters = beatFilterSchema.parse(params);
   const result = await marketplaceService.list(filters);
 
-  const beatsWithPrices = result.beats.map((beat) => ({
-    beat: {
-      ...beat,
-      producerUsername: beat.producerUsername ?? undefined,
-    },
-    startingPrice: beat.startingPrice ?? null,
-  }));
+  const beatsWithPrices = await Promise.all(
+    result.beats.map(async (beat) => ({
+      beat: {
+        ...beat,
+        producerUsername: beat.producerUsername ?? undefined,
+        coverUrl: await storageService.presignUrl(beat.coverUrl),
+        audioTaggedUrl: await storageService.presignUrl(beat.audioTaggedUrl),
+      },
+      startingPrice: beat.startingPrice ?? null,
+    }))
+  );
 
   return (
     <div className="page-shell">

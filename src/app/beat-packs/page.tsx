@@ -3,6 +3,7 @@ import BeatPacksClient from "@/app/beat-packs/BeatPacksClient";
 import { beatPackRepository } from "@/lib/repositories/beat-pack.repository";
 import { userRepository } from "@/lib/repositories/user.repository";
 import { beatRepository } from "@/lib/repositories/beat.repository";
+import { storageService } from "@/lib/services/storage.service";
 import { connectDB } from "@/lib/db";
 import type { BeatPackUi } from "@/features/beats/beat-pack-ui";
 
@@ -39,39 +40,39 @@ export default async function BeatPacksPage() {
   const producerMap = new Map(producers.map((p) => [p._id.toString(), p]));
   const beatMap = new Map(allBeats.map((b) => [b._id.toString(), b]));
 
-  const packs: BeatPackUi[] = result.data.map((pack) => {
+  const packs: BeatPackUi[] = await Promise.all(result.data.map(async (pack) => {
     const producer = producerMap.get(pack.producerId.toString());
     const beats = pack.beatIds
       .map((id) => beatMap.get(id.toString()))
       .filter(Boolean) as NonNullable<(typeof allBeats)[number]>[];
 
-    return {
-      id: pack._id.toString(),
-      title: pack.title,
-      description: pack.description || "",
-      coverUrl: pack.coverUrl,
-      imageUrls: pack.imageUrls || [],
-      producerName: producer?.displayName || producer?.name || "",
-      producerUsername: producer?.username || "",
-      tags: pack.tags || [],
-      beatCount: pack.beatIds.length,
-      prices: [
-        { tier: "basic", price: pack.prices.basic },
-        { tier: "premium", price: pack.prices.premium },
-        { tier: "unlimited", price: pack.prices.unlimited },
-      ],
-      tracks: beats.map((beat) => ({
-        id: beat._id.toString(),
-        title: beat.title,
-        genre: beat.genre,
-        bpm: beat.bpm,
-        durationLabel: beat.duration ? `${Math.floor(beat.duration / 60)}:${String(beat.duration % 60).padStart(2, "0")}` : "—",
-        previewUrl: beat.audioTaggedUrl,
-      })),
-      status: pack.status === "published" ? "published" : "draft",
-      updatedAtLabel: `Updated ${new Date(pack.updatedAt).toLocaleDateString()}`,
+      return {
+        id: pack._id.toString(),
+        title: pack.title,
+        description: pack.description || "",
+        coverUrl: await storageService.presignUrl(pack.coverUrl),
+        imageUrls: await storageService.presignUrls(pack.imageUrls || []),
+        producerName: producer?.displayName || producer?.name || "",
+        producerUsername: producer?.username || "",
+        tags: pack.tags || [],
+        beatCount: pack.beatIds.length,
+        prices: [
+          { tier: "basic" as const, price: pack.prices.basic },
+          { tier: "premium" as const, price: pack.prices.premium },
+          { tier: "unlimited" as const, price: pack.prices.unlimited },
+        ],
+        tracks: await Promise.all(beats.map(async (beat) => ({
+          id: beat._id.toString(),
+          title: beat.title,
+          genre: beat.genre,
+          bpm: beat.bpm,
+          durationLabel: beat.duration ? `${Math.floor(beat.duration / 60)}:${String(beat.duration % 60).padStart(2, "0")}` : "—",
+          previewUrl: await storageService.presignUrl(beat.audioTaggedUrl),
+        }))),
+        status: pack.status === "published" ? "published" : "draft",
+        updatedAtLabel: `Updated ${new Date(pack.updatedAt).toLocaleDateString()}`,
     };
-  });
+  }));
   return <BeatPacksClient packs={packs} hasMore={result.hasNext} />;
 }
 

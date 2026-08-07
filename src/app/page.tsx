@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { beatService } from "@/lib/services/beat.service";
 import { beatPackRepository } from "@/lib/repositories/beat-pack.repository";
 import { userRepository } from "@/lib/repositories/user.repository";
+import { storageService } from "@/lib/services/storage.service";
+import { withPresignedBeatCovers } from "@/lib/serializers/presign";
 import BeatPackSlider from "@/components/BeatPackSlider";
 import YoutubeBeats from "@/components/YoutubeBeats";
 import SpotifyShowcase from "@/components/SpotifyShowcase";
@@ -25,26 +27,34 @@ export default async function HomePage() {
     beatPackRepository.listPublished(1, 3),
   ]);
 
-  const [recentWithPrices, trendingWithPrices] = await Promise.all([
+  const [recentRaw, trendingRaw] = await Promise.all([
     beatService.enrichWithPrices(recentBeats),
     beatService.enrichWithPrices(trendingBeats),
   ]);
+
+  const [recentWithPrices, trendingWithPrices] = await Promise.all([
+    withPresignedBeatCovers(recentRaw),
+    withPresignedBeatCovers(trendingRaw),
+  ]);
+
   const packProducerIds = [...new Set(packResult.data.map((p) => p.producerId.toString()))];
   const packProducers = await userRepository.findByIds(packProducerIds);
   const packProducerMap = new Map(packProducers.map((p) => [p._id.toString(), p]));
 
-  const featuredPacks = packResult.data.map((pack) => {
-    const producer = packProducerMap.get(pack.producerId.toString());
-    const minPrice = Math.min(pack.prices.basic, pack.prices.premium, pack.prices.unlimited);
-    return {
-      id: pack._id.toString(),
-      title: pack.title,
-      coverUrl: pack.coverUrl,
-      beatCount: pack.beatIds.length,
-      producerName: producer?.displayName || producer?.name || "",
-      startingPrice: minPrice,
-    };
-  });
+  const featuredPacks = await Promise.all(
+    packResult.data.map(async (pack) => {
+      const producer = packProducerMap.get(pack.producerId.toString());
+      const minPrice = Math.min(pack.prices.basic, pack.prices.premium, pack.prices.unlimited);
+      return {
+        id: pack._id.toString(),
+        title: pack.title,
+        coverUrl: await storageService.presignUrl(pack.coverUrl),
+        beatCount: pack.beatIds.length,
+        producerName: producer?.displayName || producer?.name || "",
+        startingPrice: minPrice,
+      };
+    })
+  );
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 

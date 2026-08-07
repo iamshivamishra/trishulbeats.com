@@ -95,7 +95,7 @@ export default async function EditBeatPackPage({ params }: Props) {
           durationLabel: beat.duration
             ? `${Math.floor(beat.duration / 60)}:${String(beat.duration % 60).padStart(2, "0")}`
             : "—",
-          previewUrl: beat.audioTaggedUrl || "",
+          previewUrl: await storageService.presignUrl(beat.audioTaggedUrl || ""),
           masterUrl,
           stemsUrl,
           coverUrl: beat.coverUrl || "",
@@ -106,6 +106,15 @@ export default async function EditBeatPackPage({ params }: Props) {
     updatedAtLabel: `Updated ${new Date(pack.updatedAt).toLocaleDateString()}`,
   };
 
-  return <BeatPackEditorForm mode="edit" initialPack={initialPack} producerId={session.user.id} />;
+  const rawImageUrls = pack.imageUrls || (pack.coverUrl ? [pack.coverUrl] : []);
+  const presignedImageUrls = await storageService.presignUrls(rawImageUrls);
+  const initialDisplayUrls: Record<string, string> = {};
+  rawImageUrls.forEach((raw, i) => {
+    if (raw && presignedImageUrls[i] && raw !== presignedImageUrls[i]) {
+      initialDisplayUrls[raw] = presignedImageUrls[i];
+    }
+  });
+
+  return <BeatPackEditorForm mode="edit" initialPack={initialPack} producerId={session.user.id} initialDisplayUrls={initialDisplayUrls} />;
 }
 
