@@ -78,8 +78,7 @@ export default function AboutPage() {
 
         <Reveal delay={160}>
           <p className="mx-auto mt-4 max-w-2xl text-base text-muted-foreground sm:text-lg">
-            We connect talented producers with artists looking for the perfect beat.
-            Browse, preview, license — all in one place.
+            Premium beat packs crafted for artists ready to create their next track.
           </p>
         </Reveal>
 
