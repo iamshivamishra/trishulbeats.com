@@ -82,12 +82,12 @@ export default function BeatPacksClient({ packs, hasMore }: Props) {
             Purchase curated collections and unlock all beats inside each pack.
           </p>
         </div>
-        <Button asChild variant="outline">
+        {/* <Button asChild variant="outline">
           <Link href="/beats">
             Browse Single Beats
             <ArrowRight className="ml-1.5 h-4 w-4" />
           </Link>
-        </Button>
+        </Button> */}
       </div>
 
       <div className="mb-5 flex flex-col gap-2 sm:flex-row">
