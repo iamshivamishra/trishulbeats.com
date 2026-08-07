@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   CheckCircle2,
+  Download,
   Loader2,
   Upload,
   X,
@@ -18,10 +19,8 @@ import {
   MAX_SIZES,
   ALLOWED_FORMATS,
   formatSize,
-  STORAGE_PROVIDER,
   resolveContentType,
   uploadViaPresign,
-  uploadStemsViaServer,
 } from "./pack-beat-uploader-types";
 import { uploadMultipart, MULTIPART_THRESHOLD } from "@/lib/upload/multipart";
 
@@ -40,6 +39,7 @@ interface UploadSlotProps {
   audioPreview?: boolean;
   audioType?: string;
   imagePreview?: boolean;
+  downloadable?: boolean;
 }
 
 export function PackUploadSlot({
@@ -57,6 +57,7 @@ export function PackUploadSlot({
   audioPreview,
   audioType = "audio/mpeg",
   imagePreview,
+  downloadable,
 }: UploadSlotProps) {
   const formats = ALLOWED_FORMATS[category];
   const hasExisting = !!existingUrl;
@@ -64,8 +65,6 @@ export function PackUploadSlot({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
-
-  const usePresigned = STORAGE_PROVIDER === "s3" || STORAGE_PROVIDER === "r2";
 
   const handleFileInputChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -80,9 +79,7 @@ export function PackUploadSlot({
     setProgress(0);
     try {
       let asset: UploadedAsset;
-      if (category === "stems" && STORAGE_PROVIDER === "cloudinary") {
-        asset = await uploadStemsViaServer(file, producerId, beatId, setProgress);
-      } else if (usePresigned && file.size > MULTIPART_THRESHOLD) {
+      if (file.size > MULTIPART_THRESHOLD) {
         const result = await uploadMultipart(file, {
           producerId, beatId, category,
           contentType: resolveContentType(file, category),
@@ -138,6 +135,27 @@ export function PackUploadSlot({
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {statusBadge}
+          {downloadable && hasExisting && !uploadedFile && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs px-3"
+              disabled={disabled}
+              onClick={async () => {
+                try {
+                  const res = await fetch(`/api/studio/beats/${beatId}/presign-file?type=${category}`);
+                  if (!res.ok) throw new Error("Failed to get download link");
+                  const { url } = await res.json();
+                  window.open(url, "_blank");
+                } catch {
+                  toast.error(`Failed to download ${label.toLowerCase()}`);
+                }
+              }}
+            >
+              <Download className="mr-1.5 h-3 w-3" /> Download
+            </Button>
+          )}
           <input
             ref={fileInputRef}
             type="file"
