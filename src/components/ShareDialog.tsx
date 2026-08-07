@@ -43,11 +43,18 @@ const TelegramIcon = () => (
   </svg>
 );
 
+const InstagramIcon = () => (
+  <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current" aria-hidden>
+    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zM12 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
+  </svg>
+);
+
 interface SocialOption {
   name: string;
   icon: React.ReactNode;
   bg: string;
-  getUrl: (message: string, url: string) => string;
+  getUrl?: (message: string, url: string) => string;
+  isInstagram?: boolean;
 }
 
 const SOCIAL_OPTIONS: SocialOption[] = [
@@ -75,6 +82,12 @@ const SOCIAL_OPTIONS: SocialOption[] = [
     bg: "#0088cc",
     getUrl: (msg, url) => `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(msg)}`,
   },
+  {
+    name: "Instagram",
+    icon: <InstagramIcon />,
+    bg: "linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)",
+    isInstagram: true,
+  },
 ];
 
 export default function ShareDialog({ title, url, children }: ShareDialogProps) {
@@ -97,7 +110,32 @@ export default function ShareDialog({ title, url, children }: ShareDialogProps) 
 
   const handleSocialClick = (option: SocialOption) => {
     const shareMessage = message.trim() || defaultMessage;
-    window.open(option.getUrl(shareMessage, url), "_blank", "noopener,noreferrer");
+
+    // Instagram doesn't support a web share URL with prefilled text/link,
+    // so copy the message+link and open Instagram for the user to paste it.
+    if (option.isInstagram) {
+      navigator.clipboard.writeText(`${shareMessage}\n${url}`);
+      toast.success("Link copied! Paste it in your Instagram DM or story.");
+
+      const isMobile = /iphone|ipad|ipod|android/i.test(
+        typeof navigator !== "undefined" ? navigator.userAgent : "",
+      );
+
+      if (isMobile) {
+        // Try opening the Instagram app directly; falls back to the web app.
+        window.location.href = "instagram://app";
+        setTimeout(() => {
+          window.open("https://www.instagram.com/", "_blank", "noopener,noreferrer");
+        }, 500);
+      } else {
+        window.open("https://www.instagram.com/", "_blank", "noopener,noreferrer");
+      }
+      return;
+    }
+
+    if (option.getUrl) {
+      window.open(option.getUrl(shareMessage, url), "_blank", "noopener,noreferrer");
+    }
   };
 
   const defaultTrigger = (
@@ -144,9 +182,9 @@ export default function ShareDialog({ title, url, children }: ShareDialogProps) 
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(4, 48px)",
+            gridTemplateColumns: "repeat(5, 48px)",
             justifyContent: "center",
-            gap: "16px",
+            gap: "12px",
           }}
         >
           {SOCIAL_OPTIONS.map((option) => (
@@ -159,7 +197,7 @@ export default function ShareDialog({ title, url, children }: ShareDialogProps) 
             >
               <div
                 className="flex h-12 w-12 items-center justify-center rounded-full text-white transition-transform duration-150 hover:scale-110 active:scale-95"
-                style={{ backgroundColor: option.bg }}
+                style={{ background: option.bg }}
               >
                 {option.icon}
               </div>
