@@ -35,10 +35,6 @@ const faqItems = [
     q: "Can I get a refund?",
     a: "Due to the digital nature of beats, all sales are final. However, if you experience technical issues with your download, contact our support team and we'll help resolve it.",
   },
-  {
-    q: "How do I become a producer on Trishul Beats?",
-    a: "Sign up for a free producer account, complete your profile, and start uploading your beats. Once approved, your beats will be listed on the marketplace for buyers to discover.",
-  },
 ];
 
 const faqJsonLd = {
