@@ -18,6 +18,8 @@ import {
   X,
 } from "lucide-react";
 import NextImage from "next/image";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { type BeatSlot, getFileStatus } from "./pack-beat-uploader-types";
@@ -45,6 +47,21 @@ export function PackTrackCard({
   onPlay,
   disabled,
 }: PackTrackCardProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: slot.clientId });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : undefined,
+  };
+
   const isUploading = slot.status === "uploading";
   const isUploaded = slot.status === "uploaded";
   const hasError = slot.status === "error";
@@ -53,15 +70,26 @@ export function PackTrackCard({
 
   return (
     <div
+      ref={setNodeRef}
+      style={style}
       className={`group rounded-xl border transition-all ${
-        hasError ? "border-destructive/40 bg-destructive/5"
+        isDragging ? "opacity-50 shadow-lg"
+          : hasError ? "border-destructive/40 bg-destructive/5"
           : isUploaded ? "border-border/60 bg-background"
           : isUploading ? "border-primary/30 bg-primary/5"
           : "border-border/40 bg-background/80"
-      } ${isExpanded ? "ring-1 ring-primary/20" : ""}`}
+      } ${isExpanded && !isDragging ? "ring-1 ring-primary/20" : ""}`}
     >
       <div className="flex items-center gap-2 px-3 py-2.5">
-        <GripVertical className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />
+        <button
+          type="button"
+          className="touch-none cursor-grab rounded p-0.5 text-muted-foreground/40 transition hover:text-muted-foreground active:cursor-grabbing"
+          aria-label="Drag to reorder"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="h-3.5 w-3.5 shrink-0" />
+        </button>
 
         {slot.coverUrl ? (
           <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg">
@@ -141,7 +169,7 @@ export function PackTrackCard({
         </div>
       )}
 
-      {isExpanded && !isUploading && (
+      {isExpanded && !isUploading && !isDragging && (
         <div className="border-t border-border/30 px-4 pb-3 pt-3">
           {!slot.existing && !slot.title ? (
             <div className="flex flex-col items-center gap-2 py-6 text-muted-foreground">

@@ -3,6 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { beatPackService } from "@/lib/services/beat-pack.service";
 import { purchaseRepository } from "@/lib/repositories/purchase.repository";
+import { storageService } from "@/lib/services/storage.service";
+import { withPresignedPackImages } from "@/lib/serializers/presign";
 import BeatPackDetailClient from "@/app/beat-packs/[id]/BeatPackDetailClient";
 import type { BeatPackUi, PurchasedTierInfo } from "@/features/beats/beat-pack-ui";
 
@@ -49,7 +51,7 @@ export default async function DashboardPackDetailPage({ params }: Props) {
     }
   }
 
-  const uiPack: BeatPackUi = {
+  const uiPack: BeatPackUi = await withPresignedPackImages({
     id: pack._id.toString(),
     title: pack.title,
     metadata: pack.metadata || "",
@@ -66,7 +68,7 @@ export default async function DashboardPackDetailPage({ params }: Props) {
       { tier: "premium", price: pack.prices.premium },
       { tier: "unlimited", price: pack.prices.unlimited },
     ],
-    tracks: pack.beats.map((beat) => ({
+    tracks: await Promise.all(pack.beats.map(async (beat) => ({
       id: beat._id.toString(),
       title: beat.title,
       genre: beat.genre,
@@ -74,11 +76,11 @@ export default async function DashboardPackDetailPage({ params }: Props) {
       durationLabel: beat.duration
         ? `${Math.floor(beat.duration / 60)}:${String(beat.duration % 60).padStart(2, "0")}`
         : "—",
-      previewUrl: beat.audioTaggedUrl,
-    })),
+      previewUrl: await storageService.presignUrl(beat.audioTaggedUrl),
+    }))),
     status: pack.status === "published" ? "published" : "draft",
     updatedAtLabel: `Updated ${new Date(pack.updatedAt).toLocaleDateString()}`,
-  };
+  });
 
   return (
     <div className="page-shell max-w-5xl">

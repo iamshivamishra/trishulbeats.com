@@ -4,6 +4,8 @@ import BeatPackDetailClient from "@/app/beat-packs/[id]/BeatPackDetailClient";
 import { auth } from "@/lib/auth";
 import { beatPackService } from "@/lib/services/beat-pack.service";
 import { purchaseRepository } from "@/lib/repositories/purchase.repository";
+import { withPresignedPackImages } from "@/lib/serializers/presign";
+import { storageService } from "@/lib/services/storage.service";
 import type { BeatPackUi, PurchasedTierInfo } from "@/features/beats/beat-pack-ui";
 
 export const dynamic = "force-dynamic";
@@ -75,7 +77,7 @@ export default async function BeatPackDetailPage({ params }: Props) {
   const hasPurchasedAll = ownershipFlags.length > 0 && ownershipFlags.every(Boolean);
   const ownedBeatCount = ownershipFlags.filter(Boolean).length;
 
-  const uiPack: BeatPackUi = {
+  const uiPack: BeatPackUi = await withPresignedPackImages({
     id: pack._id.toString(),
     title: pack.title,
     metadata: pack.metadata || "",
@@ -92,7 +94,7 @@ export default async function BeatPackDetailPage({ params }: Props) {
       { tier: "premium", price: pack.prices.premium },
       { tier: "unlimited", price: pack.prices.unlimited },
     ],
-    tracks: pack.beats.map((beat) => ({
+    tracks: await Promise.all(pack.beats.map(async (beat) => ({
       id: beat._id.toString(),
       title: beat.title,
       genre: beat.genre,
@@ -100,11 +102,11 @@ export default async function BeatPackDetailPage({ params }: Props) {
       durationLabel: beat.duration
         ? `${Math.floor(beat.duration / 60)}:${String(beat.duration % 60).padStart(2, "0")}`
         : "—",
-      previewUrl: beat.audioTaggedUrl,
-    })),
+      previewUrl: await storageService.presignUrl(beat.audioTaggedUrl),
+    }))),
     status: pack.status === "published" ? "published" : "draft",
     updatedAtLabel: `Updated ${new Date(pack.updatedAt).toLocaleDateString()}`,
-  };
+  });
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const packImage = pack.imageUrls?.[0] || pack.coverUrl || undefined;

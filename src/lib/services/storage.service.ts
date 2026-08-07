@@ -29,6 +29,35 @@ import {
 } from "@/lib/storage/s3";
 import { logger } from "@/lib/logger";
 
+// ─── S3 URL detection ────────────────────────────────────────────
+
+const S3_URL_PATTERNS = [
+  /^https?:\/\/[\w-]+\.s3\.[\w-]+\.amazonaws\.com\//,
+  /^https?:\/\/s3\.[\w-]+\.amazonaws\.com\/[\w-]+\//,
+];
+
+function isS3Url(url: string): boolean {
+  return S3_URL_PATTERNS.some((pattern) => pattern.test(url));
+}
+
+function extractS3Key(url: string): string | null {
+  const bucketPrefix = process.env.AWS_S3_PUBLIC_URL?.replace(/\/$/, "");
+  if (bucketPrefix && url.startsWith(bucketPrefix)) {
+    return url.slice(bucketPrefix.length + 1);
+  }
+
+  const bucket = process.env.AWS_S3_BUCKET;
+  const region = process.env.AWS_S3_REGION;
+
+  const pattern1 = `https://${bucket}.s3.${region}.amazonaws.com/`;
+  if (url.startsWith(pattern1)) return url.slice(pattern1.length);
+
+  const pattern2 = `https://s3.${region}.amazonaws.com/${bucket}/`;
+  if (url.startsWith(pattern2)) return url.slice(pattern2.length);
+
+  return null;
+}
+
 function resourceTypeForCategory(
   category: FileCategory
 ): "image" | "video" | "raw" {
@@ -281,6 +310,38 @@ export const storageService = {
       return s3PublicUrl(key);
     }
     return r2PublicUrl(key);
+  },
+
+  /**
+   * Convert a stored S3 URL to a presigned GET URL.
+   * Non-S3 URLs and empty/null values pass through unchanged.
+   */
+  async presignUrl(
+    url: string | undefined | null,
+    expiresIn = 3600
+  ): Promise<string> {
+    if (!url) return "";
+    if (!isS3Url(url)) return url;
+
+    const key = extractS3Key(url);
+    if (!key) return url;
+
+    try {
+      return await s3DownloadUrl(key, expiresIn);
+    } catch (err) {
+      logger.error("Failed to presign URL", { url, error: err });
+      return url;
+    }
+  },
+
+  /**
+   * Presign multiple URLs in parallel.
+   */
+  async presignUrls(
+    urls: (string | undefined | null)[],
+    expiresIn = 3600
+  ): Promise<string[]> {
+    return Promise.all(urls.map((url) => this.presignUrl(url, expiresIn)));
   },
 
   /**

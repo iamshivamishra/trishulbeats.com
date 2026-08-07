@@ -93,7 +93,13 @@ export default async function BeatPage({ params }: BeatPageProps) {
   const initialLiked =
     session?.user && canLike ? await likeRepository.isLiked(session.user.id, id) : false;
 
-  const relatedWithPrices = await beatService.enrichWithPrices(relatedBeats);
+  const relatedWithPricesRaw = await beatService.enrichWithPrices(relatedBeats);
+
+  const { withPresignedBeatCovers } = await import("@/lib/serializers/presign");
+  const [relatedWithPrices, presignedCoverUrl] = await Promise.all([
+    withPresignedBeatCovers(relatedWithPricesRaw),
+    storageService.presignUrl(beat.coverUrl),
+  ]);
 
   const cheapestLicense = licenses.reduce(
     (min, l) => (l.isActive && l.price < min ? l.price : min),
@@ -102,11 +108,11 @@ export default async function BeatPage({ params }: BeatPageProps) {
 
   const previewAudioSrc = beat.storageKeys?.preview
     ? await storageService.getDownloadUrl(beat.storageKeys.preview, { expiresInSeconds: 3600 })
-    : beat.audioTaggedUrl || beat.audioFullUrl;
+    : await storageService.presignUrl(beat.audioTaggedUrl || beat.audioFullUrl);
 
   const fullAudioSrc = beat.storageKeys?.master
     ? await storageService.getDownloadUrl(beat.storageKeys.master, { expiresInSeconds: 3600 })
-    : beat.audioFullUrl || beat.audioTaggedUrl;
+    : await storageService.presignUrl(beat.audioFullUrl || beat.audioTaggedUrl);
 
   const audioSrc = hasPurchased ? fullAudioSrc : previewAudioSrc;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
@@ -169,7 +175,7 @@ export default async function BeatPage({ params }: BeatPageProps) {
         {/* Left Column */}
         <div className="space-y-3 sm:space-y-5 min-w-0">
           <BeatHeroCard
-            beat={beat}
+            beat={{ ...beat, coverUrl: presignedCoverUrl }}
             beatId={id}
             hasPurchased={hasPurchased}
             canViewUnpublished={canViewUnpublished}
