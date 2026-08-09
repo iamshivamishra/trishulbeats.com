@@ -214,7 +214,6 @@ export default function BeatPackDetailClient({
           />
 
           <PackInfoDescription
-            metadata={pack.metadata}
             description={pack.description}
           />
         </div>

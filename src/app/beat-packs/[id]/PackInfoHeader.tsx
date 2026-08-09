@@ -5,7 +5,7 @@ import ShareDialog from "@/components/ShareDialog";
 import type { BeatPackUi } from "@/features/beats/beat-pack-ui";
 
 interface PackInfoHeaderProps {
-  pack: Pick<BeatPackUi, "title" | "beatCount">;
+  pack: Pick<BeatPackUi, "title" | "beatCount" | "metadata">;
   pageUrl: string;
 }
 
@@ -21,6 +21,11 @@ export default function PackInfoHeader({ pack, pageUrl }: PackInfoHeaderProps) {
         </div>
         <ShareDialog title={pack.title} url={pageUrl} />
       </div>
+      {pack.metadata && (
+        <p className="mt-1 whitespace-pre-line text-sm text-muted-foreground">
+          {pack.metadata}
+        </p>
+      )}
     </div>
   );
 }

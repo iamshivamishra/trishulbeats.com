@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// Spotify ke sabhi legit image CDN domains allow karo
 const ALLOWED_HOSTS = [
   "i.scdn.co",
   "mosaic.scdn.co",
@@ -31,11 +30,23 @@ export async function GET(req: NextRequest) {
     return new NextResponse("Domain not allowed", { status: 400 });
   }
 
-  try {
-    const res = await fetch(imageUrl, {
+  const fetchWithTimeout = async (url: string, timeoutMs: number) => {
+    return fetch(url, {
       headers: { "User-Agent": "Mozilla/5.0" },
       next: { revalidate: 86400 },
+      signal: AbortSignal.timeout(timeoutMs),
     });
+  };
+
+  try {
+    let res: Response;
+    try {
+      res = await fetchWithTimeout(imageUrl, 15000); // 15s timeout
+    } catch (err) {
+      // ek retry attempt agar timeout ho jaye
+      console.warn("First attempt failed, retrying:", err);
+      res = await fetchWithTimeout(imageUrl, 15000);
+    }
 
     if (!res.ok) {
       return new NextResponse("Failed to fetch image", { status: 502 });
