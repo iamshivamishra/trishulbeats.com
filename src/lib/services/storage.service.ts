@@ -68,7 +68,7 @@ function resourceTypeForCategory(
 }
 
 export const storageService = {
-  SIGNED_URL_TTL_SECONDS: 120,
+  SIGNED_URL_TTL_SECONDS: 604800, // 7 days
 
   // ─── Presigned (client-side) uploads ────────────────────────────
 
