@@ -169,8 +169,8 @@ export default function DownloadPanel({ beatId }: Props) {
                 <p className="text-sm font-medium">{link.label}</p>
                 {link.available ? (
                   <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    Link expires in {expiryMinutes} minutes
+                    {/* <Clock className="h-3 w-3" /> */}
+                    {/* Link expires in {expiryMinutes} minutes */}
                   </p>
                 ) : (
                   <p className="text-xs text-muted-foreground">
@@ -196,9 +196,9 @@ export default function DownloadPanel({ beatId }: Props) {
           ))}
         </div>
 
-        <p className="mt-3 text-center text-[10px] text-muted-foreground">
+        {/* <p className="mt-3 text-center text-[10px] text-muted-foreground">
           Download links are signed and expire after {expiryMinutes} minutes. Refresh to generate new links.
-        </p>
+        </p> */}
       </CardContent>
     </Card>
   );
