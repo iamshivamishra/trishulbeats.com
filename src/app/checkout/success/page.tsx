@@ -114,12 +114,12 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
             </Link>
           </Button>
 
-          <Button asChild variant="outline" size="lg" className="w-full">
+          {/* <Button asChild variant="outline" size="lg" className="w-full">
             <Link href="/beats">
               Browse More Beats
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
-          </Button>
+          </Button> */}
         </div>
 
         <p className="mt-6 text-xs text-muted-foreground">

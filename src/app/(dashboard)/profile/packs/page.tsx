@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { purchaseRepository } from "@/lib/repositories/purchase.repository";
 import { beatRepository } from "@/lib/repositories/beat.repository";
 import { beatPackRepository } from "@/lib/repositories/beat-pack.repository";
+import { storageService } from "@/lib/services/storage.service";
 import MyPacksClient, { type PackItem } from "./MyPacksClient";
 
 export const metadata: Metadata = { title: "My Packs" };
@@ -123,6 +124,30 @@ export default async function MyPacksPage() {
       (a, b) =>
         new Date(b.purchasedAt).getTime() - new Date(a.purchasedAt).getTime()
     );
+
+  // ─── Presign S3 image URLs so they're actually viewable ─────────
+  // Pack cover images
+  const presignedPackImageUrls = await storageService.presignUrls(
+    packItems.map((p) => p.imageUrl)
+  );
+  packItems.forEach((item, i) => {
+    item.imageUrl = presignedPackImageUrls[i] || undefined;
+  });
+
+  // Track cover images inside each pack
+  const allTrackCoverUrls = packItems.flatMap((p) =>
+    p.tracks.map((t) => t.coverUrl)
+  );
+  const presignedTrackCoverUrls = await storageService.presignUrls(
+    allTrackCoverUrls
+  );
+  let trackCoverIndex = 0;
+  packItems.forEach((p) => {
+    p.tracks.forEach((t) => {
+      t.coverUrl = presignedTrackCoverUrls[trackCoverIndex] || undefined;
+      trackCoverIndex++;
+    });
+  });
 
   return (
     <div className="page-shell max-w-4xl">
