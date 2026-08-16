@@ -17,8 +17,6 @@ const CUBE_FACES: CubeFace[] = [
   { imageUrl: CUBE_IMAGE, gradient: "from-purple-600/80 via-violet-600/80 to-indigo-500/80", borderColor: "border-purple-500/50", glowColor: "rgba(168,85,247,0.3)" },
   { imageUrl: CUBE_IMAGE, gradient: "from-cyan-600/80 via-teal-600/80 to-emerald-500/80", borderColor: "border-cyan-500/50", glowColor: "rgba(6,182,212,0.3)" },
   { imageUrl: CUBE_IMAGE, gradient: "from-pink-600/80 via-rose-600/80 to-red-500/80", borderColor: "border-pink-500/50", glowColor: "rgba(244,63,94,0.3)" },
-  { imageUrl: CUBE_IMAGE, gradient: "from-amber-600/80 via-yellow-600/80 to-lime-500/80", borderColor: "border-amber-500/50", glowColor: "rgba(245,158,11,0.3)" },
-  { imageUrl: CUBE_IMAGE, gradient: "from-zinc-700/80 via-slate-800/80 to-neutral-900/80", borderColor: "border-slate-400/50", glowColor: "rgba(148,163,184,0.3)" },
 ];
 
 const FACE_TRANSFORMS = [
@@ -26,22 +24,20 @@ const FACE_TRANSFORMS = [
   "rotateY(90deg) translateZ(230px)",
   "rotateY(180deg) translateZ(230px)",
   "rotateY(-90deg) translateZ(230px)",
-  "rotateX(90deg) translateZ(230px)",
-  "rotateX(-90deg) translateZ(230px)",
 ];
 
 export default function BeatCube3D() {
-  const [rotation, setRotation] = useState({ x: -18, y: 25 });
+  const [rotationY, setRotationY] = useState(25);
   const [isDragging, setIsDragging] = useState(false);
-  const dragStart = useRef({ x: 0, y: 0 });
-  const rotationStart = useRef({ x: -18, y: 25 });
+  const dragStartX = useRef(0);
+  const rotationStart = useRef(25);
   const autoRotateRef = useRef(true);
 
   useEffect(() => {
     let frameId: number;
     const loop = () => {
       if (autoRotateRef.current && !isDragging) {
-        setRotation((prev) => ({ x: prev.x, y: prev.y + 0.35 }));
+        setRotationY((prev) => prev + 0.35);
       }
       frameId = requestAnimationFrame(loop);
     };
@@ -52,19 +48,15 @@ export default function BeatCube3D() {
   const handlePointerDown = (e: React.PointerEvent) => {
     setIsDragging(true);
     autoRotateRef.current = false;
-    dragStart.current = { x: e.clientX, y: e.clientY };
-    rotationStart.current = rotation;
+    dragStartX.current = e.clientX;
+    rotationStart.current = rotationY;
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isDragging) return;
-    const dx = e.clientX - dragStart.current.x;
-    const dy = e.clientY - dragStart.current.y;
-    setRotation({
-      x: rotationStart.current.x - dy * 0.4,
-      y: rotationStart.current.y + dx * 0.4,
-    });
+    const dx = e.clientX - dragStartX.current;
+    setRotationY(rotationStart.current + dx * 0.4);
   };
 
   const handlePointerUp = () => {
@@ -88,7 +80,7 @@ export default function BeatCube3D() {
           People Are Buying Right Now
         </h2>
         <p className="mt-3 text-base text-slate-400 sm:text-lg max-w-lg mx-auto">
-          Every purchase is verified and secured — drag the cube to see proof.
+          Every purchase is verified and secured — drag left or right to see proof.
         </p>
       </div>
 
@@ -106,7 +98,7 @@ export default function BeatCube3D() {
           }`}
           style={{
             transformStyle: "preserve-3d",
-            transform: `rotateX(${rotation.x}deg) rotateY(${rotation.y}deg)`,
+            transform: `rotateY(${rotationY}deg)`,
             transition: isDragging ? "none" : "transform 0.1s linear",
           }}
         >
