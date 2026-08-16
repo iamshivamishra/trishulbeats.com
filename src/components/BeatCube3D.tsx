@@ -16,15 +16,21 @@ const ITEMS: CoverflowItem[] = [
   { imageUrl: CUBE_IMAGE, title: "Real Buyer", subtitle: "Secured via Razorpay" },
   { imageUrl: CUBE_IMAGE, title: "Instant Delivery", subtitle: "Files unlocked immediately" },
   { imageUrl: CUBE_IMAGE, title: "100% Secure", subtitle: "Every order, guaranteed" },
+  { imageUrl: CUBE_IMAGE, title: "License Granted", subtitle: "Commercial rights included" },
 ];
+
+const SLOT_WIDTH = 220;
+const DRAG_THRESHOLD = 60;
 
 export default function BeatCube3D() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
-  const dragStartX = useRef(0);
-  const dragDelta = useRef(0);
-  const isVerticalScroll = useRef<boolean | null>(null);
+  const [dragOffset, setDragOffset] = useState(0);
 
+  const dragIntent = useRef<"none" | "horizontal" | "vertical">("none");
+  const dragStartX = useRef(0);
+  const dragStartY = useRef(0);
+  const pointerCaptured = useRef(false);
   const autoPlayRef = useRef(true);
 
   useEffect(() => {
@@ -37,47 +43,54 @@ export default function BeatCube3D() {
   }, [isDragging]);
 
   const handlePointerDown = (e: React.PointerEvent) => {
-    setIsDragging(true);
-    autoPlayRef.current = false;
+    dragIntent.current = "none";
+    pointerCaptured.current = false;
     dragStartX.current = e.clientX;
-    dragDelta.current = 0;
-    isVerticalScroll.current = null; // Reset gesture detection
+    dragStartY.current = e.clientY;
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isDragging) return;
+    const dx = e.clientX - dragStartX.current;
+    const dy = e.clientY - dragStartY.current;
 
-    // Detect initial touch direction (Horizontal vs Vertical)
-    if (isVerticalScroll.current === null) {
-      const deltaX = Math.abs(e.clientX - dragStartX.current);
-      const deltaY = Math.abs(e.clientY - (dragStartX.current || e.clientY));
-
-      // If vertical movement is higher, allow normal page scroll
-      if (deltaY > deltaX && deltaY > 10) {
-        isVerticalScroll.current = true;
-        setIsDragging(false);
-        return;
-      } else if (deltaX > 10) {
-        isVerticalScroll.current = false;
+    if (dragIntent.current === "none") {
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      if (Math.abs(dx) > Math.abs(dy)) {
+        dragIntent.current = "horizontal";
+        setIsDragging(true);
+        autoPlayRef.current = false;
+        if (!pointerCaptured.current) {
+          (e.target as HTMLElement).setPointerCapture(e.pointerId);
+          pointerCaptured.current = true;
+        }
+      } else {
+        dragIntent.current = "vertical";
       }
     }
 
-    if (!isVerticalScroll.current) {
-      dragDelta.current = e.clientX - dragStartX.current;
+    if (dragIntent.current === "horizontal") {
+      setDragOffset(dx);
     }
+    // vertical intent → kuch mat karo, browser page ko normally scroll karega
   };
 
-  const handlePointerUp = () => {
-    if (isDragging && !isVerticalScroll.current) {
-      if (dragDelta.current > 60) {
+  const finishDrag = (e: React.PointerEvent) => {
+    if (dragIntent.current === "horizontal") {
+      if (dragOffset > DRAG_THRESHOLD) {
         setActiveIndex((prev) => (prev - 1 + ITEMS.length) % ITEMS.length);
-      } else if (dragDelta.current < -60) {
+      } else if (dragOffset < -DRAG_THRESHOLD) {
         setActiveIndex((prev) => (prev + 1) % ITEMS.length);
       }
     }
+    if (pointerCaptured.current) {
+      try {
+        (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+      } catch {}
+      pointerCaptured.current = false;
+    }
+    dragIntent.current = "none";
     setIsDragging(false);
-    dragDelta.current = 0;
-    isVerticalScroll.current = null;
+    setDragOffset(0);
     setTimeout(() => {
       autoPlayRef.current = true;
     }, 2500);
@@ -97,10 +110,6 @@ export default function BeatCube3D() {
       <div className="absolute left-1/2 top-1/2 -z-10 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-purple-600/20 blur-[120px]" />
 
       <div className="mb-14 text-center">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-emerald-300 backdrop-blur-md">
-          <ShieldCheck className="h-3.5 w-3.5" />
-          Real Purchases, Real Producers
-        </span>
         <h2 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-5xl bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
           People Are Buying Right Now
         </h2>
@@ -112,9 +121,11 @@ export default function BeatCube3D() {
       <div
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerLeave={handlePointerUp}
-        className={`relative mx-auto flex h-[480px] w-full max-w-5xl items-center justify-center select-none sm:h-[540px] ${
+        onPointerUp={finishDrag}
+        onPointerLeave={(e) => {
+          if (dragIntent.current === "horizontal") finishDrag(e);
+        }}
+        className={`relative mx-auto flex h-[480px] w-full max-w-5xl select-none items-center justify-center sm:h-[540px] ${
           isDragging ? "cursor-grabbing" : "cursor-grab"
         }`}
         style={{ perspective: "1200px", touchAction: "pan-y" }}
@@ -128,9 +139,13 @@ export default function BeatCube3D() {
           const isActive = effOffset === 0;
           const absOffset = Math.abs(effOffset);
 
-          const translateX = effOffset * 220;
-          const scale = isActive ? 1 : 0.75 - Math.min(absOffset - 1, 1) * 0.1;
-          const rotateY = effOffset * -25;
+          const liveOffsetPx = isDragging ? dragOffset : 0;
+          const translateX = effOffset * SLOT_WIDTH + liveOffsetPx;
+          const dragProgress = Math.max(-1, Math.min(1, liveOffsetPx / SLOT_WIDTH));
+          const scale = isActive
+            ? 1 - Math.abs(dragProgress) * 0.05
+            : 0.75 - Math.min(absOffset - 1, 1) * 0.1;
+          const rotateY = effOffset * -25 + dragProgress * -8;
           const opacity = absOffset > 2 ? 0 : isActive ? 1 : 0.5;
           const zIndex = 10 - absOffset;
 
@@ -138,11 +153,14 @@ export default function BeatCube3D() {
             <div
               key={i}
               onClick={() => !isDragging && goTo(i)}
-              className="absolute cursor-pointer transition-all duration-500 ease-out"
+              className="absolute cursor-pointer"
               style={{
                 transform: `translateX(${translateX}px) scale(${scale}) rotateY(${rotateY}deg)`,
                 opacity,
                 zIndex,
+                transition: isDragging
+                  ? "none"
+                  : "transform 0.55s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.55s ease",
               }}
             >
               <div
@@ -159,7 +177,7 @@ export default function BeatCube3D() {
                   draggable={false}
                 />
                 {isActive && (
-                  <div className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-md bg-black/70 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-md z-10">
+                  <div className="absolute left-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-md bg-black/70 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-md">
                     <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
                     Verified
                   </div>
@@ -194,7 +212,7 @@ export default function BeatCube3D() {
             key={i}
             onClick={() => goTo(i)}
             aria-label={`Go to slide ${i + 1}`}
-            className={`h-2 rounded-full transition-all ${
+            className={`h-2 rounded-full transition-all duration-300 ${
               i === activeIndex ? "w-6 bg-emerald-400" : "w-2 bg-white/20"
             }`}
           />
