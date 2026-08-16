@@ -8,7 +8,7 @@ import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import {
   ShoppingCart, Trash2, ArrowLeft, Music, Loader2,
-  CreditCard, ArrowRight, CheckCircle2,
+  CreditCard, ArrowRight, CheckCircle2, Ticket, X, Check,
 } from "lucide-react";
 import { loadRazorpayScript } from "@/features/payments/RazorpayButton";
 import { Button } from "@/components/ui/button";
@@ -144,6 +144,15 @@ export default function CartClient() {
   const [licensesMap, setLicensesMap] = useState<Record<string, ILicense[]>>({});
   const [loadingLicenses, setLoadingLicenses] = useState(false);
 
+  const [couponCode, setCouponCode] = useState("");
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponApplied, setCouponApplied] = useState<{
+    code: string;
+    totalDiscount: number;
+    discountPerPack: Record<string, number>;
+  } | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
+
   const isGuest = !session?.user;
   const packTotal = packItems.reduce((sum, item) => sum + item.price, 0);
   const overallTotal = total + packTotal;
@@ -215,6 +224,9 @@ export default function CartClient() {
       await fetch("/api/cart/packs", { method: "DELETE" }).catch(() => {});
       setPackItems([]);
     }
+    setCouponApplied(null);
+    setCouponCode("");
+    setCouponError(null);
     setClearing(false);
   };
 
@@ -224,6 +236,9 @@ export default function CartClient() {
       await packCartApi.remove(packId);
       const response = await packCartApi.get();
       setPackItems(response.items);
+      setCouponApplied(null);
+      setCouponCode("");
+      setCouponError(null);
       toast.success("Pack removed from cart");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not remove pack";
@@ -235,6 +250,54 @@ export default function CartClient() {
 
   const handleUpdateLicense = async (beatId: string, licenseId: string) => {
     await updateLicense(beatId, licenseId);
+  };
+
+  const discountTotal = couponApplied?.totalDiscount ?? 0;
+  const finalTotal = Math.max(1, overallTotal - discountTotal);
+
+  const handleApplyCoupon = async () => {
+    const code = couponCode.trim();
+    if (!code) return;
+    setCouponLoading(true);
+    setCouponError(null);
+    try {
+      const packIds = packItems.map((p) => p.packId);
+      if (packIds.length === 0) {
+        setCouponError("Coupons apply to beat packs only");
+        return;
+      }
+      const tiers: Record<string, string> = {};
+      for (const p of packItems) {
+        tiers[p.packId] = p.tier;
+      }
+      const res = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, packIds, tiers }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setCouponError(data.error || "Invalid coupon");
+        setCouponApplied(null);
+        return;
+      }
+      setCouponApplied({
+        code: data.code,
+        totalDiscount: data.totalDiscount,
+        discountPerPack: data.discountPerPack,
+      });
+      setCouponError(null);
+    } catch {
+      setCouponError("Failed to validate coupon");
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setCouponApplied(null);
+    setCouponCode("");
+    setCouponError(null);
   };
 
   const handleCheckout = async () => {
@@ -252,7 +315,7 @@ export default function CartClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
           hasPackItems
-            ? { fromCart: true, includePackCart: true }
+            ? { fromCart: true, includePackCart: true, ...(couponApplied && { couponCode: couponApplied.code }) }
             : { fromCart: true }
         ),
       });
@@ -477,12 +540,87 @@ export default function CartClient() {
                   ))}
                 </div>
 
+                {/* Coupon */}
+                {packItems.length > 0 && !isGuest && (
+                  <div className="space-y-2">
+                    {couponApplied ? (
+                      <div className="flex items-center justify-between rounded-lg border border-green-500/30 bg-green-500/5 px-3 py-2 text-sm">
+                        <div className="flex items-center gap-1.5">
+                          <Check className="h-3.5 w-3.5 text-green-500" />
+                          <span className="font-mono font-semibold">{couponApplied.code}</span>
+                          <span className="text-green-600">-₹{couponApplied.totalDiscount}</span>
+                        </div>
+                        <button
+                          onClick={handleRemoveCoupon}
+                          className="rounded-full p-0.5 text-muted-foreground hover:text-foreground"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="flex gap-1.5">
+                          <div className="relative flex-1">
+                            <Ticket className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                            <input
+                              type="text"
+                              placeholder="Coupon code"
+                              value={couponCode}
+                              onChange={(e) => {
+                                setCouponCode(e.target.value.toUpperCase());
+                                setCouponError(null);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  handleApplyCoupon();
+                                }
+                              }}
+                              className="h-9 w-full rounded-md border border-border bg-background pl-8 pr-3 font-mono text-sm uppercase tracking-wider placeholder:normal-case placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-primary/30"
+                            />
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-9 px-3"
+                            onClick={handleApplyCoupon}
+                            disabled={couponLoading || !couponCode.trim()}
+                          >
+                            {couponLoading ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              "Apply"
+                            )}
+                          </Button>
+                        </div>
+                        {couponError && (
+                          <p className="mt-1 text-xs text-destructive">{couponError}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <Separator />
+
+                {couponApplied && (
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Subtotal</span>
+                      <span>₹{overallTotal.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-green-600">
+                      <span>Discount ({couponApplied.code})</span>
+                      <span>-₹{couponApplied.totalDiscount.toLocaleString()}</span>
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex justify-between text-base font-bold">
                   <span>Total</span>
                   <span className="text-primary">
-                    ₹{overallTotal.toLocaleString()}
+                    ₹{finalTotal.toLocaleString()}
                   </span>
                 </div>
 
@@ -524,7 +662,7 @@ export default function CartClient() {
                       ) : (
                         <>
                           <CreditCard className="mr-2 h-4 w-4" />
-                          Checkout — ₹{overallTotal.toLocaleString()}
+                          Checkout — ₹{finalTotal.toLocaleString()}
                         </>
                       )}
                     </Button>

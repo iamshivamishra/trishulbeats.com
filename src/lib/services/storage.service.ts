@@ -68,7 +68,7 @@ function resourceTypeForCategory(
 }
 
 export const storageService = {
-  SIGNED_URL_TTL_SECONDS: 604800, // 7 days
+  SIGNED_URL_TTL_SECONDS: 1800, // 30 minutes
 
   // ─── Presigned (client-side) uploads ────────────────────────────
 
@@ -271,6 +271,30 @@ export const storageService = {
 
     logger.info("Avatar uploaded", { provider, key, size: file.size });
     return { url, key };
+  },
+
+  // ─── Private document upload (Buffer-based, no public URL) ─────
+
+  async uploadBuffer(
+    buffer: Buffer,
+    key: string,
+    contentType: string
+  ): Promise<{ key: string }> {
+    const provider = getStorageProvider();
+    const disposition = "attachment";
+
+    if (provider === "cloudinary") {
+      await uploadToCloudinary(buffer, key, "raw");
+    } else if (provider === "s3") {
+      await uploadToS3(buffer, key, contentType, {
+        contentDisposition: disposition,
+      });
+    } else {
+      await uploadToR2(buffer, key, contentType);
+    }
+
+    logger.info("Buffer uploaded (private)", { provider, key, size: buffer.length });
+    return { key };
   },
 
   // ─── Delete / download ─────────────────────────────────────────

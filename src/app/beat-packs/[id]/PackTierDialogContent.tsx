@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import {
   Check,
@@ -10,6 +11,7 @@ import {
   Shield,
   ShoppingCart,
   Sparkles,
+  Ticket,
   X,
   Zap,
 } from "lucide-react";
@@ -117,6 +119,53 @@ export default function PackTierDialogContent({
   addingToCart,
   onAddToCart,
 }: PackTierDialogContentProps) {
+  const [couponCode, setCouponCode] = useState("");
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponApplied, setCouponApplied] = useState<{
+    code: string;
+    totalDiscount: number;
+  } | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
+
+  const handleApplyCoupon = async () => {
+    const code = couponCode.trim();
+    if (!code) return;
+    setCouponLoading(true);
+    setCouponError(null);
+    try {
+      const res = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code,
+          packIds: [packId],
+          tiers: { [packId]: selectedTier },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setCouponError(data.error || "Invalid coupon");
+        setCouponApplied(null);
+        return;
+      }
+      setCouponApplied({ code: data.code, totalDiscount: data.totalDiscount });
+      setCouponError(null);
+    } catch {
+      setCouponError("Failed to validate coupon");
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setCouponApplied(null);
+    setCouponCode("");
+    setCouponError(null);
+  };
+
+  const discountAmount = couponApplied?.totalDiscount ?? 0;
+  const finalPrice = Math.max(1, selectedTierPrice - discountAmount);
+
   return (
     <div className="space-y-5 px-6 py-5">
       <div className="grid gap-2.5">
@@ -207,14 +256,82 @@ export default function PackTierDialogContent({
         </ul>
       </div>
 
+      {/* Coupon Input */}
+      {isLoggedIn && (
+        <div className="space-y-2">
+          {couponApplied ? (
+            <div className="flex items-center justify-between rounded-lg border border-green-500/30 bg-green-500/5 px-3 py-2 text-sm">
+              <div className="flex items-center gap-1.5">
+                <Check className="h-3.5 w-3.5 text-green-500" />
+                <span className="font-mono font-semibold">{couponApplied.code}</span>
+                <span className="text-green-600">-₹{couponApplied.totalDiscount}</span>
+              </div>
+              <button
+                onClick={handleRemoveCoupon}
+                className="rounded-full p-0.5 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ) : (
+            <div>
+              <div className="flex gap-1.5">
+                <div className="relative flex-1">
+                  <Ticket className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="Coupon code"
+                    value={couponCode}
+                    onChange={(e) => {
+                      setCouponCode(e.target.value.toUpperCase());
+                      setCouponError(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleApplyCoupon();
+                      }
+                    }}
+                    className="h-9 w-full rounded-md border border-border bg-background pl-8 pr-3 font-mono text-sm uppercase tracking-wider placeholder:normal-case placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-9 px-3"
+                  onClick={handleApplyCoupon}
+                  disabled={couponLoading || !couponCode.trim()}
+                >
+                  {couponLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Apply"}
+                </Button>
+              </div>
+              {couponError && (
+                <p className="mt-1 text-xs text-destructive">{couponError}</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {couponApplied && (
+        <div className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2 text-sm">
+          <span className="text-muted-foreground">
+            <span className="line-through">₹{selectedTierPrice.toLocaleString("en-IN")}</span>
+          </span>
+          <span className="font-bold text-primary">₹{finalPrice.toLocaleString("en-IN")}</span>
+        </div>
+      )}
+
       <div className="space-y-2 pt-1">
         {isLoggedIn ? (
           <>
             <PackRazorpayButton
               packId={packId}
               tier={selectedTier}
-              amount={selectedTierPrice}
+              amount={finalPrice}
               packTitle={packTitle}
+              couponCode={couponApplied?.code}
             />
             {inPackCart ? (
               <Button asChild variant="outline" className="w-full">

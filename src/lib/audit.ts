@@ -23,6 +23,15 @@ export type AuditAction =
   | "cart.checkout"
   | "webhook.payment_captured"
   | "webhook.payment_failed"
+  | "license_certificate.issued"
+  | "license_certificate.superseded"
+  | "license_certificate.downloaded"
+  | "license_certificate.verified"
+  | "coupon.created"
+  | "coupon.updated"
+  | "coupon.deactivated"
+  | "coupon.applied"
+  | "coupon.validation_failed"
   | "admin.action";
 
 interface AuditEntry {

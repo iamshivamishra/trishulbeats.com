@@ -1,6 +1,15 @@
 import { describe, expect, it, vi, type Mock } from "vitest";
 import type { NextRequest } from "next/server";
 
+vi.mock("@/lib/db", () => ({
+  connectDB: vi.fn(),
+  withTransaction: vi.fn((cb: (s: null) => unknown) => cb(null)),
+}));
+
+vi.mock("@/lib/rate-limit", () => ({
+  rateLimit: vi.fn(() => ({ success: true })),
+}));
+
 vi.mock("@/lib/auth", () => ({
   auth: vi.fn(),
 }));

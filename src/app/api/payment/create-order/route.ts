@@ -17,7 +17,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     if (body.fromCart && body.includePackCart) {
-      const order = await paymentService.checkoutCombined(session.user.id);
+      const order = await paymentService.checkoutCombined(
+        session.user.id,
+        session.user.email ?? undefined,
+        body.couponCode
+      );
       return Response.json(order);
     }
 
@@ -35,7 +39,11 @@ export async function POST(request: NextRequest) {
 
     if (body.packId) {
       const input = createPackOrderSchema.parse(body);
-      const order = await paymentService.createPackOrder(input, session.user.id);
+      const order = await paymentService.createPackOrder(
+        input,
+        session.user.id,
+        session.user.email ?? undefined
+      );
       return Response.json(order);
     }
 

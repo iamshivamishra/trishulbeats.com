@@ -5,6 +5,38 @@ import { orderRepository } from "@/lib/repositories/order.repository";
 import { userRepository } from "@/lib/repositories/user.repository";
 import { formatErrorResponse, UnauthorizedError, NotFoundError, ForbiddenError } from "@/lib/errors";
 
+const BRAND = {
+  name: "Trishul Beats",
+  tagline: "Premium Beats & Instrumentals",
+  email: "trishulmusic111@gmail.com",
+};
+
+const BRAND_DARK = "#0F172A";
+const BRAND_ACCENT = "#A855F7";
+const TEXT_PRIMARY = "#1E293B";
+const TEXT_SECONDARY = "#64748B";
+const BORDER = "#E2E8F0";
+const SUCCESS = "#16a34a";
+
+function drawTrishulIcon(doc: PDFKit.PDFDocument, x: number, y: number, size: number) {
+  const s = size / 64;
+  doc.save().roundedRect(x, y, size, size, 6 * s).fill(BRAND_DARK);
+  doc.lineWidth(2.5 * s).strokeColor("#FFFFFF").lineCap("round").lineJoin("round");
+  doc.moveTo(x + 22 * s, y + 18 * s).lineTo(x + 42 * s, y + 18 * s).stroke();
+  doc.moveTo(x + 32 * s, y + 18 * s).lineTo(x + 32 * s, y + 46 * s).stroke();
+  doc.moveTo(x + 24 * s, y + 28 * s).lineTo(x + 40 * s, y + 28 * s).stroke();
+  doc.circle(x + 46 * s, y + 44 * s, 4 * s).fill(BRAND_ACCENT);
+  doc.restore();
+}
+
+function formatDate(date: Date): string {
+  return new Date(date).toLocaleDateString("en-IN", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -31,128 +63,132 @@ export async function GET(
     const buyer = await userRepository.findById(session.user.id);
     const buyerName = buyer?.displayName || buyer?.name || "Customer";
     const buyerEmail = buyer?.email || "";
-
-    const appName = "Trishul Beats";
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://trishulbeats.com";
-
-    const paidDate = order.paidAt
-      ? new Date(order.paidAt).toLocaleDateString("en-IN", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        })
-      : new Date(order.createdAt).toLocaleDateString("en-IN", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        });
+    const paidDate = formatDate(order.paidAt ?? order.createdAt);
 
     const doc = new PDFDocument({ size: "A4", margin: 50 });
     const chunks: Buffer[] = [];
-
     doc.on("data", (chunk: Buffer) => chunks.push(chunk));
-
     const pdfReady = new Promise<Buffer>((resolve) => {
       doc.on("end", () => resolve(Buffer.concat(chunks)));
     });
 
-    // --- Header ---
+    // ─── Brand header bar ────────────────────────────────────────
+    doc.save().rect(0, 0, 595.28, 90).fill(BRAND_DARK).restore();
+
+    drawTrishulIcon(doc, 50, 18, 54);
+
     doc
-      .fontSize(24)
       .font("Helvetica-Bold")
-      .text(appName, 50, 50)
-      .fontSize(10)
-      .font("Helvetica")
-      .text(appUrl, 50, 80)
-      .moveDown(0.5);
+      .fontSize(22)
+      .fillColor("#FFFFFF")
+      .text(BRAND.name, 115, 24);
 
-    doc
-      .fontSize(18)
-      .font("Helvetica-Bold")
-      .text("TRANSACTION RECEIPT", 50, 120)
-      .moveDown(0.3);
-
-    doc
-      .moveTo(50, doc.y)
-      .lineTo(545, doc.y)
-      .strokeColor("#e5e5e5")
-      .stroke();
-
-    // --- Order details ---
-    const detailsY = doc.y + 15;
-    doc.fontSize(10).font("Helvetica");
-
-    const leftCol = 50;
-    const rightCol = 300;
-
-    doc.font("Helvetica-Bold").text("Receipt No:", leftCol, detailsY);
-    doc.font("Helvetica").text(order.receipt, leftCol + 80, detailsY);
-
-    doc.font("Helvetica-Bold").text("Date:", leftCol, detailsY + 18);
-    doc.font("Helvetica").text(paidDate, leftCol + 80, detailsY + 18);
-
-    doc.font("Helvetica-Bold").text("Status:", leftCol, detailsY + 36);
     doc
       .font("Helvetica")
-      .fillColor("#16a34a")
-      .text("PAID", leftCol + 80, detailsY + 36)
-      .fillColor("#000000");
+      .fontSize(9)
+      .fillColor(BRAND_ACCENT)
+      .text(BRAND.tagline, 115, 50);
 
-    doc.font("Helvetica-Bold").text("Customer:", rightCol, detailsY);
-    doc.font("Helvetica").text(buyerName, rightCol + 70, detailsY);
+    doc
+      .font("Helvetica")
+      .fontSize(8)
+      .fillColor("#94A3B8")
+      .text(appUrl, 115, 64);
 
-    doc.font("Helvetica-Bold").text("Email:", rightCol, detailsY + 18);
-    doc.font("Helvetica").text(buyerEmail, rightCol + 70, detailsY + 18);
+    // ─── Receipt title + accent stripe ───────────────────────────
+    doc
+      .save()
+      .rect(50, 105, 495, 3)
+      .fill(BRAND_ACCENT)
+      .restore();
 
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(16)
+      .fillColor(TEXT_PRIMARY)
+      .text("TRANSACTION RECEIPT", 50, 122);
+
+    // ─── Order details card ──────────────────────────────────────
+    const cardY = 150;
+    doc
+      .save()
+      .roundedRect(50, cardY, 495, 80, 6)
+      .fillAndStroke("#F8FAFC", BORDER)
+      .restore();
+
+    const leftCol = 65;
+    const rightCol = 320;
+    const row1 = cardY + 12;
+    const row2 = row1 + 20;
+    const row3 = row2 + 20;
+
+    doc.fontSize(9).fillColor(TEXT_SECONDARY).font("Helvetica-Bold");
+    doc.text("Receipt No", leftCol, row1);
+    doc.text("Date", leftCol, row2);
+    doc.text("Status", leftCol, row3);
+
+    doc.font("Helvetica").fillColor(TEXT_PRIMARY);
+    doc.text(order.receipt, leftCol + 75, row1);
+    doc.text(paidDate, leftCol + 75, row2);
+
+    doc.font("Helvetica-Bold").fillColor(SUCCESS).text("PAID", leftCol + 75, row3);
+
+    doc.font("Helvetica-Bold").fontSize(9).fillColor(TEXT_SECONDARY);
+    doc.text("Customer", rightCol, row1);
+    doc.text("Email", rightCol, row2);
+    if (order.razorpayPaymentId) doc.text("Payment ID", rightCol, row3);
+
+    doc.font("Helvetica").fillColor(TEXT_PRIMARY);
+    doc.text(buyerName, rightCol + 75, row1);
+    doc.text(buyerEmail, rightCol + 75, row2);
     if (order.razorpayPaymentId) {
-      doc.font("Helvetica-Bold").text("Payment ID:", rightCol, detailsY + 36);
-      doc
-        .font("Helvetica")
-        .text(order.razorpayPaymentId, rightCol + 70, detailsY + 36);
+      doc.text(order.razorpayPaymentId, rightCol + 75, row3);
     }
 
-    // --- Items table ---
-    const tableTop = detailsY + 70;
+    // ─── Items table ─────────────────────────────────────────────
+    const tableTop = cardY + 100;
 
+    // Table header
     doc
-      .moveTo(50, tableTop)
-      .lineTo(545, tableTop)
-      .strokeColor("#e5e5e5")
-      .stroke();
+      .save()
+      .rect(50, tableTop, 495, 24)
+      .fill(BRAND_DARK)
+      .restore();
 
-    doc.fontSize(9).font("Helvetica-Bold");
-    doc.text("#", 50, tableTop + 8, { width: 25 });
-    doc.text("Item", 75, tableTop + 8, { width: 220 });
-    doc.text("License", 295, tableTop + 8, { width: 80 });
-    doc.text("Type", 375, tableTop + 8, { width: 70 });
-    doc.text("Amount", 460, tableTop + 8, { width: 85, align: "right" });
+    doc.font("Helvetica-Bold").fontSize(8).fillColor("#FFFFFF");
+    doc.text("#", 58, tableTop + 7, { width: 25 });
+    doc.text("ITEM", 83, tableTop + 7, { width: 210 });
+    doc.text("LICENSE", 293, tableTop + 7, { width: 75 });
+    doc.text("TYPE", 373, tableTop + 7, { width: 65 });
+    doc.text("AMOUNT", 448, tableTop + 7, { width: 90, align: "right" });
 
-    doc
-      .moveTo(50, tableTop + 25)
-      .lineTo(545, tableTop + 25)
-      .strokeColor("#e5e5e5")
-      .stroke();
-
-    let rowY = tableTop + 33;
-    doc.font("Helvetica").fontSize(9);
+    let rowY = tableTop + 28;
+    doc.font("Helvetica").fontSize(9).fillColor(TEXT_PRIMARY);
 
     for (let i = 0; i < order.items.length; i++) {
       const item = order.items[i];
-      doc.text(String(i + 1), 50, rowY, { width: 25 });
-      doc.text(item.beatTitle, 75, rowY, { width: 220 });
-      doc.text(item.licenseType.charAt(0).toUpperCase() + item.licenseType.slice(1), 295, rowY, { width: 80 });
-      doc.text(
-        (item.sourceType || "beat").charAt(0).toUpperCase() +
-          (item.sourceType || "beat").slice(1),
-        375,
-        rowY,
-        { width: 70 }
+      const isEven = i % 2 === 0;
+
+      if (isEven) {
+        doc.save().rect(50, rowY - 4, 495, 22).fill("#F8FAFC").restore();
+      }
+
+      doc.fillColor(TEXT_SECONDARY).text(String(i + 1), 58, rowY, { width: 25 });
+      doc.fillColor(TEXT_PRIMARY).text(item.beatTitle, 83, rowY, { width: 210 });
+      doc.fillColor(TEXT_PRIMARY).text(
+        item.licenseType.charAt(0).toUpperCase() + item.licenseType.slice(1),
+        293, rowY, { width: 75 }
       );
-      doc.text(`INR ${item.price.toLocaleString("en-IN")}`, 460, rowY, {
-        width: 85,
-        align: "right",
-      });
-      rowY += 20;
+      doc.fillColor(TEXT_SECONDARY).text(
+        (item.sourceType || "beat").charAt(0).toUpperCase() + (item.sourceType || "beat").slice(1),
+        373, rowY, { width: 65 }
+      );
+      doc.fillColor(TEXT_PRIMARY).text(
+        `INR ${item.price.toLocaleString("en-IN")}`,
+        448, rowY, { width: 90, align: "right" }
+      );
+      rowY += 22;
 
       if (rowY > 700) {
         doc.addPage();
@@ -160,42 +196,75 @@ export async function GET(
       }
     }
 
+    // Bottom border
+    doc.moveTo(50, rowY + 2).lineTo(545, rowY + 2).strokeColor(BORDER).stroke();
+
+    // ─── Coupon discount (if applied) ──────────────────────────
+    let summaryY = rowY + 10;
+
+    if (order.couponCode && order.discountAmount > 0) {
+      const subtotal = order.subtotalAmount ?? order.totalAmount + order.discountAmount;
+
+      doc.font("Helvetica").fontSize(9).fillColor(TEXT_SECONDARY);
+      doc.text("Subtotal", 370, summaryY + 5, { width: 65 });
+      doc.fillColor(TEXT_PRIMARY).text(
+        `INR ${subtotal.toLocaleString("en-IN")}`,
+        435, summaryY + 5, { width: 100, align: "right" }
+      );
+      summaryY += 20;
+
+      doc.font("Helvetica").fontSize(9).fillColor(SUCCESS);
+      doc.text(`Coupon (${order.couponCode})`, 350, summaryY + 5, { width: 85 });
+      doc.text(
+        `- INR ${order.discountAmount.toLocaleString("en-IN")}`,
+        435, summaryY + 5, { width: 100, align: "right" }
+      );
+      summaryY += 22;
+
+      doc.moveTo(350, summaryY).lineTo(545, summaryY).strokeColor(BORDER).stroke();
+      summaryY += 4;
+    }
+
+    // ─── Total row ───────────────────────────────────────────────
     doc
-      .moveTo(50, rowY + 5)
-      .lineTo(545, rowY + 5)
-      .strokeColor("#e5e5e5")
-      .stroke();
+      .save()
+      .roundedRect(350, summaryY, 195, 32, 4)
+      .fill(BRAND_DARK)
+      .restore();
 
-    // --- Total ---
-    doc.fontSize(12).font("Helvetica-Bold");
-    doc.text("Total:", 375, rowY + 15, { width: 80 });
-    doc.text(`INR ${order.totalAmount.toLocaleString("en-IN")}`, 460, rowY + 15, {
-      width: 85,
-      align: "right",
-    });
+    doc.font("Helvetica-Bold").fontSize(11).fillColor("#FFFFFF");
+    doc.text("TOTAL", 365, summaryY + 9, { width: 60 });
+    doc.text(
+      `INR ${order.totalAmount.toLocaleString("en-IN")}`,
+      435, summaryY + 9, { width: 100, align: "right" }
+    );
 
-    // --- Footer ---
-    const footerY = Math.max(rowY + 60, 650);
+    // ─── Footer ──────────────────────────────────────────────────
+    const footerY = Math.max(summaryY + 70, 700);
+
     doc
       .moveTo(50, footerY)
       .lineTo(545, footerY)
-      .strokeColor("#e5e5e5")
+      .strokeColor(BORDER)
       .stroke();
 
     doc
-      .fontSize(8)
       .font("Helvetica")
-      .fillColor("#888888")
+      .fontSize(7)
+      .fillColor(TEXT_SECONDARY)
       .text(
         "This is a computer-generated receipt and does not require a signature.",
-        50,
-        footerY + 10,
+        50, footerY + 10,
         { align: "center", width: 495 }
-      )
+      );
+
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(7)
+      .fillColor(BRAND_ACCENT)
       .text(
-        `${appName} • ${appUrl}`,
-        50,
-        footerY + 25,
+        `${BRAND.name}  •  ${appUrl}  •  ${BRAND.email}`,
+        50, footerY + 24,
         { align: "center", width: 495 }
       );
 

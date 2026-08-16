@@ -10,6 +10,12 @@ import {
   Loader2,
   Music,
   Save,
+  Hash,
+  Piano,
+  Smile,
+  Type,
+  Tag,
+  AlignLeft,
 } from "lucide-react";
 import NextImage from "next/image";
 import { Button } from "@/components/ui/button";
@@ -22,7 +28,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -32,6 +37,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { FormField } from "@/components/ui/form-field";
+import { InputGroup, InputPrefix, InputSuffix } from "@/components/ui/input-group";
 import { GENRE_OPTIONS, KEY_OPTIONS, MOOD_OPTIONS } from "@/lib/validators/beat";
 import { type BeatSlot, type FileCategory, type UploadedAsset } from "./pack-beat-uploader-types";
 import { PackUploadSlot } from "./PackUploadSlot";
@@ -213,71 +220,90 @@ export function PackEditBeatDialog({
           )}
 
           <div className="space-y-6">
+            {/* Details Section */}
             <div className="space-y-3">
-              <div className="flex items-center gap-2 pb-1">
-                <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10">
+              <div className="flex items-center gap-2.5 pb-1">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10">
                   <FileText className="h-3.5 w-3.5 text-primary" />
-                </div>
+                </span>
                 <div>
                   <p className="text-xs font-semibold">Details</p>
                   <p className="text-[10px] text-muted-foreground">Beat title, genre, and other metadata</p>
                 </div>
               </div>
 
-              <div className="space-y-3 rounded-lg border border-border/30 bg-muted/5 p-3">
-                <div className="space-y-1">
-                  <Label className="text-xs">Title <span className="text-destructive">*</span></Label>
-                  <Input placeholder="Beat title" value={title} onChange={(e) => setTitle(e.target.value)} disabled={saving} />
+              <div className="space-y-3 rounded-xl border border-border/30 bg-muted/5 p-4">
+                <FormField label="Title" required>
+                  <InputGroup>
+                    <InputPrefix><Type /></InputPrefix>
+                    <Input placeholder="Beat title" value={title} onChange={(e) => setTitle(e.target.value)} disabled={saving} />
+                  </InputGroup>
+                </FormField>
+
+                <FormField label="Description" optional>
+                  <div className="relative">
+                    <Textarea placeholder="Describe your beat..." value={description} onChange={(e) => setDescription(e.target.value)} disabled={saving} rows={2} maxLength={1000} className="pl-10" />
+                    <AlignLeft className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
+                  </div>
+                </FormField>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField label="Genre" required>
+                    <div className="relative">
+                      <Select value={genre} onValueChange={(v) => v && setGenre(v)} disabled={saving}>
+                        <SelectTrigger className="h-9 pl-10"><SelectValue placeholder="Select genre" /></SelectTrigger>
+                        <SelectContent>{GENRE_OPTIONS.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent>
+                      </Select>
+                      <Music className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    </div>
+                  </FormField>
+
+                  <FormField label="BPM" optional>
+                    <InputGroup>
+                      <InputPrefix><Hash /></InputPrefix>
+                      <Input type="number" min={40} max={300} placeholder="e.g. 140" value={bpm} onChange={(e) => setBpm(e.target.value)} disabled={saving} />
+                      <InputSuffix><span className="text-xs">BPM</span></InputSuffix>
+                    </InputGroup>
+                  </FormField>
                 </div>
 
-                <div className="space-y-1">
-                  <Label className="text-xs">Description</Label>
-                  <Textarea placeholder="Describe your beat..." value={description} onChange={(e) => setDescription(e.target.value)} disabled={saving} rows={2} maxLength={1000} />
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField label="Key" optional>
+                    <div className="relative">
+                      <Select value={keyVal} onValueChange={(v) => setKeyVal(v ?? "")} disabled={saving}>
+                        <SelectTrigger className="h-9 pl-10"><SelectValue placeholder="Select key" /></SelectTrigger>
+                        <SelectContent>{KEY_OPTIONS.map((k) => <SelectItem key={k} value={k}>{k}</SelectItem>)}</SelectContent>
+                      </Select>
+                      <Piano className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    </div>
+                  </FormField>
+
+                  <FormField label="Mood" optional>
+                    <div className="relative">
+                      <Select value={mood} onValueChange={(v) => setMood(v ?? "")} disabled={saving}>
+                        <SelectTrigger className="h-9 pl-10"><SelectValue placeholder="Select mood" /></SelectTrigger>
+                        <SelectContent>{MOOD_OPTIONS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+                      </Select>
+                      <Smile className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    </div>
+                  </FormField>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Genre <span className="text-destructive">*</span></Label>
-                    <Select value={genre} onValueChange={(v) => v && setGenre(v)} disabled={saving}>
-                      <SelectTrigger className="h-9"><SelectValue placeholder="Select genre" /></SelectTrigger>
-                      <SelectContent>{GENRE_OPTIONS.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">BPM</Label>
-                    <Input type="number" min={40} max={300} placeholder="e.g. 140" value={bpm} onChange={(e) => setBpm(e.target.value)} disabled={saving} />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Key</Label>
-                    <Select value={keyVal} onValueChange={(v) => setKeyVal(v ?? "")} disabled={saving}>
-                      <SelectTrigger className="h-9"><SelectValue placeholder="Select key" /></SelectTrigger>
-                      <SelectContent>{KEY_OPTIONS.map((k) => <SelectItem key={k} value={k}>{k}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Mood</Label>
-                    <Select value={mood} onValueChange={(v) => setMood(v ?? "")} disabled={saving}>
-                      <SelectTrigger className="h-9"><SelectValue placeholder="Select mood" /></SelectTrigger>
-                      <SelectContent>{MOOD_OPTIONS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <Label className="text-xs">Tags (comma-separated)</Label>
-                  <Input placeholder="e.g. dark, melodic, piano" value={tags} onChange={(e) => setTags(e.target.value)} disabled={saving} />
-                </div>
+                <FormField label="Tags" optional description="Comma-separated keywords">
+                  <InputGroup>
+                    <InputPrefix><Tag /></InputPrefix>
+                    <Input placeholder="e.g. dark, melodic, piano" value={tags} onChange={(e) => setTags(e.target.value)} disabled={saving} />
+                  </InputGroup>
+                </FormField>
               </div>
             </div>
 
+            {/* Files Section */}
             <div className="space-y-3">
-              <div className="flex items-center gap-2 pb-1">
-                <div className="flex h-6 w-6 items-center justify-center rounded-md bg-amber-500/10">
+              <div className="flex items-center gap-2.5 pb-1">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/10">
                   <HardDrive className="h-3.5 w-3.5 text-amber-600" />
-                </div>
+                </span>
                 <div>
                   <p className="text-xs font-semibold">Files</p>
                   <p className="text-[10px] text-muted-foreground">

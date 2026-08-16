@@ -139,7 +139,7 @@ describe("createCloudinaryPresignedUpload", () => {
     process.env.CLOUDINARY_URL = "cloudinary://test-key:test-secret@test-cloud";
   });
 
-  it("generates upload URL with 'video' resource type for stems ZIP", async () => {
+  it("generates upload URL with 'raw' resource type for stems ZIP", async () => {
     const { createCloudinaryPresignedUpload } = await import("./cloudinary");
 
     const result = await createCloudinaryPresignedUpload(
@@ -149,10 +149,8 @@ describe("createCloudinaryPresignedUpload", () => {
       5 * 1024 * 1024 * 1024
     );
 
-    expect(result.uploadUrl).toContain("/video/upload");
-    expect(result.uploadUrl).not.toContain("/raw/upload");
+    expect(result.uploadUrl).toContain("/raw/upload");
     expect(result.fields.type).toBe("authenticated");
-    expect(result.fields.allowed_formats).toBe("zip");
   });
 
   it("generates upload URL with 'video' resource type for preview MP3", async () => {

@@ -7,7 +7,8 @@ import { rateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 /**
  * GET /api/beats/[id]/download-links
  *
- * Returns all download links with entitlement information for a purchased beat.
+ * Returns download entitlements (available files + lock reasons) for a purchased beat.
+ * No signed URLs are included — those are generated on-demand via /api/beats/[id]/download.
  */
 export async function GET(
   request: NextRequest,
@@ -15,16 +16,16 @@ export async function GET(
 ) {
   try {
     const ip = getClientIp(request);
-    const rl = await rateLimit(ip, { limit: 15, windowSec: 60, prefix: "download-links" });
+    const rl = await rateLimit(ip, { limit: 30, windowSec: 60, prefix: "download-links" });
     if (!rl.success) return rateLimitResponse(rl.resetAt);
 
     const session = await auth();
     if (!session?.user) throw new UnauthorizedError();
 
     const { id } = await params;
-    const access = await downloadService.getDownloadLinks(session.user.id, id);
+    const entitlements = await downloadService.getEntitlements(session.user.id, id);
 
-    return Response.json(access);
+    return Response.json(entitlements);
   } catch (error) {
     return formatErrorResponse(error);
   }

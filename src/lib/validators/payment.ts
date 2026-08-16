@@ -10,6 +10,7 @@ export const createOrderSchema = z.object({
 export const createPackOrderSchema = z.object({
   packId: objectId,
   tier: z.enum(["basic", "premium", "unlimited"]),
+  couponCode: z.string().optional(),
 });
 
 export const checkoutCartSchema = z.object({
@@ -19,6 +20,7 @@ export const checkoutCartSchema = z.object({
 export const checkoutCombinedSchema = z.object({
   fromCart: z.literal(true),
   includePackCart: z.literal(true),
+  couponCode: z.string().optional(),
 });
 
 export const verifyPaymentSchema = z.object({

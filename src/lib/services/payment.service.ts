@@ -6,6 +6,7 @@ import { beatPackRepository } from "@/lib/repositories/beat-pack.repository";
 import { userRepository } from "@/lib/repositories/user.repository";
 import { cartRepository } from "@/lib/repositories/cart.repository";
 import { packCartRepository } from "@/lib/repositories/pack-cart.repository";
+import { couponRepository } from "@/lib/repositories/coupon.repository";
 import { cartService } from "@/lib/services/cart.service";
 import { withTransaction } from "@/lib/db";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
@@ -13,6 +14,8 @@ import { fetchPaymentById, razorpay, verifySignature } from "@/lib/razorpay";
 import { logger } from "@/lib/logger";
 import { audit } from "@/lib/audit";
 import { packCartService } from "@/lib/services/pack-cart.service";
+import { packLicenseService } from "@/lib/services/pack-license.service";
+import { couponService } from "@/lib/services/coupon.service";
 import type {
   CreateOrderInput,
   CreatePackOrderInput,
@@ -146,8 +149,9 @@ export const paymentService = {
 
   async createPackOrder(
     input: CreatePackOrderInput,
-    buyerId: string
-  ): Promise<{ orderId: string; amount: number; currency: string; internalOrderId: string }> {
+    buyerId: string,
+    buyerEmail?: string
+  ): Promise<{ orderId: string; amount: number; currency: string; internalOrderId: string; discountAmount?: number }> {
     const pack = await beatPackRepository.findById(input.packId);
     if (!pack || !pack.isPublished || pack.status !== "published") {
       throw new NotFoundError("Beat pack");
@@ -181,7 +185,27 @@ export const paymentService = {
       throw new ConflictError(`Missing ${input.tier} license on one or more beats in this pack`);
     }
 
-    const totalAmount = pack.prices[input.tier];
+    const subtotalAmount = pack.prices[input.tier];
+    let discountAmount = 0;
+    let couponCode: string | undefined;
+    let couponId: string | undefined;
+    let discountPerPack: Record<string, number> | undefined;
+
+    if (input.couponCode) {
+      const validation = await couponService.validateCoupon(
+        input.couponCode,
+        buyerId,
+        buyerEmail ?? "",
+        [input.packId],
+        { [input.packId]: subtotalAmount }
+      );
+      discountAmount = validation.totalDiscount;
+      couponCode = validation.coupon.code;
+      couponId = validation.coupon._id.toString();
+      discountPerPack = validation.discountPerPack;
+    }
+
+    const totalAmount = Math.max(1, subtotalAmount - discountAmount);
     const perBeatAmounts = allocateAmounts(totalAmount, beatIds.length);
     const receipt = generateReceipt();
 
@@ -199,6 +223,11 @@ export const paymentService = {
       buyerId: buyerId as unknown as IOrder["buyerId"],
       items: orderItems,
       totalAmount,
+      subtotalAmount,
+      discountAmount,
+      couponCode,
+      couponId: couponId as unknown as IOrder["couponId"],
+      discountPerPack,
       status: "pending",
       receipt,
     });
@@ -212,6 +241,7 @@ export const paymentService = {
         buyerId,
         packId: pack._id.toString(),
         packTier: input.tier,
+        ...(couponCode && { couponCode }),
       },
     });
     await orderRepository.attachRazorpayOrderId(order._id.toString(), razorpayOrder.id);
@@ -221,6 +251,7 @@ export const paymentService = {
       amount: totalAmount,
       currency: "INR",
       internalOrderId: order._id.toString(),
+      discountAmount: discountAmount > 0 ? discountAmount : undefined,
     };
   },
 
@@ -452,8 +483,10 @@ export const paymentService = {
    * Create a single Razorpay order for both beat cart items and pack cart items.
    */
   async checkoutCombined(
-    buyerId: string
-  ): Promise<{ orderId: string; amount: number; currency: string; internalOrderId: string }> {
+    buyerId: string,
+    buyerEmail?: string,
+    couponCodeInput?: string
+  ): Promise<{ orderId: string; amount: number; currency: string; internalOrderId: string; discountAmount?: number }> {
     const [cartItems, packItems] = await Promise.all([
       cartService.getItems(buyerId),
       packCartService.getItems(buyerId),
@@ -538,13 +571,47 @@ export const paymentService = {
       throw new ConflictError("No valid items to checkout");
     }
 
-    const totalAmount = orderItems.reduce((sum, item) => sum + item.price, 0);
+    const subtotalAmount = orderItems.reduce((sum, item) => sum + item.price, 0);
+    let discountAmount = 0;
+    let couponCode: string | undefined;
+    let couponId: string | undefined;
+    let discountPerPack: Record<string, number> | undefined;
+
+    if (couponCodeInput && packItems.length > 0) {
+      const packPrices: Record<string, number> = {};
+      for (const { packItem, pack } of validPackEntries) {
+        if (pack) {
+          packPrices[pack._id.toString()] = pack.prices[packItem.tier];
+        }
+      }
+      const packIdsForCoupon = Object.keys(packPrices);
+      if (packIdsForCoupon.length > 0) {
+        const validation = await couponService.validateCoupon(
+          couponCodeInput,
+          buyerId,
+          buyerEmail ?? "",
+          packIdsForCoupon,
+          packPrices
+        );
+        discountAmount = validation.totalDiscount;
+        couponCode = validation.coupon.code;
+        couponId = validation.coupon._id.toString();
+        discountPerPack = validation.discountPerPack;
+      }
+    }
+
+    const totalAmount = Math.max(1, subtotalAmount - discountAmount);
     const receipt = generateReceipt();
 
     const order = await orderRepository.create({
       buyerId: buyerId as unknown as IOrder["buyerId"],
       items: orderItems,
       totalAmount,
+      subtotalAmount,
+      discountAmount,
+      couponCode,
+      couponId: couponId as unknown as IOrder["couponId"],
+      discountPerPack,
       status: "pending",
       receipt,
     });
@@ -558,6 +625,7 @@ export const paymentService = {
         buyerId,
         itemCount: String(orderItems.length),
         combined: "true",
+        ...(couponCode && { couponCode }),
       },
     });
 
@@ -569,6 +637,7 @@ export const paymentService = {
       beatItems: cartItems.length,
       packItems: packItems.length,
       totalAmount,
+      discountAmount,
     });
     audit({
       action: "cart.checkout",
@@ -579,6 +648,8 @@ export const paymentService = {
         beatItems: cartItems.length,
         packItems: packItems.length,
         totalAmount,
+        discountAmount,
+        couponCode,
       },
     });
 
@@ -587,6 +658,7 @@ export const paymentService = {
       amount: totalAmount,
       currency: "INR",
       internalOrderId: order._id.toString(),
+      discountAmount: discountAmount > 0 ? discountAmount : undefined,
     };
   },
 
@@ -838,6 +910,66 @@ export const paymentService = {
       },
     });
 
+    // Record coupon usage after successful payment
+    if (result.paidOrder.couponCode && result.paidOrder.discountAmount > 0) {
+      const couponIdFromOrder = result.paidOrder.couponId?.toString();
+      const coupon = couponIdFromOrder
+        ? await couponRepository.findById(couponIdFromOrder)
+        : await couponService.findByCode(result.paidOrder.couponCode);
+
+      if (coupon) {
+        const packIds = [
+          ...new Set(
+            result.paidOrder.items
+              .filter((i) => i.sourcePackId)
+              .map((i) => i.sourcePackId!.toString())
+          ),
+        ];
+        const storedPerPack = result.paidOrder.discountPerPack;
+        const perPackDiscount: Record<string, number> = storedPerPack ?? {};
+        if (!storedPerPack) {
+          const perPackShare = Math.floor(
+            result.paidOrder.discountAmount / (packIds.length || 1)
+          );
+          for (const pid of packIds) {
+            perPackDiscount[pid] = perPackShare;
+          }
+        }
+        await couponService
+          .recordUsage(
+            coupon._id.toString(),
+            buyerId,
+            input.orderId,
+            packIds,
+            perPackDiscount,
+            coupon.maxUses
+          )
+          .catch((err) => {
+            logger.error("Failed to record coupon usage", {
+              orderId: result.paidOrder._id,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          });
+      }
+    }
+
+    // Issue license certificates for pack purchases (non-blocking)
+    const hasPackItems = result.paidOrder.items.some(
+      (item) =>
+        (item.sourceType === "pack" || item.sourceType === "upgrade") &&
+        item.sourcePackId
+    );
+    if (hasPackItems) {
+      packLicenseService
+        .issueForOrder(result.paidOrder._id.toString())
+        .catch((err) => {
+          logger.error("Failed to issue license certificate", {
+            orderId: result.paidOrder._id,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        });
+    }
+
     const updatedOrder = await orderRepository.findById(result.paidOrder._id.toString());
 
     return {
@@ -994,6 +1126,23 @@ export const paymentService = {
       resourceId: order._id.toString(),
       metadata: { source: "webhook", purchaseCount: result.length },
     });
+
+    // Issue license certificates for pack purchases (non-blocking)
+    const hasWebhookPackItems = order.items.some(
+      (item) =>
+        (item.sourceType === "pack" || item.sourceType === "upgrade") &&
+        item.sourcePackId
+    );
+    if (hasWebhookPackItems) {
+      packLicenseService
+        .issueForOrder(order._id.toString())
+        .catch((err) => {
+          logger.error("Failed to issue license certificate (webhook)", {
+            orderId: order._id,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        });
+    }
   },
 
   /**

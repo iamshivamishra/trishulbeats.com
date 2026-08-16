@@ -6,15 +6,15 @@ import Image from "next/image";
 import { toast } from "sonner";
 import {
   Loader2, Camera, User, AtSign, FileText, Music,
-  Globe, ExternalLink, X,
+  Globe, X, ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { FormField } from "@/components/ui/form-field";
+import { FormSection } from "@/components/ui/form-section";
+import { InputGroup, InputPrefix, InputSuffix } from "@/components/ui/input-group";
 import { GENRE_OPTIONS } from "@/lib/validators/beat";
 import type { IUser } from "@/types";
 
@@ -145,7 +145,7 @@ export default function EditProfileForm({ user }: EditProfileFormProps) {
       </div>
 
       {/* Cover Image */}
-      <Card className="overflow-hidden rounded-2xl border-border/50 bg-card/80 shadow-sm">
+      <div className="overflow-hidden rounded-xl border border-border/50 bg-card/80 shadow-sm">
         <div className="relative h-40 w-full bg-gradient-to-br from-primary/30 via-primary/10 to-background sm:h-48">
           {coverImageUrl && (
             <Image
@@ -216,115 +216,113 @@ export default function EditProfileForm({ user }: EditProfileFormProps) {
             </button>
           </div>
         </div>
-      </Card>
+      </div>
 
       {/* Basic Info */}
-      <Card className="rounded-2xl border-border/50 bg-card/80 shadow-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <User className="h-5 w-5 text-primary" />
-            Basic Info
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <FormSection title="Basic Info" icon={<User />}>
+        <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="displayName">Display Name</Label>
-              <Input
-                id="displayName"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Your display name"
-                maxLength={60}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="username" className="flex items-center gap-1">
-                <AtSign className="h-3.5 w-3.5" />
-                Username
-              </Label>
-              <Input
-                id="username"
-                value={username}
-                onChange={(e) =>
-                  setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))
-                }
-                placeholder="your-username"
-                maxLength={30}
-              />
-              {username && (
-                <p className="text-xs text-muted-foreground">
-                  trishulbeats.com/producer/{username}
-                </p>
-              )}
-            </div>
+            <FormField label="Display Name" htmlFor="displayName">
+              <InputGroup>
+                <InputPrefix><User /></InputPrefix>
+                <Input
+                  id="displayName"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="Your display name"
+                  maxLength={60}
+                />
+                <InputSuffix>
+                  <span className="text-xs tabular-nums">
+                    {displayName.length}/60
+                  </span>
+                </InputSuffix>
+              </InputGroup>
+            </FormField>
+
+            <FormField
+              label="Username"
+              htmlFor="username"
+              description={username ? `trishulbeats.com/producer/${username}` : undefined}
+            >
+              <InputGroup>
+                <InputPrefix><AtSign /></InputPrefix>
+                <Input
+                  id="username"
+                  value={username}
+                  onChange={(e) =>
+                    setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))
+                  }
+                  placeholder="your-username"
+                  maxLength={30}
+                />
+              </InputGroup>
+            </FormField>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="bio" className="flex items-center gap-1">
-              <FileText className="h-3.5 w-3.5" />
-              Bio
-            </Label>
-            <Textarea
-              id="bio"
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              placeholder="Tell the world about your sound..."
-              maxLength={500}
-              rows={3}
-            />
-            <p className="text-right text-xs text-muted-foreground">
+
+          <FormField
+            label="Bio"
+            htmlFor="bio"
+            optional
+            description="Tell the world about your sound"
+          >
+            <div className="relative">
+              <Textarea
+                id="bio"
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                placeholder="Tell the world about your sound..."
+                maxLength={500}
+                rows={3}
+                className="pl-10"
+              />
+              <FileText className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
+            </div>
+            <p className="text-right text-xs text-muted-foreground tabular-nums">
               {bio.length}/500
             </p>
-          </div>
-        </CardContent>
-      </Card>
+          </FormField>
+        </div>
+      </FormSection>
 
       {/* Genres */}
-      <Card className="rounded-2xl border-border/50 bg-card/80 shadow-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Music className="h-5 w-5 text-primary" />
-            Genres
-          </CardTitle>
-          <CardDescription>Select up to 5 genres you produce</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {GENRE_OPTIONS.map((genre) => {
-              const selected = genres.includes(genre);
-              return (
-                <button
-                  key={genre}
-                  type="button"
-                  onClick={() => toggleGenre(genre)}
-                  className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                    selected
-                      ? "bg-primary text-primary-foreground"
-                      : "border border-border bg-background text-muted-foreground hover:bg-accent"
-                  }`}
-                >
-                  {genre}
-                  {selected && <X className="h-3 w-3" />}
-                </button>
-              );
-            })}
-          </div>
-          {genres.length >= 5 && (
-            <p className="mt-2 text-xs text-muted-foreground">Maximum 5 genres selected</p>
-          )}
-        </CardContent>
-      </Card>
+      <FormSection
+        title="Genres"
+        icon={<Music />}
+        description="Select up to 5 genres you produce"
+      >
+        <div className="flex flex-wrap gap-2">
+          {GENRE_OPTIONS.map((genre) => {
+            const selected = genres.includes(genre);
+            return (
+              <button
+                key={genre}
+                type="button"
+                onClick={() => toggleGenre(genre)}
+                className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
+                  selected
+                    ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20"
+                    : "border border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground"
+                }`}
+              >
+                {genre}
+                {selected && <X className="h-3 w-3" />}
+              </button>
+            );
+          })}
+        </div>
+        {genres.length >= 5 && (
+          <p className="mt-2 text-xs text-muted-foreground">Maximum 5 genres selected</p>
+        )}
+      </FormSection>
 
       {/* Social Links */}
-      <Card className="rounded-2xl border-border/50 bg-card/80 shadow-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Globe className="h-5 w-5 text-primary" />
-            Social Links
-          </CardTitle>
-          <CardDescription>Connect your social profiles</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
+      <FormSection
+        title="Social Links"
+        icon={<Globe />}
+        description="Connect your social profiles"
+      >
+        <div className="space-y-3">
           {[
             { icon: ExternalLink, label: "Instagram", value: instagram, set: setInstagram, placeholder: "https://instagram.com/you" },
             { icon: ExternalLink, label: "YouTube", value: youtube, set: setYoutube, placeholder: "https://youtube.com/@you" },
@@ -333,22 +331,21 @@ export default function EditProfileForm({ user }: EditProfileFormProps) {
             { icon: Music, label: "Spotify", value: spotify, set: setSpotify, placeholder: "https://open.spotify.com/artist/..." },
             { icon: Music, label: "SoundCloud", value: soundcloud, set: setSoundcloud, placeholder: "https://soundcloud.com/you" },
           ].map(({ icon: Icon, label, value, set, placeholder }) => (
-            <div key={label} className="flex items-center gap-3">
-              <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <Input
-                value={value}
-                onChange={(e) => set(e.target.value)}
-                placeholder={placeholder}
-                className="flex-1"
-              />
-            </div>
+            <FormField key={label} label={label} optional>
+              <InputGroup>
+                <InputPrefix><Icon /></InputPrefix>
+                <Input
+                  value={value}
+                  onChange={(e) => set(e.target.value)}
+                  placeholder={placeholder}
+                />
+              </InputGroup>
+            </FormField>
           ))}
-        </CardContent>
-      </Card>
+        </div>
+      </FormSection>
 
-      <Separator />
-
-      <div className="flex items-center justify-end gap-3">
+      <div className="flex items-center justify-end gap-3 border-t border-border/40 pt-4">
         <Button variant="outline" onClick={() => router.back()}>
           Cancel
         </Button>

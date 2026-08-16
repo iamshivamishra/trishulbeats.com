@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpCircle, Check, Download, X } from "lucide-react";
+import { ArrowUpCircle, Check, Download, FileText, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import PackUpgradeRazorpayButton from "@/features/payments/PackUpgradeRazorpayButton";
 import type { PurchasedTierInfo } from "@/features/beats/beat-pack-ui";
@@ -126,6 +126,16 @@ export default function PackDownloadSection({
           </div>
         </div>
       )}
+
+      <a
+        href={`/api/beat-packs/${packId}/license`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex w-full items-center justify-center gap-2 rounded-lg border border-border/40 bg-muted/20 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/40"
+      >
+        <FileText className="h-4 w-4 text-muted-foreground" />
+        Download License Agreement
+      </a>
 
       <p className="text-xs text-center text-muted-foreground">
         Click any track above to download your files

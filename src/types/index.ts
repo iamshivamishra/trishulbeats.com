@@ -132,7 +132,7 @@ export interface IPurchase {
   orderId: string;
   paymentId: string;
   amount: number;
-  sourceType?: "beat" | "pack";
+  sourceType?: "beat" | "pack" | "upgrade";
   sourcePackId?: string | Types.ObjectId;
   upgradedFrom?: string;
   upgradedAt?: Date;
@@ -157,6 +157,11 @@ export interface IOrder {
   buyerId: string | Types.ObjectId;
   items: IOrderItem[];
   totalAmount: number;
+  subtotalAmount?: number;
+  discountAmount: number;
+  couponCode?: string;
+  couponId?: string | Types.ObjectId;
+  discountPerPack?: Record<string, number>;
   status: OrderStatus;
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
@@ -224,6 +229,85 @@ export interface PaginatedResult<T> {
   totalPages: number;
   hasNext: boolean;
   hasPrev: boolean;
+}
+
+export type PackLicenseCertificateStatus = "active" | "superseded";
+
+export interface IPackLicenseCertificateSnapshot {
+  name: string;
+  email: string;
+}
+
+export interface IPackLicenseCertificatePackSnapshot {
+  title: string;
+  beatTitles: string[];
+}
+
+export interface IPackLicenseCertificate {
+  _id: string | Types.ObjectId;
+  buyerId: string | Types.ObjectId;
+  packId: string | Types.ObjectId;
+  orderId: string;
+  licenseNumber: string;
+  licenseType: LicenseType;
+  status: PackLicenseCertificateStatus;
+  storageKey: string;
+  supersededBy?: string | Types.ObjectId;
+  previousCertificateId?: string | Types.ObjectId;
+  upgradedFrom?: string;
+  buyerSnapshot: IPackLicenseCertificateSnapshot;
+  packSnapshot: IPackLicenseCertificatePackSnapshot;
+  amountPaid: number;
+  verificationHash: string;
+  effectiveAt: Date;
+  issuedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type CouponDiscountType = "flat" | "percentage";
+
+export type CouponStatus =
+  | "draft"
+  | "active"
+  | "scheduled"
+  | "paused"
+  | "expired"
+  | "exhausted";
+
+export interface ICoupon {
+  _id: string | Types.ObjectId;
+  code: string;
+  producerId: string | Types.ObjectId;
+  description?: string;
+  discountType: CouponDiscountType;
+  discountValue: number;
+  maxDiscountCap?: number;
+  minOrderAmount?: number;
+  applicablePacks: Array<string | Types.ObjectId>;
+  restrictedToUsers: Array<string | Types.ObjectId>;
+  restrictedToEmails: string[];
+  startsAt: Date;
+  expiresAt: Date;
+  maxUses: number;
+  maxUsesPerUser: number;
+  currentUses: number;
+  isDraft: boolean;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ICouponUsage {
+  _id: string | Types.ObjectId;
+  couponId: string | Types.ObjectId;
+  userId: string | Types.ObjectId;
+  orderId: string;
+  packId: string | Types.ObjectId;
+  discount: number;
+  usedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface BeatFilters {
