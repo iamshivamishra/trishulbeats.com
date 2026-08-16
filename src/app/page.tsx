@@ -13,6 +13,7 @@ import HomeBeatGrid from "./(home)/HomeBeatGrid";
 import HomeFeatures from "./(home)/HomeFeatures";
 import SocialProofStrip from "@/components/SocialProofStrip";
 import ScrollReveal from "@/components/ScrollReveal";
+import BeatCube3D from "@/components/BeatCube3D";
 
 export const revalidate = 120;
 
@@ -107,15 +108,16 @@ export default async function HomePage() {
         <SpotifyShowcase />
       </ScrollReveal>
 
-
       <ScrollReveal>
         <HomeFeatures />
       </ScrollReveal>
 
-      
-
       <ScrollReveal>
         <PartnerBrands />
+      </ScrollReveal>
+
+      <ScrollReveal>
+        <BeatCube3D />
       </ScrollReveal>
     </div>
   );
