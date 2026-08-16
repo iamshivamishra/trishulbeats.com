@@ -23,6 +23,7 @@ export default function BeatCube3D() {
   const [isDragging, setIsDragging] = useState(false);
   const dragStartX = useRef(0);
   const dragDelta = useRef(0);
+  const isVerticalScroll = useRef<boolean | null>(null);
 
   const autoPlayRef = useRef(true);
 
@@ -40,16 +41,34 @@ export default function BeatCube3D() {
     autoPlayRef.current = false;
     dragStartX.current = e.clientX;
     dragDelta.current = 0;
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    isVerticalScroll.current = null; // Reset gesture detection
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isDragging) return;
-    dragDelta.current = e.clientX - dragStartX.current;
+
+    // Detect initial touch direction (Horizontal vs Vertical)
+    if (isVerticalScroll.current === null) {
+      const deltaX = Math.abs(e.clientX - dragStartX.current);
+      const deltaY = Math.abs(e.clientY - (dragStartX.current || e.clientY));
+
+      // If vertical movement is higher, allow normal page scroll
+      if (deltaY > deltaX && deltaY > 10) {
+        isVerticalScroll.current = true;
+        setIsDragging(false);
+        return;
+      } else if (deltaX > 10) {
+        isVerticalScroll.current = false;
+      }
+    }
+
+    if (!isVerticalScroll.current) {
+      dragDelta.current = e.clientX - dragStartX.current;
+    }
   };
 
   const handlePointerUp = () => {
-    if (isDragging) {
+    if (isDragging && !isVerticalScroll.current) {
       if (dragDelta.current > 60) {
         setActiveIndex((prev) => (prev - 1 + ITEMS.length) % ITEMS.length);
       } else if (dragDelta.current < -60) {
@@ -58,6 +77,7 @@ export default function BeatCube3D() {
     }
     setIsDragging(false);
     dragDelta.current = 0;
+    isVerticalScroll.current = null;
     setTimeout(() => {
       autoPlayRef.current = true;
     }, 2500);
@@ -74,7 +94,7 @@ export default function BeatCube3D() {
   return (
     <section className="relative overflow-hidden bg-slate-950 py-24 text-white">
       {/* Background Ambient Glow */}
-      <div className="absolute left-1/2 top-1/2 -z-10 h-[450px] w-[450px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-purple-600/20 blur-[120px]" />
+      <div className="absolute left-1/2 top-1/2 -z-10 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-purple-600/20 blur-[120px]" />
 
       <div className="mb-14 text-center">
         <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-emerald-300 backdrop-blur-md">
@@ -94,14 +114,13 @@ export default function BeatCube3D() {
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerUp}
-        className={`relative mx-auto flex h-[380px] w-full max-w-4xl items-center justify-center touch-none select-none ${
+        className={`relative mx-auto flex h-[480px] w-full max-w-5xl items-center justify-center select-none sm:h-[540px] ${
           isDragging ? "cursor-grabbing" : "cursor-grab"
         }`}
-        style={{ perspective: "1200px" }}
+        style={{ perspective: "1200px", touchAction: "pan-y" }}
       >
         {ITEMS.map((item, i) => {
           const offset = i - activeIndex;
-          // Wraparound handling — sabse chota effective offset use karo
           let effOffset = offset;
           if (effOffset > ITEMS.length / 2) effOffset -= ITEMS.length;
           if (effOffset < -ITEMS.length / 2) effOffset += ITEMS.length;
@@ -109,8 +128,8 @@ export default function BeatCube3D() {
           const isActive = effOffset === 0;
           const absOffset = Math.abs(effOffset);
 
-          const translateX = effOffset * 190;
-          const scale = isActive ? 1 : 0.72 - Math.min(absOffset - 1, 1) * 0.1;
+          const translateX = effOffset * 220;
+          const scale = isActive ? 1 : 0.75 - Math.min(absOffset - 1, 1) * 0.1;
           const rotateY = effOffset * -25;
           const opacity = absOffset > 2 ? 0 : isActive ? 1 : 0.5;
           const zIndex = 10 - absOffset;
@@ -127,7 +146,7 @@ export default function BeatCube3D() {
               }}
             >
               <div
-                className={`relative h-[260px] w-[220px] overflow-hidden rounded-xl border shadow-2xl sm:h-[300px] sm:w-[260px] ${
+                className={`relative h-[380px] w-[210px] overflow-hidden rounded-2xl border bg-[#00a86b] shadow-2xl sm:h-[440px] sm:w-[240px] ${
                   isActive
                     ? "border-emerald-400/60 shadow-emerald-500/20"
                     : "border-white/10"
@@ -136,12 +155,12 @@ export default function BeatCube3D() {
                 <img
                   src={item.imageUrl}
                   alt={item.title}
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-contain object-top"
                   draggable={false}
                 />
                 {isActive && (
-                  <div className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-md bg-black/60 px-2 py-1 text-[10px] font-medium text-white backdrop-blur-md">
-                    <ShieldCheck className="h-3 w-3 text-emerald-400" />
+                  <div className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-md bg-black/70 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-md z-10">
+                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
                     Verified
                   </div>
                 )}
