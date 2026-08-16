@@ -4,17 +4,18 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  Loader2, Save, Check, X as XIcon, RotateCcw,
-  Music, FileAudio, FileArchive, Briefcase, Radio,
+  Loader2, Save, RotateCcw,
+  FileAudio, FileArchive, Briefcase, Radio, IndianRupee,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { FormField } from "@/components/ui/form-field";
+import { InputGroup, InputPrefix, InputSuffix } from "@/components/ui/input-group";
 import type { ILicense } from "@/types";
 
 interface Props {
@@ -58,6 +59,15 @@ function tierBadgeColor(type: string) {
     case "premium": return "bg-amber-500/20 text-amber-400";
     case "unlimited": return "bg-violet-500/20 text-violet-400";
     default: return "";
+  }
+}
+
+function tierIcon(type: string) {
+  switch (type) {
+    case "basic": return "bg-primary/10 border-primary/20";
+    case "premium": return "bg-amber-500/10 border-amber-500/20";
+    case "unlimited": return "bg-violet-500/10 border-violet-500/20";
+    default: return "bg-muted/30 border-border/50";
   }
 }
 
@@ -164,7 +174,10 @@ export default function LicenseEditor({ licenses, beatId }: Props) {
       </CardHeader>
       <CardContent className="space-y-6">
         {forms.map((form) => (
-          <div key={form.id} className="space-y-4">
+          <div
+            key={form.id}
+            className={`space-y-4 rounded-xl border p-4 transition-colors ${tierIcon(form.type)}`}
+          >
             {/* Tier header */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -181,9 +194,7 @@ export default function LicenseEditor({ licenses, beatId }: Props) {
                 )}
               </div>
               <div className="flex items-center gap-2">
-                <Label htmlFor={`active-${form.id}`} className="text-xs text-muted-foreground">
-                  Active
-                </Label>
+                <span className="text-xs text-muted-foreground">Active</span>
                 <Switch
                   id={`active-${form.id}`}
                   checked={form.isActive}
@@ -192,63 +203,67 @@ export default function LicenseEditor({ licenses, beatId }: Props) {
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label className="text-xs">License Name</Label>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField label="License Name" htmlFor={`name-${form.id}`}>
                 <Input
+                  id={`name-${form.id}`}
                   value={form.name}
                   onChange={(e) => updateField(form.id, "name", e.target.value)}
                   placeholder="License name"
                 />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Price (₹)</Label>
-                <Input
-                  type="number"
-                  value={form.price}
-                  onChange={(e) => updateField(form.id, "price", e.target.value)}
-                  min={1}
-                />
-              </div>
+              </FormField>
+
+              <FormField label="Price" htmlFor={`price-${form.id}`}>
+                <InputGroup>
+                  <InputPrefix><IndianRupee /></InputPrefix>
+                  <Input
+                    id={`price-${form.id}`}
+                    type="number"
+                    value={form.price}
+                    onChange={(e) => updateField(form.id, "price", e.target.value)}
+                    min={1}
+                  />
+                  <InputSuffix>
+                    <span className="text-xs">INR</span>
+                  </InputSuffix>
+                </InputGroup>
+              </FormField>
             </div>
 
             {/* Feature toggles */}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div className="flex items-center gap-2 rounded-lg border border-border/50 p-2.5">
-                <FileAudio className="h-4 w-4 text-muted-foreground" />
-                <div className="flex-1">
-                  <p className="text-xs font-medium">WAV</p>
-                </div>
+              <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-background/60 p-3">
+                <FileAudio className="h-4 w-4 text-muted-foreground shrink-0" />
+                <p className="flex-1 text-xs font-medium">WAV</p>
                 <Switch
                   checked={form.includesWav}
                   onCheckedChange={(v) => updateField(form.id, "includesWav", v)}
+                  size="sm"
                 />
               </div>
 
-              <div className="flex items-center gap-2 rounded-lg border border-border/50 p-2.5">
-                <FileArchive className="h-4 w-4 text-muted-foreground" />
-                <div className="flex-1">
-                  <p className="text-xs font-medium">Stems</p>
-                </div>
+              <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-background/60 p-3">
+                <FileArchive className="h-4 w-4 text-muted-foreground shrink-0" />
+                <p className="flex-1 text-xs font-medium">Stems</p>
                 <Switch
                   checked={form.includesStems}
                   onCheckedChange={(v) => updateField(form.id, "includesStems", v)}
+                  size="sm"
                 />
               </div>
 
-              <div className="flex items-center gap-2 rounded-lg border border-border/50 p-2.5">
-                <Briefcase className="h-4 w-4 text-muted-foreground" />
-                <div className="flex-1">
-                  <p className="text-xs font-medium">Commercial</p>
-                </div>
+              <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-background/60 p-3">
+                <Briefcase className="h-4 w-4 text-muted-foreground shrink-0" />
+                <p className="flex-1 text-xs font-medium">Commercial</p>
                 <Switch
                   checked={form.commercialUse}
                   onCheckedChange={(v) => updateField(form.id, "commercialUse", v)}
+                  size="sm"
                 />
               </div>
 
-              <div className="flex items-center gap-2 rounded-lg border border-border/50 p-2.5">
-                <Radio className="h-4 w-4 text-muted-foreground" />
+              <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-background/60 p-3">
+                <Radio className="h-4 w-4 text-muted-foreground shrink-0" />
                 <div className="flex-1">
                   <p className="text-xs font-medium">Streams</p>
                   <Input
@@ -257,23 +272,23 @@ export default function LicenseEditor({ licenses, beatId }: Props) {
                     onChange={(e) => updateField(form.id, "streamLimit", e.target.value)}
                     className="mt-1 h-7 text-xs"
                     min={-1}
-                    placeholder="-1 = unlimited"
+                    placeholder="-1 = ∞"
                   />
                 </div>
               </div>
             </div>
 
             {/* Terms */}
-            <div className="space-y-1.5">
-              <Label className="text-xs">Terms</Label>
+            <FormField label="Terms" htmlFor={`terms-${form.id}`}>
               <Textarea
+                id={`terms-${form.id}`}
                 value={form.terms}
                 onChange={(e) => updateField(form.id, "terms", e.target.value)}
                 rows={2}
                 className="text-xs"
                 maxLength={1000}
               />
-            </div>
+            </FormField>
 
             {/* Save button */}
             <div className="flex justify-end">
@@ -291,7 +306,7 @@ export default function LicenseEditor({ licenses, beatId }: Props) {
               </Button>
             </div>
 
-            <Separator />
+            <Separator className="last:hidden" />
           </div>
         ))}
       </CardContent>

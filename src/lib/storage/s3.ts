@@ -79,7 +79,8 @@ export async function createPresignedUploadUrl(
 export async function uploadToS3(
   buffer: Buffer,
   key: string,
-  contentType: string
+  contentType: string,
+  options?: { contentDisposition?: string }
 ): Promise<string> {
   await getClient().send(
     new PutObjectCommand({
@@ -87,6 +88,9 @@ export async function uploadToS3(
       Key: key,
       Body: buffer,
       ContentType: contentType,
+      ...(options?.contentDisposition && {
+        ContentDisposition: options.contentDisposition,
+      }),
     })
   );
 

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import {
   Download, FileAudio, FileArchive, Music, Lock,
-  Loader2, RefreshCw, Clock,
+  Loader2, RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,22 +11,19 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 
-interface DownloadLink {
+interface FileEntitlement {
   type: "preview" | "master" | "stems";
   label: string;
-  url: string;
-  filename: string;
   available: boolean;
   reason?: string;
 }
 
-interface DownloadAccess {
+interface Entitlements {
   beatId: string;
   beatTitle: string;
   licenseType: string;
   licenseName: string;
-  expiresInSeconds: number;
-  links: DownloadLink[];
+  files: FileEntitlement[];
 }
 
 interface Props {
@@ -52,21 +49,19 @@ function fileColorClass(type: string) {
 }
 
 export default function DownloadPanel({ beatId }: Props) {
-  const [access, setAccess] = useState<DownloadAccess | null>(null);
+  const [entitlements, setEntitlements] = useState<Entitlements | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [downloading, setDownloading] = useState<string | null>(null);
-  const expiryMinutes = access ? Math.max(1, Math.round(access.expiresInSeconds / 60)) : 15;
 
-  const fetchLinks = async (isRefresh = false) => {
+  const fetchEntitlements = async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
 
     try {
       const res = await fetch(`/api/beats/${beatId}/download-links`);
       if (res.ok) {
-        const data = await res.json();
-        setAccess(data);
+        setEntitlements(await res.json());
       }
     } catch {
       /* ignore */
@@ -77,27 +72,28 @@ export default function DownloadPanel({ beatId }: Props) {
   };
 
   useEffect(() => {
-    fetchLinks();
+    fetchEntitlements();
   }, [beatId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleDownload = async (link: DownloadLink) => {
-    if (!link.available) return;
+  const handleDownload = async (file: FileEntitlement) => {
+    if (!file.available) return;
 
-    setDownloading(link.type);
+    setDownloading(file.type);
     try {
-      // For signed URLs that are already resolved, open directly
-      if (link.url.startsWith("http")) {
-        window.open(link.url, "_blank");
-      } else {
-        // Fallback: use the download endpoint with redirect
-        window.open(
-          `/api/beats/${beatId}/download?type=${link.type}`,
-          "_blank"
-        );
+      const res = await fetch(
+        `/api/beats/${beatId}/download?type=${file.type}&json=true`
+      );
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to generate download link");
       }
-      toast.success(`Downloading ${link.label}...`);
-    } catch {
-      toast.error("Download failed");
+
+      const { url } = await res.json();
+      window.open(url, "_blank");
+      toast.success(`Downloading ${file.label}...`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Download failed");
     } finally {
       setTimeout(() => setDownloading(null), 1000);
     }
@@ -118,7 +114,7 @@ export default function DownloadPanel({ beatId }: Props) {
     );
   }
 
-  if (!access) return null;
+  if (!entitlements) return null;
 
   return (
     <Card className="border-green-500/20 bg-green-500/5">
@@ -127,61 +123,54 @@ export default function DownloadPanel({ beatId }: Props) {
           <div>
             <h3 className="text-sm font-semibold">Your Downloads</h3>
             <p className="text-xs text-muted-foreground">
-              {access.licenseName} License
+              {entitlements.licenseName} License
             </p>
           </div>
           <Button
             variant="ghost"
             size="icon"
             className="h-7 w-7"
-            onClick={() => fetchLinks(true)}
+            onClick={() => fetchEntitlements(true)}
             disabled={refreshing}
-            title="Refresh download links"
+            title="Refresh download info"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
           </Button>
         </div>
 
         <div className="space-y-2">
-          {access.links.map((link) => (
+          {entitlements.files.map((file) => (
             <div
-              key={link.type}
+              key={file.type}
               className={`flex items-center gap-3 rounded-lg border p-3 transition-colors ${
-                link.available
+                file.available
                   ? "border-green-500/20 bg-green-500/5 hover:bg-green-500/10 cursor-pointer"
                   : "border-border/30 bg-muted/5 opacity-60"
               }`}
-              onClick={() => link.available && handleDownload(link)}
-              role={link.available ? "button" : undefined}
-              tabIndex={link.available ? 0 : undefined}
+              onClick={() => file.available && handleDownload(file)}
+              role={file.available ? "button" : undefined}
+              tabIndex={file.available ? 0 : undefined}
               onKeyDown={(e) => {
-                if (link.available && (e.key === "Enter" || e.key === " ")) {
+                if (file.available && (e.key === "Enter" || e.key === " ")) {
                   e.preventDefault();
-                  handleDownload(link);
+                  handleDownload(file);
                 }
               }}
             >
-              <div className={`shrink-0 ${link.available ? fileColorClass(link.type) : "text-muted-foreground"}`}>
-                {link.available ? fileIcon(link.type) : <Lock className="h-5 w-5" />}
+              <div className={`shrink-0 ${file.available ? fileColorClass(file.type) : "text-muted-foreground"}`}>
+                {file.available ? fileIcon(file.type) : <Lock className="h-5 w-5" />}
               </div>
 
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium">{link.label}</p>
-                {link.available ? (
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    {/* <Clock className="h-3 w-3" /> */}
-                    {/* Link expires in {expiryMinutes} minutes */}
-                  </p>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    {link.reason}
-                  </p>
+                <p className="text-sm font-medium">{file.label}</p>
+                {!file.available && file.reason && (
+                  <p className="text-xs text-muted-foreground">{file.reason}</p>
                 )}
               </div>
 
-              {link.available ? (
+              {file.available ? (
                 <div className="shrink-0">
-                  {downloading === link.type ? (
+                  {downloading === file.type ? (
                     <Loader2 className="h-4 w-4 animate-spin text-green-400" />
                   ) : (
                     <Download className="h-4 w-4 text-green-400" />
@@ -195,10 +184,6 @@ export default function DownloadPanel({ beatId }: Props) {
             </div>
           ))}
         </div>
-
-        {/* <p className="mt-3 text-center text-[10px] text-muted-foreground">
-          Download links are signed and expire after {expiryMinutes} minutes. Refresh to generate new links.
-        </p> */}
       </CardContent>
     </Card>
   );

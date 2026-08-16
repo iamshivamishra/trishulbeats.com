@@ -5,13 +5,14 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   Loader2, Upload, Music, Image as ImageIcon, X,
-  FileArchive, HardDrive, CheckCircle2, ChevronDown,
+  FileArchive, HardDrive, CheckCircle2, ChevronDown, IndianRupee,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { FormField } from "@/components/ui/form-field";
+import { FormSection } from "@/components/ui/form-section";
+import { InputGroup, InputPrefix } from "@/components/ui/input-group";
 import BeatMetadataFields, { type BeatMetadata } from "@/features/studio/BeatMetadataFields";
 
 interface FileSlot {
@@ -38,22 +39,25 @@ const MAX_SIZES: Record<string, number> = {
 
 const LICENSE_INFO: Record<
   LicenseTier,
-  { label: string; description: string; placeholder: string }
+  { label: string; description: string; placeholder: string; color: string }
 > = {
   basic: {
     label: "Basic License",
     description: "MP3 preview only, limited streams/sales, no stems included.",
     placeholder: "e.g. 29.99",
+    color: "border-primary/30 bg-primary/5",
   },
   premium: {
     label: "Premium License",
     description: "WAV master included, higher stream/sales cap, no stems.",
     placeholder: "e.g. 59.99",
+    color: "border-amber-500/30 bg-amber-500/5",
   },
   unlimited: {
     label: "Unlimited License",
     description: "WAV master + stems included, unlimited streams/sales.",
     placeholder: "e.g. 199.99",
+    color: "border-violet-500/30 bg-violet-500/5",
   },
 };
 
@@ -73,12 +77,10 @@ export default function UploadForm() {
     setMeta((prev) => ({ ...prev, [field]: value }));
   }, []);
 
-  // Price fields (optional overrides for default license tiers)
   const [priceBasic, setPriceBasic] = useState("");
   const [pricePremium, setPricePremium] = useState("");
   const [priceUnlimited, setPriceUnlimited] = useState("");
 
-  // Which license card is currently expanded (click to open/close)
   const [openLicense, setOpenLicense] = useState<LicenseTier | null>(null);
 
   const [preview, setPreview] = useState<FileSlot>({ file: null, progress: 0, status: "idle" });
@@ -270,10 +272,7 @@ export default function UploadForm() {
     required = false,
     hint?: string
   ) => (
-    <div className="space-y-2">
-      <Label>
-        {label} {required && <span className="text-destructive">*</span>}
-      </Label>
+    <FormField label={label} required={required} optional={!required}>
       <input
         ref={ref}
         type="file"
@@ -287,9 +286,11 @@ export default function UploadForm() {
       />
       <div
         onClick={() => ref.current?.click()}
-        className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-border/70 bg-background/60 p-4 transition-colors hover:border-primary/50 hover:bg-accent/30"
+        className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-border/70 bg-background/60 p-4 transition-all hover:border-primary/50 hover:bg-accent/20 hover:shadow-sm"
       >
-        <div className="shrink-0 text-muted-foreground">{icon}</div>
+        <div className="flex size-10 items-center justify-center rounded-lg bg-muted/50 text-muted-foreground shrink-0">
+          {icon}
+        </div>
         <div className="flex-1 min-w-0">
           {slot.file ? (
             <div>
@@ -311,7 +312,7 @@ export default function UploadForm() {
             type="button"
             variant="ghost"
             size="icon"
-            className="h-6 w-6 shrink-0"
+            className="h-7 w-7 shrink-0"
             onClick={(e) => {
               e.stopPropagation();
               setSlot({ file: null, progress: 0, status: "idle" });
@@ -324,11 +325,9 @@ export default function UploadForm() {
       {slot.status === "uploading" && (
         <Progress value={slot.progress} className="h-1.5" />
       )}
-    </div>
+    </FormField>
   );
 
-  // Renders one clickable license card. Clicking the header toggles the
-  // details (description + price input) open/closed.
   const renderLicenseCard = (
     tier: LicenseTier,
     price: string,
@@ -339,8 +338,8 @@ export default function UploadForm() {
 
     return (
       <div
-        className={`rounded-xl border transition-colors ${
-          isOpen ? "border-primary/60 bg-accent/20" : "border-border/60 bg-background/60"
+        className={`rounded-xl border transition-all ${
+          isOpen ? `${info.color} shadow-sm` : "border-border/60 bg-background/60"
         }`}
       >
         <button
@@ -348,11 +347,16 @@ export default function UploadForm() {
           onClick={() => setOpenLicense(isOpen ? null : tier)}
           className="flex w-full items-center justify-between gap-3 p-4 text-left"
         >
-          <div>
-            <p className="text-sm font-medium">{info.label}</p>
-            <p className="text-xs text-muted-foreground">
-              {price ? `₹${price}` : "Default pricing"}
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-muted/50">
+              <IndianRupee className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">{info.label}</p>
+              <p className="text-xs text-muted-foreground">
+                {price ? `₹${price}` : "Default pricing"}
+              </p>
+            </div>
           </div>
           <ChevronDown
             className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
@@ -362,21 +366,23 @@ export default function UploadForm() {
         </button>
 
         {isOpen && (
-          <div className="space-y-3 border-t border-border/60 p-4 pt-3">
+          <div className="space-y-3 border-t border-border/40 p-4 pt-3">
             <p className="text-xs text-muted-foreground">{info.description}</p>
-            <div className="space-y-2">
-              <Label htmlFor={`price-${tier}`}>{info.label} Price (₹)</Label>
-              <Input
-                id={`price-${tier}`}
-                type="number"
-                min={0}
-                step="0.01"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                placeholder={info.placeholder}
-                autoFocus
-              />
-            </div>
+            <FormField label={`${info.label} Price`} htmlFor={`price-${tier}`} optional>
+              <InputGroup>
+                <InputPrefix><IndianRupee /></InputPrefix>
+                <Input
+                  id={`price-${tier}`}
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  placeholder={info.placeholder}
+                  autoFocus
+                />
+              </InputGroup>
+            </FormField>
           </div>
         )}
       </div>
@@ -384,50 +390,32 @@ export default function UploadForm() {
   };
 
   return (
-    <Card className="rounded-2xl border-border/50 bg-card/80 shadow-sm">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Upload className="h-5 w-5 text-primary" />
-          Upload Beat
-        </CardTitle>
-        <CardDescription>
-          Upload your beat files. Preview MP3 and Master WAV are required.
-          Stems and artwork are optional. Click a license below to set its
-          price — leave blank to use default pricing.
-        </CardDescription>
-      </CardHeader>
-      <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-6">
+    <form onSubmit={handleSubmit}>
+      <div className="space-y-6">
+        {/* Metadata */}
+        <FormSection title="Beat Details" icon={<Upload />} description="Upload your beat files. Preview MP3 and Master WAV are required.">
           <BeatMetadataFields values={meta} onChange={updateMeta} />
+        </FormSection>
 
-          {/* License Pricing — click a card to expand its details */}
-          <div className="space-y-1">
-            <h3 className="flex items-center gap-2 text-sm font-semibold">
-              License Pricing
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              Click a license to view its details and set a custom price.
-              Leave blank to use default platform pricing for that tier.
-            </p>
-          </div>
-
+        {/* License Pricing */}
+        <FormSection
+          title="License Pricing"
+          icon={<IndianRupee />}
+          description="Click a license to set a custom price — leave blank for default pricing"
+        >
           <div className="space-y-3">
             {renderLicenseCard("basic", priceBasic, setPriceBasic)}
             {renderLicenseCard("premium", pricePremium, setPricePremium)}
             {renderLicenseCard("unlimited", priceUnlimited, setPriceUnlimited)}
           </div>
+        </FormSection>
 
-          {/* File uploads */}
-          <div className="space-y-1">
-            <h3 className="flex items-center gap-2 text-sm font-semibold">
-              <HardDrive className="h-4 w-4 text-primary" />
-              Files
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              Supported: MP3 (preview), WAV (master), ZIP (stems), JPEG/PNG/WebP (artwork)
-            </p>
-          </div>
-
+        {/* File uploads */}
+        <FormSection
+          title="Files"
+          icon={<HardDrive />}
+          description="MP3 (preview), WAV (master), ZIP (stems), JPEG/PNG/WebP (artwork)"
+        >
           <div className="grid gap-4 sm:grid-cols-2">
             {renderFileSlot(
               "Preview MP3",
@@ -436,7 +424,7 @@ export default function UploadForm() {
               setPreview,
               previewRef,
               "preview",
-              <Music className="h-8 w-8" />,
+              <Music className="h-5 w-5" />,
               true,
               "Max 20 MB — tagged preview"
             )}
@@ -448,7 +436,7 @@ export default function UploadForm() {
               setMaster,
               masterRef,
               "master",
-              <Music className="h-8 w-8" />,
+              <Music className="h-5 w-5" />,
               true,
               "Max 100 MB — untagged master"
             )}
@@ -460,7 +448,7 @@ export default function UploadForm() {
               setStems,
               stemsRef,
               "stems",
-              <FileArchive className="h-8 w-8" />,
+              <FileArchive className="h-5 w-5" />,
               false,
               "Max 500 MB — optional"
             )}
@@ -472,39 +460,39 @@ export default function UploadForm() {
               setArtwork,
               artworkRef,
               "artwork",
-              <ImageIcon className="h-8 w-8" />,
+              <ImageIcon className="h-5 w-5" />,
               false,
               "Max 5 MB — optional"
             )}
           </div>
+        </FormSection>
 
-          <div className="flex gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              className="flex-1"
-              disabled={loading}
-              size="lg"
-              onClick={() => doUpload("draft")}
-            >
-              Save as Draft
-            </Button>
-            <Button type="submit" className="flex-1" disabled={loading} size="lg">
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Uploading...
-                </>
-              ) : (
-                <>
-                  <Upload className="mr-2 h-4 w-4" />
-                  Upload &amp; Publish
-                </>
-              )}
-            </Button>
-          </div>
-        </CardContent>
-      </form>
-    </Card>
+        <div className="flex gap-3 border-t border-border/40 pt-4">
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1"
+            disabled={loading}
+            size="lg"
+            onClick={() => doUpload("draft")}
+          >
+            Save as Draft
+          </Button>
+          <Button type="submit" className="flex-1" disabled={loading} size="lg">
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Uploading...
+              </>
+            ) : (
+              <>
+                <Upload className="mr-2 h-4 w-4" />
+                Upload &amp; Publish
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+    </form>
   );
 }

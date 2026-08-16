@@ -41,7 +41,7 @@ describe("storageService", () => {
   });
 
   describe("resourceTypeForCategory", () => {
-    it("maps stems to 'video' (not 'raw')", async () => {
+    it("maps stems to 'raw'", async () => {
       process.env.STORAGE_PROVIDER = "cloudinary";
       const { storageService } = await import("./storage.service");
       const { uploadToCloudinary } = await import("@/lib/storage/cloudinary");
@@ -54,7 +54,7 @@ describe("storageService", () => {
       expect(uploadToCloudinary).toHaveBeenCalledWith(
         expect.any(Buffer),
         expect.stringContaining("stems"),
-        "video"
+        "raw"
       );
     });
 

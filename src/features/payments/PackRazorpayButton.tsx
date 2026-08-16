@@ -18,9 +18,10 @@ interface Props {
   tier: "basic" | "premium" | "unlimited";
   amount: number;
   packTitle: string;
+  couponCode?: string;
 }
 
-export default function PackRazorpayButton({ packId, tier, amount, packTitle }: Props) {
+export default function PackRazorpayButton({ packId, tier, amount, packTitle, couponCode }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -36,7 +37,7 @@ export default function PackRazorpayButton({ packId, tier, amount, packTitle }: 
       const res = await fetch("/api/payment/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ packId, tier }),
+        body: JSON.stringify({ packId, tier, ...(couponCode && { couponCode }) }),
       });
 
       if (!res.ok) {

@@ -2,6 +2,8 @@ import { purchaseRepository } from "@/lib/repositories/purchase.repository";
 import { licenseRepository } from "@/lib/repositories/license.repository";
 import { beatRepository } from "@/lib/repositories/beat.repository";
 import { storageService } from "@/lib/services/storage.service";
+import { getCloudinarySignedDownloadUrl } from "@/lib/storage/cloudinary";
+import { getSignedDownloadUrl as s3DownloadUrl } from "@/lib/storage/s3";
 import { ForbiddenError, NotFoundError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { audit } from "@/lib/audit";
@@ -10,23 +12,20 @@ import type { IBeat } from "@/types";
 
 export type DownloadFileType = "preview" | "master" | "stems";
 
-interface DownloadLink {
+export interface DownloadEntitlement {
   type: DownloadFileType;
   label: string;
-  url: string;
-  filename: string;
   available: boolean;
   reason?: string;
 }
 
-interface DownloadAccess {
+export interface DownloadEntitlements {
   beatId: string;
   beatTitle: string;
   coverUrl?: string;
   licenseType: string;
   licenseName: string;
-  expiresInSeconds: number;
-  links: DownloadLink[];
+  files: DownloadEntitlement[];
 }
 
 
@@ -65,55 +64,90 @@ function resolveStorageKey(beat: IBeat, type: DownloadFileType): string | null {
   }
 }
 
-function isStorageKey(value: string): boolean {
-  return !value.startsWith("http://") && !value.startsWith("https://");
+/**
+ * Detect the actual storage provider from a URL and sign accordingly.
+ * Beats may have been uploaded to Cloudinary, S3, or R2 regardless of
+ * the current STORAGE_PROVIDER setting.
+ */
+function detectProviderFromUrl(url: string): "cloudinary" | "s3" | "r2" | null {
+  if (url.includes("res.cloudinary.com") || url.includes("api.cloudinary.com")) {
+    return "cloudinary";
+  }
+  const s3Base = process.env.AWS_S3_PUBLIC_URL;
+  if (s3Base && url.startsWith(s3Base.replace(/\/$/, ""))) return "s3";
+  if (url.includes(".amazonaws.com")) return "s3";
+
+  const r2Base = process.env.R2_PUBLIC_URL;
+  if (r2Base && url.startsWith(r2Base.replace(/\/$/, ""))) return "r2";
+  if (url.includes(".r2.dev")) return "r2";
+
+  return null;
+}
+
+function extractKeyFromUrl(url: string): string | null {
+  const bases = [
+    process.env.AWS_S3_PUBLIC_URL,
+    process.env.R2_PUBLIC_URL,
+  ].filter(Boolean).map((u) => u!.replace(/\/$/, ""));
+
+  for (const base of bases) {
+    if (url.startsWith(base)) {
+      return url.slice(base.length + 1);
+    }
+  }
+  return null;
 }
 
 async function generateSignedUrl(beat: IBeat, fileType: DownloadFileType): Promise<string> {
-  const storageKey = resolveStorageKey(beat, fileType);
-  if (storageKey) {
-    return storageService.getDownloadUrl(storageKey, {
-      expiresInSeconds: storageService.SIGNED_URL_TTL_SECONDS,
-    });
-  }
-
+  const ttl = storageService.SIGNED_URL_TTL_SECONDS;
   const url = resolveFileUrl(beat, fileType);
-  if (!url) {
-    throw new NotFoundError(`${fileType} file not available for this beat`);
-  }
+  const storageKey = resolveStorageKey(beat, fileType);
 
-  if (isStorageKey(url)) {
-    return storageService.getDownloadUrl(url, {
-      expiresInSeconds: storageService.SIGNED_URL_TTL_SECONDS,
-    });
-  }
+  // If we have a URL, detect where the file actually lives
+  if (url) {
+    const provider = detectProviderFromUrl(url);
 
-  const publicBases = [
-    process.env.R2_PUBLIC_URL,
-    process.env.AWS_S3_PUBLIC_URL,
-  ].filter(Boolean).map((u) => u!.replace(/\/$/, ""));
+    if (provider === "cloudinary") {
+      // Cloudinary URLs: extract the public_id path and sign via Cloudinary
+      const key = storageKey || url;
+      return getCloudinarySignedDownloadUrl(key, ttl);
+    }
 
-  for (const publicBase of publicBases) {
-    if (url.startsWith(publicBase)) {
-      const key = url.slice(publicBase.length + 1);
-      return storageService.getDownloadUrl(key, {
-        expiresInSeconds: storageService.SIGNED_URL_TTL_SECONDS,
-      });
+    if (provider === "s3") {
+      const key = storageKey || extractKeyFromUrl(url);
+      if (key) return s3DownloadUrl(key, ttl);
+    }
+
+    if (provider === "r2") {
+      const key = storageKey || extractKeyFromUrl(url);
+      if (key) {
+        const { getSignedDownloadUrl: r2Download } = await import("@/lib/storage/r2");
+        return r2Download(key, ttl);
+      }
     }
   }
 
-  return url;
+  // Fallback: use storageKey with the current provider
+  if (storageKey) {
+    return storageService.getDownloadUrl(storageKey, { expiresInSeconds: ttl });
+  }
+
+  // No signing needed or possible — return raw URL
+  if (url) return url;
+
+  throw new NotFoundError(`${fileType} file not available for this beat`);
 }
 
 export const downloadService = {
   /**
-   * Get all available download links for a purchased beat.
-   * Validates ownership and checks license entitlements.
+   * Get download entitlements for a purchased beat.
+   * Returns what files are available/locked — NO signed URLs.
+   * Signed URLs are generated on-demand via getSignedUrl().
    */
-  async getDownloadLinks(
+  async getEntitlements(
     userId: string,
     beatId: string
-  ): Promise<DownloadAccess> {
+  ): Promise<DownloadEntitlements> {
     const hasPurchased = await purchaseRepository.hasPurchased(userId, beatId);
     if (!hasPurchased) {
       throw new ForbiddenError("You must purchase this beat to download it");
@@ -122,7 +156,6 @@ export const downloadService = {
     const beat = await beatRepository.findById(beatId, true);
     if (!beat) throw new NotFoundError("Beat");
 
-    // Find the user's purchase to get the license
     const purchases = await purchaseRepository.findByBuyerAndBeat(userId, beatId);
     if (purchases.length === 0) throw new ForbiddenError("No purchase found");
 
@@ -134,88 +167,46 @@ export const downloadService = {
       beatId
     );
 
-    const links: DownloadLink[] = [];
+    const files: DownloadEntitlement[] = [];
 
-    // MP3 — always included with any purchase
     const previewUrl = resolveFileUrl(beat, "preview");
     if (previewUrl) {
-      const filename = buildFilename(beat.title, "preview");
-      links.push({
-        type: "preview",
-        label: "MP3",
-        url: await generateSignedUrl(beat, "preview"),
-        filename,
-        available: true,
-      });
+      files.push({ type: "preview", label: "MP3", available: true });
     }
 
-    // WAV Master — requires license.includesWav
     const masterUrl = resolveFileUrl(beat, "master");
     if (masterUrl && wavAllowed) {
-      const filename = buildFilename(beat.title, "master");
-      links.push({
-        type: "master",
-        label: "WAV Master",
-        url: await generateSignedUrl(beat, "master"),
-        filename,
-        available: true,
-      });
+      files.push({ type: "master", label: "WAV Master", available: true });
     } else if (!wavAllowed) {
-      links.push({
+      files.push({
         type: "master",
         label: "WAV Master",
-        url: "",
-        filename: "",
         available: false,
         reason: "Upgrade your license to access WAV files",
       });
     }
 
-    // Stems — requires license.includesStems
     const stemsUrl = resolveFileUrl(beat, "stems");
     if (stemsUrl && stemsAllowed) {
-      const filename = buildFilename(beat.title, "stems");
-      links.push({
-        type: "stems",
-        label: "Stems Package",
-        url: await generateSignedUrl(beat, "stems"),
-        filename,
-        available: true,
-      });
+      files.push({ type: "stems", label: "Stems Package", available: true });
     } else if (stemsUrl && !stemsAllowed) {
-      links.push({
+      files.push({
         type: "stems",
         label: "Stems Package",
-        url: "",
-        filename: "",
         available: false,
         reason: "Upgrade to Unlimited license for stems access",
       });
     } else if (!stemsUrl) {
-      links.push({
+      files.push({
         type: "stems",
         label: "Stems Package",
-        url: "",
-        filename: "",
         available: false,
         reason: "Stems not provided for this beat",
       });
     }
 
-    logger.info("Download links generated", {
-      userId,
-      beatId,
-      wavAllowed,
-      stemsAllowed,
-      licenseMatchesBeat,
-      linksCount: links.filter((l) => l.available).length,
-    });
-    audit({
-      action: "download.links_generated",
-      userId,
-      resourceType: "beat",
-      resourceId: beatId,
-      metadata: { wavAllowed, stemsAllowed, licenseMatchesBeat },
+    logger.info("Download entitlements checked", {
+      userId, beatId, wavAllowed, stemsAllowed, licenseMatchesBeat,
     });
 
     return {
@@ -224,8 +215,7 @@ export const downloadService = {
       coverUrl: beat.coverUrl,
       licenseType: purchase.licenseType,
       licenseName: licenseMatchesBeat ? (license?.name ?? purchase.licenseType) : purchase.licenseType,
-      expiresInSeconds: storageService.SIGNED_URL_TTL_SECONDS,
-      links,
+      files,
     };
   },
 

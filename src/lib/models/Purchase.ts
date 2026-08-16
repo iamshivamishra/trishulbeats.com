@@ -12,7 +12,7 @@ const PurchaseSchema = new Schema<IPurchase>(
     orderId: { type: String, required: true },
     paymentId: { type: String, required: true },
     amount: { type: Number, required: true },
-    sourceType: { type: String, enum: ["beat", "pack"], default: "beat" },
+    sourceType: { type: String, enum: ["beat", "pack", "upgrade"], default: "beat" },
     sourcePackId: { type: Schema.Types.ObjectId, ref: "BeatPack" },
     upgradedFrom: { type: String },
     upgradedAt: { type: Date },

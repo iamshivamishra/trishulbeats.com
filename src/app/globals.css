@@ -176,6 +176,11 @@
     max-width: 100vw;
     position: relative;
   }
+  html.dashboard-shell,
+  html.dashboard-shell body {
+    height: 100%;
+    overflow: hidden;
+  }
   h1,
   h2,
   h3,

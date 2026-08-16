@@ -82,6 +82,24 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
 
               <Separator />
 
+              {order.couponCode && order.discountAmount > 0 && (
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span>₹{(order.subtotalAmount ?? order.totalAmount + order.discountAmount).toLocaleString("en-IN")}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm text-green-600">
+                    <span className="flex items-center gap-1">
+                      Coupon
+                      <Badge variant="outline" className="ml-1 font-mono text-[10px]">
+                        {order.couponCode}
+                      </Badge>
+                    </span>
+                    <span>-₹{order.discountAmount.toLocaleString("en-IN")}</span>
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-muted-foreground">Total</span>
                 <span className="text-lg font-bold text-primary">
@@ -92,13 +110,32 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
               {order.receipt && (
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>Receipt: {order.receipt}</span>
-                  <Link
-                    href={`/api/orders/${orderId}/receipt`}
-                    className="inline-flex items-center gap-1 text-primary hover:underline"
-                  >
-                    <FileText className="h-3 w-3" />
-                    Download PDF
-                  </Link>
+                  <div className="flex items-center gap-3">
+                    <Link
+                      href={`/api/orders/${orderId}/receipt`}
+                      className="inline-flex items-center gap-1 text-primary hover:underline"
+                    >
+                      <FileText className="h-3 w-3" />
+                      Receipt
+                    </Link>
+                    {(() => {
+                      const packItem = order.items.find(
+                        (i) =>
+                          (i.sourceType === "pack" || i.sourceType === "upgrade") &&
+                          i.sourcePackId
+                      );
+                      if (!packItem?.sourcePackId) return null;
+                      return (
+                        <Link
+                          href={`/api/beat-packs/${packItem.sourcePackId}/license`}
+                          className="inline-flex items-center gap-1 text-primary hover:underline"
+                        >
+                          <FileText className="h-3 w-3" />
+                          License
+                        </Link>
+                      );
+                    })()}
+                  </div>
                 </div>
               )}
             </CardContent>

@@ -34,6 +34,10 @@ vi.mock("@/lib/security/entitlements", () => ({
   })),
 }));
 
+vi.mock("@/lib/storage/r2", () => ({
+  getSignedDownloadUrl: vi.fn(async () => "https://signed.example.com/master"),
+}));
+
 vi.mock("@/lib/logger", () => ({
   logger: {
     info: vi.fn(),
@@ -100,6 +104,7 @@ describe("downloadService", () => {
   });
 
   it("falls back to key extraction from R2 public URL when storageKeys missing", async () => {
+    vi.stubEnv("R2_PUBLIC_URL", "https://pub-abc.r2.dev");
     vi.mocked(purchaseRepository.hasPurchased).mockResolvedValueOnce(true);
     vi.mocked(purchaseRepository.findByBuyerAndBeat).mockResolvedValueOnce([
       { licenseId: "license_1", licenseType: "premium" },
@@ -108,8 +113,8 @@ describe("downloadService", () => {
     vi.mocked(beatRepository.findById).mockResolvedValueOnce({
       _id: "beat_1",
       title: "Night Drive",
-      audioTaggedUrl: "https://r2.example.com/producers/p1/beats/b1/preview.mp3",
-      audioFullUrl: "https://r2.example.com/producers/p1/beats/b1/master.wav",
+      audioTaggedUrl: "https://pub-abc.r2.dev/producers/p1/beats/b1/preview.mp3",
+      audioFullUrl: "https://pub-abc.r2.dev/producers/p1/beats/b1/master.wav",
       status: "published",
       isPublished: true,
       genre: "Trap",
@@ -122,13 +127,15 @@ describe("downloadService", () => {
       createdAt: new Date(),
       updatedAt: new Date(),
     } as never);
-    vi.mocked(storageService.getDownloadUrl).mockResolvedValueOnce("https://signed.example.com/master");
+
+    const { getSignedDownloadUrl: r2Download } = await import("@/lib/storage/r2");
+    vi.mocked(r2Download).mockResolvedValueOnce("https://signed.example.com/master");
 
     const result = await downloadService.getSignedUrl("buyer_1", "beat_1", "master");
 
-    expect(storageService.getDownloadUrl).toHaveBeenCalledWith(
+    expect(r2Download).toHaveBeenCalledWith(
       "producers/p1/beats/b1/master.wav",
-      { expiresInSeconds: 900 }
+      900
     );
     expect(result.url).toBe("https://signed.example.com/master");
   });
