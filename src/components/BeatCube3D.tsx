@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { ShieldCheck } from "lucide-react";
+import { ChevronLeft, ChevronRight, ShieldCheck } from "lucide-react";
 
 interface CoverflowItem {
   imageUrl: string;
@@ -24,7 +24,7 @@ const ITEMS: CoverflowItem[] = [
 const REPEAT_COUNT = 5;
 const LOOP_ITEMS: CoverflowItem[] = Array.from({ length: REPEAT_COUNT }, () => ITEMS).flat();
 
-const CARD_STEP = 264; // ~card width (240) + gap (24), used to normalize distance
+const CARD_STEP = 444; // ~card width (420) + gap (24), used to normalize distance
 const AUTOPLAY_PX_PER_SEC = 45; // smooth, consistent speed regardless of frame rate
 
 export default function BeatCube3D() {
@@ -42,6 +42,8 @@ export default function BeatCube3D() {
   const autoPlay = useRef(true);
   const autoPlayTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastActiveRef = useRef(0);
+  const isAnimatingScroll = useRef(false);
+  const scrollAnimFrame = useRef<number | null>(null);
 
   // Measures the pixel width of one ITEMS set (5 cards + gaps) so we know
   // how far to silently rewind/advance when we hit the loop boundary.
@@ -61,6 +63,7 @@ export default function BeatCube3D() {
   // exactly one set-width. Since the content repeats identically, this is
   // visually seamless — the user never sees a "reset".
   const wrapIfNeeded = useCallback(() => {
+    if (isAnimatingScroll.current) return;
     const scroller = scrollerRef.current;
     const setWidth = setWidthRef.current;
     if (!scroller || !setWidth) return;
@@ -146,6 +149,8 @@ export default function BeatCube3D() {
 
   // Smooth, frame-rate-independent autoplay — moves by real elapsed time,
   // wraps seamlessly instead of resetting to the start.
+  // Temporarily disabled — commented out for now.
+  /*
   useEffect(() => {
     let animationFrameId: number;
     let lastTime: number | null = null;
@@ -166,6 +171,7 @@ export default function BeatCube3D() {
     animationFrameId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animationFrameId);
   }, [wrapIfNeeded]);
+  */
 
   useEffect(() => {
     const handleGlobalMouseUp = () => {
@@ -182,6 +188,53 @@ export default function BeatCube3D() {
       autoPlay.current = true;
     }, 2500);
   };
+
+  // Custom eased smooth-scroll — gives us full control over the animation
+  // (unlike native scrollIntoView) so the wrap-around loop logic never
+  // interrupts it mid-flight, and the motion is a real ease-out curve
+  // rather than the browser's default (often abrupt) smooth scroll.
+  const animateScrollTo = useCallback((targetScrollLeft: number, duration = 550) => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+
+    if (scrollAnimFrame.current) cancelAnimationFrame(scrollAnimFrame.current);
+    isAnimatingScroll.current = true;
+
+    const startScrollLeft = scroller.scrollLeft;
+    const distance = targetScrollLeft - startScrollLeft;
+    const startTime = performance.now();
+
+    // ease-out cubic — starts fast, settles in gently, feels natural
+    const ease = (t: number) => 1 - Math.pow(1 - t, 3);
+
+    const step = (now: number) => {
+      const elapsed = now - startTime;
+      const t = Math.min(elapsed / duration, 1);
+      scroller.scrollLeft = startScrollLeft + distance * ease(t);
+
+      if (t < 1) {
+        scrollAnimFrame.current = requestAnimationFrame(step);
+      } else {
+        isAnimatingScroll.current = false;
+        scrollAnimFrame.current = null;
+        wrapIfNeeded();
+      }
+    };
+
+    scrollAnimFrame.current = requestAnimationFrame(step);
+  }, [wrapIfNeeded]);
+
+  // Scrolls a given card element to the exact horizontal center of the
+  // scroller — this is what makes "left se center tak" animation happen.
+  const centerCard = useCallback(
+    (card: HTMLDivElement | null) => {
+      const scroller = scrollerRef.current;
+      if (!scroller || !card) return;
+      const target = card.offsetLeft - scroller.clientWidth / 2 + card.clientWidth / 2;
+      animateScrollTo(target);
+    },
+    [animateScrollTo]
+  );
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!scrollerRef.current) return;
@@ -209,11 +262,7 @@ export default function BeatCube3D() {
       return;
     }
     pauseAutoplay();
-    cardRefs.current[index]?.scrollIntoView({
-      behavior: "smooth",
-      inline: "center",
-      block: "nearest",
-    });
+    centerCard(cardRefs.current[index]);
   };
 
   const goTo = (originalIndex: number) => {
@@ -234,11 +283,14 @@ export default function BeatCube3D() {
       }
     });
 
-    cardRefs.current[bestIdx]?.scrollIntoView({
-      behavior: "smooth",
-      inline: "center",
-      block: "nearest",
-    });
+    centerCard(cardRefs.current[bestIdx]);
+  };
+
+  const nudge = (dir: 1 | -1) => {
+    pauseAutoplay();
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    animateScrollTo(scroller.scrollLeft + dir * CARD_STEP);
   };
 
   return (
@@ -247,6 +299,14 @@ export default function BeatCube3D() {
       <div className="absolute left-1/2 top-1/2 -z-10 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-purple-600/20 blur-[120px]" />
 
       <div className="mb-14 text-center">
+        <div className="mb-5 flex justify-center">
+          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-950/40 px-5 py-2.5 shadow-[0_0_20px_-5px_rgba(52,211,153,0.4)]">
+            <ShieldCheck className="h-4 w-4 text-emerald-400" />
+            <span className="text-sm font-bold tracking-wide text-emerald-400 sm:text-base">
+              REAL PURCHASES
+            </span>
+          </div>
+        </div>
         <h2 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-5xl bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
           People Are Buying Right Now
         </h2>
@@ -256,78 +316,86 @@ export default function BeatCube3D() {
       </div>
 
       {/* Native scroll + drag track — infinite loop via silent wraparound */}
-      <div
-        ref={scrollerRef}
-        onMouseEnter={() => {
-          isHovered.current = true;
-        }}
-        onMouseLeave={() => {
-          isHovered.current = false;
-          isDragging.current = false;
-        }}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onTouchStart={() => {
-          isHovered.current = true;
-          pauseAutoplay();
-        }}
-        onTouchEnd={() => {
-          isHovered.current = false;
-        }}
-        className="relative mx-auto flex max-w-6xl cursor-grab select-none items-center gap-6 overflow-x-auto px-[10vw] py-6 scrollbar-none active:cursor-grabbing sm:py-10 [mask-image:linear-gradient(to_right,transparent,white_8%,white_92%,transparent)]"
-      >
-        {LOOP_ITEMS.map((item, i) => {
-          const isActive = i % ITEMS.length === activeIndex;
-          return (
-            <div
-              key={i}
-              ref={(el) => {
-                cardRefs.current[i] = el;
-              }}
-              onClick={(e) => handleCardClick(e, i)}
-              draggable={false}
-              className="flex-shrink-0 cursor-pointer will-change-transform"
-              style={{ transition: "transform 0.15s ease-out, opacity 0.15s ease-out" }}
-            >
+      <div className="relative mx-auto max-w-6xl">
+        <button
+          type="button"
+          onClick={() => nudge(-1)}
+          aria-label="Scroll left"
+          className="absolute left-1 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/10 p-2 text-white/80 backdrop-blur-md outline-none transition hover:bg-white/20 hover:text-white focus:outline-none focus-visible:outline-none sm:left-3 sm:p-2.5"
+        >
+          <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6" />
+        </button>
+        <button
+          type="button"
+          onClick={() => nudge(1)}
+          aria-label="Scroll right"
+          className="absolute right-1 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/10 p-2 text-white/80 backdrop-blur-md outline-none transition hover:bg-white/20 hover:text-white focus:outline-none focus-visible:outline-none sm:right-3 sm:p-2.5"
+        >
+          <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6" />
+        </button>
+
+        <div
+          ref={scrollerRef}
+          onMouseEnter={() => {
+            isHovered.current = true;
+          }}
+          onMouseLeave={() => {
+            isHovered.current = false;
+            isDragging.current = false;
+          }}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onTouchStart={() => {
+            isHovered.current = true;
+            pauseAutoplay();
+          }}
+          onTouchEnd={() => {
+            isHovered.current = false;
+          }}
+          className="flex cursor-grab select-none items-center gap-6 overflow-x-auto px-[10vw] py-6 scrollbar-none active:cursor-grabbing sm:py-10 [mask-image:linear-gradient(to_right,transparent,white_8%,white_92%,transparent)]"
+        >
+          {LOOP_ITEMS.map((item, i) => {
+            const isActive = i % ITEMS.length === activeIndex;
+            return (
               <div
-                className={`relative h-[380px] w-[210px] overflow-hidden rounded-2xl border bg-[#00a86b] shadow-2xl transition-colors duration-300 sm:h-[440px] sm:w-[240px] ${
-                  isActive ? "border-emerald-400/60 shadow-emerald-500/20" : "border-white/10"
-                }`}
+                key={i}
+                ref={(el) => {
+                  cardRefs.current[i] = el;
+                }}
+                onClick={(e) => handleCardClick(e, i)}
+                draggable={false}
+                className="flex-shrink-0 cursor-pointer outline-none will-change-transform"
+                style={{ transition: "transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.35s ease" }}
               >
-                <img
-                  src={item.imageUrl}
-                  alt={item.title}
-                  className="h-full w-full object-contain object-top"
-                  draggable={false}
-                />
-                <div
-                  className="absolute left-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-md bg-black/70 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-md transition-opacity duration-300"
-                  style={{ opacity: isActive ? 1 : 0 }}
-                >
-                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
-                  Verified
+                <div className="relative h-[440px] w-[340px] overflow-hidden rounded-xl shadow-xl sm:h-[560px] sm:w-[420px]">
+                  <img
+                    src={item.imageUrl}
+                    alt={item.title}
+                    className="h-full w-full object-contain"
+                    draggable={false}
+                  />
+                </div>
+
+                <div className="mt-4 text-center">
+                  <p
+                    className={`font-extrabold text-white transition-all duration-300 ${
+                      isActive ? "text-2xl" : "text-base"
+                    }`}
+                  >
+                    {item.title}
+                  </p>
+                  <p
+                    className={`font-semibold text-white/70 transition-all duration-300 ${
+                      isActive ? "text-base mt-1" : "text-xs"
+                    }`}
+                  >
+                    {item.subtitle}
+                  </p>
                 </div>
               </div>
-
-              <div className="mt-3 text-center">
-                <p
-                  className={`font-bold transition-all duration-300 ${
-                    isActive ? "text-lg text-white" : "text-sm text-slate-400"
-                  }`}
-                >
-                  {item.title}
-                </p>
-                <p
-                  className={`transition-all duration-300 ${
-                    isActive ? "text-sm text-slate-300" : "text-xs text-slate-500"
-                  }`}
-                >
-                  {item.subtitle}
-                </p>
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
       {/* Dots */}
