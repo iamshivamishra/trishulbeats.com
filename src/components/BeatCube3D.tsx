@@ -3,67 +3,72 @@
 import { useRef, useState, useEffect } from "react";
 import { ShieldCheck } from "lucide-react";
 
-interface CubeFace {
-  imageUrl?: string;
-  gradient: string;
-  borderColor: string;
-  glowColor: string;
+interface CoverflowItem {
+  imageUrl: string;
+  title: string;
+  subtitle: string;
 }
 
 const CUBE_IMAGE = "/cube-1.jpeg";
 
-const CUBE_FACES: CubeFace[] = [
-  { imageUrl: CUBE_IMAGE, gradient: "from-red-600/80 via-orange-600/80 to-amber-500/80", borderColor: "border-orange-500/50", glowColor: "rgba(249,115,22,0.3)" },
-  { imageUrl: CUBE_IMAGE, gradient: "from-purple-600/80 via-violet-600/80 to-indigo-500/80", borderColor: "border-purple-500/50", glowColor: "rgba(168,85,247,0.3)" },
-  { imageUrl: CUBE_IMAGE, gradient: "from-cyan-600/80 via-teal-600/80 to-emerald-500/80", borderColor: "border-cyan-500/50", glowColor: "rgba(6,182,212,0.3)" },
-  { imageUrl: CUBE_IMAGE, gradient: "from-pink-600/80 via-rose-600/80 to-red-500/80", borderColor: "border-pink-500/50", glowColor: "rgba(244,63,94,0.3)" },
-];
-
-const FACE_TRANSFORMS = [
-  "rotateY(0deg) translateZ(230px)",
-  "rotateY(90deg) translateZ(230px)",
-  "rotateY(180deg) translateZ(230px)",
-  "rotateY(-90deg) translateZ(230px)",
+const ITEMS: CoverflowItem[] = [
+  { imageUrl: CUBE_IMAGE, title: "Verified Purchase", subtitle: "Beat bought moments ago" },
+  { imageUrl: CUBE_IMAGE, title: "Real Buyer", subtitle: "Secured via Razorpay" },
+  { imageUrl: CUBE_IMAGE, title: "Instant Delivery", subtitle: "Files unlocked immediately" },
+  { imageUrl: CUBE_IMAGE, title: "100% Secure", subtitle: "Every order, guaranteed" },
 ];
 
 export default function BeatCube3D() {
-  const [rotationY, setRotationY] = useState(25);
+  const [activeIndex, setActiveIndex] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const dragStartX = useRef(0);
-  const rotationStart = useRef(25);
-  const autoRotateRef = useRef(true);
+  const dragDelta = useRef(0);
+
+  const autoPlayRef = useRef(true);
 
   useEffect(() => {
-    let frameId: number;
-    const loop = () => {
-      if (autoRotateRef.current && !isDragging) {
-        setRotationY((prev) => prev + 0.35);
+    const interval = setInterval(() => {
+      if (autoPlayRef.current && !isDragging) {
+        setActiveIndex((prev) => (prev + 1) % ITEMS.length);
       }
-      frameId = requestAnimationFrame(loop);
-    };
-    frameId = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(frameId);
+    }, 3000);
+    return () => clearInterval(interval);
   }, [isDragging]);
 
   const handlePointerDown = (e: React.PointerEvent) => {
     setIsDragging(true);
-    autoRotateRef.current = false;
+    autoPlayRef.current = false;
     dragStartX.current = e.clientX;
-    rotationStart.current = rotationY;
+    dragDelta.current = 0;
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isDragging) return;
-    const dx = e.clientX - dragStartX.current;
-    setRotationY(rotationStart.current + dx * 0.4);
+    dragDelta.current = e.clientX - dragStartX.current;
   };
 
   const handlePointerUp = () => {
+    if (isDragging) {
+      if (dragDelta.current > 60) {
+        setActiveIndex((prev) => (prev - 1 + ITEMS.length) % ITEMS.length);
+      } else if (dragDelta.current < -60) {
+        setActiveIndex((prev) => (prev + 1) % ITEMS.length);
+      }
+    }
     setIsDragging(false);
+    dragDelta.current = 0;
     setTimeout(() => {
-      autoRotateRef.current = true;
-    }, 2000);
+      autoPlayRef.current = true;
+    }, 2500);
+  };
+
+  const goTo = (index: number) => {
+    autoPlayRef.current = false;
+    setActiveIndex(index);
+    setTimeout(() => {
+      autoPlayRef.current = true;
+    }, 2500);
   };
 
   return (
@@ -85,57 +90,96 @@ export default function BeatCube3D() {
       </div>
 
       <div
-        className="mx-auto flex justify-center py-8"
-        style={{ perspective: "1800px" }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerUp}
+        className={`relative mx-auto flex h-[380px] w-full max-w-4xl items-center justify-center touch-none select-none ${
+          isDragging ? "cursor-grabbing" : "cursor-grab"
+        }`}
+        style={{ perspective: "1200px" }}
       >
-        <div
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerLeave={handlePointerUp}
-          className={`relative h-[460px] w-[460px] touch-none select-none ${
-            isDragging ? "cursor-grabbing" : "cursor-grab"
-          }`}
-          style={{
-            transformStyle: "preserve-3d",
-            transform: `rotateY(${rotationY}deg)`,
-            transition: isDragging ? "none" : "transform 0.1s linear",
-          }}
-        >
-          {CUBE_FACES.map((face, i) => (
+        {ITEMS.map((item, i) => {
+          const offset = i - activeIndex;
+          // Wraparound handling — sabse chota effective offset use karo
+          let effOffset = offset;
+          if (effOffset > ITEMS.length / 2) effOffset -= ITEMS.length;
+          if (effOffset < -ITEMS.length / 2) effOffset += ITEMS.length;
+
+          const isActive = effOffset === 0;
+          const absOffset = Math.abs(effOffset);
+
+          const translateX = effOffset * 190;
+          const scale = isActive ? 1 : 0.72 - Math.min(absOffset - 1, 1) * 0.1;
+          const rotateY = effOffset * -25;
+          const opacity = absOffset > 2 ? 0 : isActive ? 1 : 0.5;
+          const zIndex = 10 - absOffset;
+
+          return (
             <div
               key={i}
-              className={`absolute left-0 top-0 flex h-full w-full flex-col justify-between overflow-hidden rounded-2xl border ${face.borderColor} bg-slate-900/90 p-4 backdrop-blur-xl shadow-2xl transition-all duration-300`}
+              onClick={() => !isDragging && goTo(i)}
+              className="absolute cursor-pointer transition-all duration-500 ease-out"
               style={{
-                transform: FACE_TRANSFORMS[i],
-                backfaceVisibility: "hidden",
-                boxShadow: `0 0 35px ${face.glowColor}`,
+                transform: `translateX(${translateX}px) scale(${scale}) rotateY(${rotateY}deg)`,
+                opacity,
+                zIndex,
               }}
             >
-              {/* Background Image (proof screenshot) — full image, no crop */}
-              {face.imageUrl && (
+              <div
+                className={`relative h-[260px] w-[220px] overflow-hidden rounded-xl border shadow-2xl sm:h-[300px] sm:w-[260px] ${
+                  isActive
+                    ? "border-emerald-400/60 shadow-emerald-500/20"
+                    : "border-white/10"
+                }`}
+              >
                 <img
-                  src={face.imageUrl}
-                  alt="Purchase proof"
-                  className="absolute inset-0 -z-20 h-full w-full bg-black object-contain"
+                  src={item.imageUrl}
+                  alt={item.title}
+                  className="h-full w-full object-cover"
                   draggable={false}
                 />
-              )}
+                {isActive && (
+                  <div className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-md bg-black/60 px-2 py-1 text-[10px] font-medium text-white backdrop-blur-md">
+                    <ShieldCheck className="h-3 w-3 text-emerald-400" />
+                    Verified
+                  </div>
+                )}
+              </div>
 
-              {/* Subtle accent overlay */}
-              <div className={`absolute inset-0 -z-10 bg-gradient-to-br ${face.gradient} opacity-20`} />
-
-              {/* Card Header */}
-              <div className="flex items-center justify-between">
-                <span className="inline-flex items-center gap-1 rounded-md bg-white/10 px-2.5 py-1 text-xs font-medium text-white/90 backdrop-blur-md">
-                  <ShieldCheck className="h-3 w-3 text-emerald-400" />
-                  Verified
-                </span>
-                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              <div className="mt-3 text-center">
+                <p
+                  className={`font-bold transition-all ${
+                    isActive ? "text-lg text-white" : "text-sm text-slate-400"
+                  }`}
+                >
+                  {item.title}
+                </p>
+                <p
+                  className={`transition-all ${
+                    isActive ? "text-sm text-slate-300" : "text-xs text-slate-500"
+                  }`}
+                >
+                  {item.subtitle}
+                </p>
               </div>
             </div>
-          ))}
-        </div>
+          );
+        })}
+      </div>
+
+      {/* Dots */}
+      <div className="mt-8 flex justify-center gap-2">
+        {ITEMS.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => goTo(i)}
+            aria-label={`Go to slide ${i + 1}`}
+            className={`h-2 rounded-full transition-all ${
+              i === activeIndex ? "w-6 bg-emerald-400" : "w-2 bg-white/20"
+            }`}
+          />
+        ))}
       </div>
     </section>
   );
