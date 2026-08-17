@@ -25,6 +25,7 @@ import {
   Receipt,
   Disc3,
   ChevronDown,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -104,6 +105,7 @@ export default function DashboardShell({ session, children }: DashboardShellProp
   const libraryLinks = [
     { href: "/profile/beats", label: "My Beats", icon: Disc3 },
     { href: "/profile/packs", label: "My Packs", icon: Package },
+    { href: "/profile/license", label: "My License", icon: FileText },
     { href: "/profile/transactions", label: "Transactions", icon: Receipt },
   ];
 

@@ -90,7 +90,7 @@ export default function BeatPacksClient({ packs, hasMore }: Props) {
         </Button> */}
       </div>
 
-      <div className="mb-5 flex flex-col gap-2 sm:flex-row">
+      {/* <div className="mb-5 flex flex-col gap-2 sm:flex-row">
         <div className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 sm:flex-1">
           <Search className="h-4 w-4 text-muted-foreground" />
           <Input
@@ -112,7 +112,7 @@ export default function BeatPacksClient({ packs, hasMore }: Props) {
             <SelectItem value="beats_desc">Most beats</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </div> */}
 
       {allPacks.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">

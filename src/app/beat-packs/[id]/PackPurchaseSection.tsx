@@ -73,10 +73,8 @@ export default function PackPurchaseSection({
   const minPrice = Math.min(...prices.map((p) => p.price));
 
   return (
-    // Was `hidden lg:block` — that hid this entire card on mobile.
-    // Now it's visible on all screen sizes; sticky/order positioning
-    // only kicks in on large screens (lg:), exactly as before there.
-    <div className="block lg:order-last lg:sticky lg:top-24 lg:self-start">
+    // Hidden on mobile — only visible on large screens now.
+    <div className="hidden lg:block lg:order-last lg:sticky lg:top-24 lg:self-start">
       <Card className="rounded-2xl border-border/50 bg-card/80 shadow-sm overflow-hidden">
         <CardContent className="p-0">
           <div className="bg-gradient-to-br from-primary/5 via-transparent to-primary/5 px-5 py-6 text-center">
