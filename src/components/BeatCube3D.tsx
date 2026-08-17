@@ -25,7 +25,7 @@ const REPEAT_COUNT = 5;
 const LOOP_ITEMS: CoverflowItem[] = Array.from({ length: REPEAT_COUNT }, () => ITEMS).flat();
 
 const CARD_STEP = 444; // ~card width (420) + gap (24), used to normalize distance
-const AUTOPLAY_PX_PER_SEC = 45; // smooth, consistent speed regardless of frame rate
+const AUTOPLAY_INTERVAL_MS = 4000; // gap between each automatic "nudge"
 
 export default function BeatCube3D() {
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -48,16 +48,24 @@ export default function BeatCube3D() {
   // Measures the pixel width of one ITEMS set (5 cards + gaps) so we know
   // how far to silently rewind/advance when we hit the loop boundary.
   const measureSetWidth = useCallback(() => {
-    const scroller = scrollerRef.current;
-    if (!scroller) return;
-    setWidthRef.current = scroller.scrollWidth / REPEAT_COUNT;
+  const scroller = scrollerRef.current;
+  if (!scroller) return;
+  setWidthRef.current = scroller.scrollWidth / REPEAT_COUNT;
 
-    // Start in the middle repeat so there's always real content to drag
-    // both left AND right from the very first render.
-    if (scroller.scrollLeft === 0) {
+  // Start in the middle repeat, and precisely CENTER that starting card
+  // under the viewport — not just jump to the set boundary — so mobile
+  // screens (where padding math is less forgiving) align correctly too.
+  if (scroller.scrollLeft === 0) {
+    const middleIndex = Math.floor(REPEAT_COUNT / 2) * ITEMS.length;
+    const startCard = cardRefs.current[middleIndex];
+    if (startCard) {
+      scroller.scrollLeft =
+        startCard.offsetLeft - scroller.clientWidth / 2 + startCard.clientWidth / 2;
+    } else {
       scroller.scrollLeft = setWidthRef.current * Math.floor(REPEAT_COUNT / 2);
     }
-  }, []);
+  }
+}, []);
 
   // If we've scrolled past one full set in either direction, jump back by
   // exactly one set-width. Since the content repeats identically, this is
@@ -147,32 +155,6 @@ export default function BeatCube3D() {
     };
   }, [measureSetWidth, updateVisualState, wrapIfNeeded]);
 
-  // Smooth, frame-rate-independent autoplay — moves by real elapsed time,
-  // wraps seamlessly instead of resetting to the start.
-  // Temporarily disabled — commented out for now.
-  /*
-  useEffect(() => {
-    let animationFrameId: number;
-    let lastTime: number | null = null;
-
-    const loop = (time: number) => {
-      const scroller = scrollerRef.current;
-      if (lastTime === null) lastTime = time;
-      const dt = (time - lastTime) / 1000;
-      lastTime = time;
-
-      if (scroller && autoPlay.current && !isHovered.current && !isDragging.current) {
-        scroller.scrollLeft += AUTOPLAY_PX_PER_SEC * dt;
-        wrapIfNeeded();
-      }
-      animationFrameId = requestAnimationFrame(loop);
-    };
-
-    animationFrameId = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(animationFrameId);
-  }, [wrapIfNeeded]);
-  */
-
   useEffect(() => {
     const handleGlobalMouseUp = () => {
       isDragging.current = false;
@@ -193,6 +175,8 @@ export default function BeatCube3D() {
   // (unlike native scrollIntoView) so the wrap-around loop logic never
   // interrupts it mid-flight, and the motion is a real ease-out curve
   // rather than the browser's default (often abrupt) smooth scroll.
+  // This is the SAME function used by manual drag/arrow clicks AND by
+  // autoplay below, so both feel identical.
   const animateScrollTo = useCallback((targetScrollLeft: number, duration = 550) => {
     const scroller = scrollerRef.current;
     if (!scroller) return;
@@ -235,6 +219,38 @@ export default function BeatCube3D() {
     },
     [animateScrollTo]
   );
+
+ const nudge = useCallback(
+  (dir: 1 | -1) => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    animateScrollTo(scroller.scrollLeft + dir * CARD_STEP, 380); // 380ms duration add kiya, pehle default 550 tha
+  },
+  [animateScrollTo]
+);
+  // Infinite autoplay loop — advances one card at a time using the exact
+  // same eased animation as a manual arrow click, then waits, then goes
+  // again, forever. Pauses while the user is hovering or dragging, and
+  // resumes automatically a bit after they let go — so it never truly
+  // "stops", it just yields to manual interaction.
+  useEffect(() => {
+    let cancelled = false;
+
+    const tick = () => {
+      if (cancelled) return;
+      if (autoPlay.current && !isHovered.current && !isDragging.current) {
+        nudge(1);
+      }
+      autoPlayTimeout.current = setTimeout(tick, AUTOPLAY_INTERVAL_MS);
+    };
+
+    autoPlayTimeout.current = setTimeout(tick, AUTOPLAY_INTERVAL_MS);
+
+    return () => {
+      cancelled = true;
+      if (autoPlayTimeout.current) clearTimeout(autoPlayTimeout.current);
+    };
+  }, [nudge]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!scrollerRef.current) return;
@@ -286,11 +302,9 @@ export default function BeatCube3D() {
     centerCard(cardRefs.current[bestIdx]);
   };
 
-  const nudge = (dir: 1 | -1) => {
+  const handleArrowClick = (dir: 1 | -1) => {
     pauseAutoplay();
-    const scroller = scrollerRef.current;
-    if (!scroller) return;
-    animateScrollTo(scroller.scrollLeft + dir * CARD_STEP);
+    nudge(dir);
   };
 
   return (
@@ -319,7 +333,7 @@ export default function BeatCube3D() {
       <div className="relative mx-auto max-w-6xl">
         <button
           type="button"
-          onClick={() => nudge(-1)}
+          onClick={() => handleArrowClick(-1)}
           aria-label="Scroll left"
           className="absolute left-1 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/10 p-2 text-white/80 backdrop-blur-md outline-none transition hover:bg-white/20 hover:text-white focus:outline-none focus-visible:outline-none sm:left-3 sm:p-2.5"
         >
@@ -327,7 +341,7 @@ export default function BeatCube3D() {
         </button>
         <button
           type="button"
-          onClick={() => nudge(1)}
+          onClick={() => handleArrowClick(1)}
           aria-label="Scroll right"
           className="absolute right-1 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/10 p-2 text-white/80 backdrop-blur-md outline-none transition hover:bg-white/20 hover:text-white focus:outline-none focus-visible:outline-none sm:right-3 sm:p-2.5"
         >
