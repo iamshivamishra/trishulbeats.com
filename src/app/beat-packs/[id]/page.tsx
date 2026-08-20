@@ -184,7 +184,8 @@ export default async function BeatPackDetailPage({ params }: Props) {
         hasPurchasedAll={hasPurchasedAll}
         ownedBeatCount={ownedBeatCount}
         purchasedTier={purchasedTier}
-      />
+      />    
+      
     </>
   );
 }
