@@ -21,21 +21,44 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return { title: "Beat Pack Not Found" };
   }
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+  // IMPORTANT: pack.imageUrls / pack.coverUrl are raw storage keys, not
+  // browsable URLs. They must be converted to a presigned/public URL before
+  // being used as og:image, otherwise WhatsApp/Facebook crawlers can't fetch
+  // the image and no preview shows up.
+  const rawImage = pack.imageUrls?.[0] || pack.coverUrl;
+  const ogImage = rawImage ? await storageService.presignUrl(rawImage) : undefined;
+
+  const title = `${pack.title} — Beat Pack`;
+  const description =
+    pack.description || `Beat pack by ${pack.producerName || "a producer"} on Trishul Beats.`;
+
   return {
-    title: `${pack.title} — Beat Pack`,
-    description: pack.description,
+    title,
+    description,
     alternates: { canonical: `/beat-packs/${id}` },
     openGraph: {
-      title: `${pack.title} — Beat Pack`,
-      description: pack.description || `Beat pack by ${pack.producerName || "a producer"} on Trishul Beats.`,
-      images: pack.imageUrls?.[0] ? [pack.imageUrls[0]] : pack.coverUrl ? [pack.coverUrl] : [],
-      url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/beat-packs/${id}`,
+      title,
+      description,
+      url: `${appUrl}/beat-packs/${id}`,
+      type: "website",
+      images: ogImage
+        ? [
+            {
+              url: ogImage,
+              width: 1200,
+              height: 630,
+              alt: pack.title,
+            },
+          ]
+        : [],
     },
     twitter: {
       card: "summary_large_image",
-      title: `${pack.title} — Beat Pack`,
-      description: pack.description || `Beat pack on Trishul Beats.`,
-      images: pack.imageUrls?.[0] ? [pack.imageUrls[0]] : pack.coverUrl ? [pack.coverUrl] : [],
+      title,
+      description,
+      images: ogImage ? [ogImage] : [],
     },
   };
 }
@@ -94,22 +117,28 @@ export default async function BeatPackDetailPage({ params }: Props) {
       { tier: "premium", price: pack.prices.premium },
       { tier: "unlimited", price: pack.prices.unlimited },
     ],
-    tracks: await Promise.all(pack.beats.map(async (beat) => ({
-      id: beat._id.toString(),
-      title: beat.title,
-      genre: beat.genre,
-      bpm: beat.bpm,
-      durationLabel: beat.duration
-        ? `${Math.floor(beat.duration / 60)}:${String(beat.duration % 60).padStart(2, "0")}`
-        : "—",
-      previewUrl: await storageService.presignUrl(beat.audioTaggedUrl),
-    }))),
+    tracks: await Promise.all(
+      pack.beats.map(async (beat) => ({
+        id: beat._id.toString(),
+        title: beat.title,
+        genre: beat.genre,
+        bpm: beat.bpm,
+        durationLabel: beat.duration
+          ? `${Math.floor(beat.duration / 60)}:${String(beat.duration % 60).padStart(2, "0")}`
+          : "—",
+        previewUrl: await storageService.presignUrl(beat.audioTaggedUrl),
+      }))
+    ),
     status: pack.status === "published" ? "published" : "draft",
     updatedAtLabel: `Updated ${new Date(pack.updatedAt).toLocaleDateString()}`,
   });
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  const packImage = pack.imageUrls?.[0] || pack.coverUrl || undefined;
+
+  // Same fix applied here for JSON-LD structured data's "image" field —
+  // raw storage key must be presigned before use.
+  const rawPackImage = pack.imageUrls?.[0] || pack.coverUrl;
+  const packImage = rawPackImage ? await storageService.presignUrl(rawPackImage) : undefined;
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -159,4 +188,3 @@ export default async function BeatPackDetailPage({ params }: Props) {
     </>
   );
 }
-

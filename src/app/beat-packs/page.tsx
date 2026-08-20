@@ -13,6 +13,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/beat-packs" },
   openGraph: {
     title: "Beat Packs — Trishul Beats",
+    images: ["https://trishulbeats.com/og-default.jpg"],
     description: "Discover curated beat collections available for full-pack purchase.",
   },
   twitter: {
